@@ -1,0 +1,1091 @@
+第6 章支持向量机
+6 .1 间隔与支持向量
+给定训练样本集。= {(«1,2/1), («2, 2/2), . . . , («m, 2/m)}, Vi € {-1,+1),分
+类学习最基本的想法就是基于训练集D 在样本空间中找到一个划分超平面,将
+不同类别的样本分开.但能将训练样本分开的划分超平面可能有很多，如图6.1
+所示，我们应该努力去找到哪一个呢？
+图6 . 1 存在多个划分超平面将两类训练样本分开
+直观上看，应该去找位于两类训练样本“正中间”的划分超平面，即图6.1
+中红色的那个，因为该划分超平面对训练样本局部扰动的“容忍”性最好.例
+如，由于训练集的局限性或噪声的因素，训练集外的样本可能比图6.1中的训练
+样本更接近两个类的分隔界，这将使许多划分超平面出现错误，而红色的超平
+面受影响最小.换言之，这个划分超平面所产生的分类结果是最鲁棒的，对未见
+示例的泛化能力最强.
+在样本空间中，划分超平面可通过如下线性方程来描述：
+w T x + 6 = 0,
+(6.1)
+其中％ = (wi；w 2 ;...;wd ) 为法向量，决定了超平面的方向；b 为位移项，决定
+了超平面与原点之间的距离.显然，划分超平面可被法向量也和位移b 确定,
+
+122
+第6 章支持向量机
+参见习题6.L
+下面我们将其记为(w ,6 ).样本空间中任意点X 到超平面(w ,6)的距离可写为
+\wT x + 61
+T = -----------
+11^11
+(6.2)
+若超平面(W，卅)能将
+训练样本正确分类，则总
+存在缩放变换qw T w f
+和6 T y 使式(6.3)成立.
+假设超平面(叫b )能将训练样本正确分类，即对于(叫幼)G D
+若城=
++ 1 ,则有 w T Xi + b > 0 ;若加= 一1 ,则有 w T Xi + 6 < 0 . 令
+w T Xi + b ) + 1 , % = + 1 ;
+w T Xi + 6 ^ - 1 , 
+yi = -1 .
+(6.3)
+每个样本点对应一个特
+征向量.
+如图6.2所示，距离超平面最近的这几个训练样本点使式(6.3)的等号成立,
+它们被称为“支持向量”(support vector),两个异类支持向量到超平面的距离
+之和为
+^
+面
+ 
+( 6-4)
+它被称为“间隔”(margin).
+欲找到具有“最大间隔”(maximum margin)的划分超平面，也就是要找
+到能满足式(6.3)中约束的参数w 和b，使得7 最大，即
+2
+max 7；
+­
+叫 b 
+\\w\\
+(6⑸
+s.t. yi(wT Xi + b )2 1 , 
+i = 1 ,2 ,..., m.
+
+6 . 2 对偶问题
+123
+间隔貌似仅与仞有关,
+但事实上b通过约束隐式
+地影响着w 的取值，进而
+对间隔产生影响.
+显然，为了最大化间隔，仅需最大化||M|T,这等价于最小化||W||2 . 于是,
+式(6⑸可重写为
+mi? | | H 『 
+(6.6)
+s.t. yi(wT Xi + &) 
+1, 
+z = 1, 2,..., m.
+这就是支持向量机(Support Vector Machine,简称S V M ) 的基本型.
+6 . 2 对偶问题
+我们希望求解式(6.6)来得到大间隔划分超平面所对应的模型
+/(a?) = w T x + b , 
+(6.7)
+参见附录B.I.
+其中w
+和b 是模型参数.注意到式(6.6)本身是1 个凸二次规划(convex
+quadratic programming)问题，能直接用现成的优化计算包求解，但我们可
+以有更高效的办法.
+对式(6.6)使用拉格朗日乘子法可得到其“对偶问题”(dual problem).具
+体来说，对式(6.6)的每条约束添加拉格朗日乘子虫》0,则该问题的拉格朗日
+函数可写为
+] 
+m
+£(叫 &,«) = - | H 『+ E
+ 
+。- yilw,Xi + 6)) , 
+(6.8)
+2=1
+其中a = (ai；
+ &2；… ；oim ).令L ( w ,4 a ) 对to和匕的偏导为零可得
+m
+%
+=
+£
+OLiViXi , 
+(6.9)
+1=1
+m
+0 = £ 总比. 
+(6.10)
+i=l
+将式(6.9)代入(6.8),即可将L (叫A a ) 中的秒和6 消去，再考虑式(6.10)的约
+束，就得到式(6.6)的对偶问题
+m 
+]
+喈
+ E
+4
+-
+2
+i=l
+m m
+E
+E
+onajyiyjxfxj 
+(6.11)
+i=l 7=1
+
+124
+第6 章支持向量机
+参见附录B.I.
+如［Vapnik, 1999］所述,
+支持向量机这个名字强调
+了此类学习器的关键是如
+何从支持向量构建出解;
+同时也暗示着其复杂度主
+要与支持向量的数目有关.
+二次规划参见附录B.2.
+S . t . 〉〕OLiUi — 0 5
+i=l
+a . 2 0 , 
+E — 1 ,2 ,..., TTL .
+解出a 后，求出付与6 即可得到模型
+/(®) = w T x + b
+m
+= £ a iy ix fx + b . 
+(6.12)
+从对偶问题(6.11)解出的&是式(6.8)中的拉格朗日乘子，它恰对应着训
+练样本( g , % ) . 注意到式(6.6)中有不等式约束，因此上述过程需满足KKT
+(Karush-Kuhn-Tucker)条件，即要求
+色2 0 ;
+< %/(◎) — 1 2 0 ; 
+(6.13)
+a(% /(◎) — 1 ) = 。..
+于是，对任意训练样本(◎,纳)，总有电= 0 或yE Xi) = 1 .若必= 0 ,则该样
+本将不会在式(6.12)的求和中出现，也就不会对/ ( x )有任何影响；若色 > 0,
+则必有纳/(宓£)= 1 ,所对应的样本点位于最大间隔边界上，是一个支持向量.
+这显示出支持向量机的一个重要性质:训练完成后，大部分的训练样本都不需
+保留，最终模型仅与支持向量有关.
+那么，如何求解式(6.11)呢？不难发现，这是一个二次规划问题，可使用通
+用的二次规划算法来求解；然而，该问题的规模正比于训练样本数,这会在实际
+任务中造成很大的开销.为了避开这个障碍,人们通过利用问题本身的特性,提
+出了很多高效算法，SMO (Sequential Minimal Optimization)是其中一个著名
+的代表［
+Platt, 1998］.
+S M O 的基本思路是先固定仪之外的所有参数，然后求％上的极值.由于
+存在约束工建1 a 沏= 0 ,若固定以之外的其他变量，则必可由其他变量导出.
+于是，S M O 每次选择两个变量仪和% , 并固定其他参数.这样，在参数初始化
+后，S M O 不断执行如下两个步骤直至收敛：
+• 选取一对需更新的变量必和%;
+
+6 .2 对偶问题
+125
+• 固定色和%
+以外的参数，求解式(6.11)获得更新后的他和%•
+注意到只需选取的色和％中有一个不满足K K T条件(6.13),目标函数就
+会在迭代后减小[Osuna et al, 1997].直观来看，KK T条件违背的程度越大，则
+变量更新后可能导致的目标函数值减幅越大.于是，SMO先选取违背K K T条
+件程度最大的变量.第二个变量应选择一个使目标函数值减小最快的变量，但
+由于比较各变量所对应的目标函数值减幅的复杂度过高，因此SMO采用了一
+个启发式：使选取的两变量所对应样本之间的间隔最大.一种直观的解释是，这
+样的两个变量有很大的差别，与对两个相似的变量进行更新相比，对它们进行
+更新会带给目标函数值更大的变化.
+，SMO算法之所以高效，恰由于在固定其他参数后，仅优化两个参数的过程
+能做到非常高效.具体来说，仅考虑四和%
+时，式(6.11)中的约束可重写为
+& 统 + QjVj = c , 
+2 0 ) o ij2 0 5
+(6.14)
+其中
+C = _ £
+ QkVk 
+(6.15)
+m
+是使£ a i y i = 0 成立的常数.用
+i=l
+Q4yli + QjUj = c
+(6.16)
+消去式(6.11)中的变量%,则得到一个关于色的单变量二次规划问题，仅有的
+约束是0 2 0 . 不难发现,这样的二次规划问题具有闭式解，于是不必调用数值
+优化算法即可高效地计算出更新后的必和%.
+如何确定偏移项b 呢？注意到对任意支持向量( g , % ) 都有% / ( % ) = 1,
+即
+Vs [ ^ ^ a iy ix lx s + b) = 1 ,
+(6.17)
+其中S = {〃| 以〉0 " = 1,2,. . . ,馆}为所有支持向量的下标集.理论上，可选
+取任意支持向量并通过求解式(6.17)获得“但现实任务中常采用一种更鲁棒的
+做法：使用所有支持向量求解的平均值
+匕=
+焉 E (
+a 说iW x s
+1 
+1 ses \ 
+ies
+(6.18)
+
+126
+第6 章支持向量机
+6 .3 核函数
+在本章前面的讨论中，我们假设训练样本是线性可分的，即存在一个划分
+超平面能将训练样本正确分类.然而在现实任务中，原始样本空间内也许并不
+存在一个能正确划分两类样本的超平面.例如图6 .3 中的“异或”问题就不是
+线性可分的.
+图6 .3 
+异或问题与非线性映射
+参见第12章.
+对这样的问题，可将样本从原始空间映射到一个更高维的特征空间，使得
+样本在这个特征空间内线性可分.例如在图6 .3 中，若将原始的二维空间映射
+到一个合适的三维空间，就能找到一个合适的划分超平面.幸运的是，如果原始
+空间是有限维，即属性数有限，那么一定存在一个高维特征空间使样本可分.
+令6(x)表示将力映射后的特征向量，于是，在特征空间中划分超平面所对
+应的模型可表示为
+= w T (/)(x) + b , 
+(6.19)
+其中仍和b 是模型参数.类似式(6 .6 ),有
+mip | ||w||2 
+(6.20)
+s.t. y/w‘帆吟 + b )2 1, 
+i = 1, 2 ,..., m.
+其对偶问题是
+m 
+]
+噜x £ 必一]
+i=l
+m m
+工 E
+ 
+（g ）T。（叼） 
+（6.21）
+7=1
+
+6 . 3 核函数
+127
+m
+s . t . ) : 以统= 0 ,
+2=1
+2 0 : 
+2 — 1,2,・・•，7TZ •
+m 
+m
+£
+ £
+ 
+X j) 
+(6.23)
+i= l j= l
+求解式(6.21)涉及到计算0 (g )T °(叼)，这是样本© 与X j 映射到特征空间
+之后的内积.由于特征空间维数可能很高，甚至可能是无穷维，因此直接计算
+0(g)T 矶叼)通常是困难的.为了避开这个障碍，可以设想这样一个函数：
+片(即叼)= 3 但),0(叼)〉= 0(g)T0(叼), 
+(6.22)
+即g
+与X j 在特征空间的内积等于它们在原始样本空间中通过函数/<, •)计算
+这称笊“核技巧”( k e r - 的结果.有了这样的函数，我们就不必直接去计算高维甚至无穷维特征空间中
+si trick).
+的内积，于是式(6.21)可重写为
+1 
+m 
+]
+噂x
+2=1
+m
+S . t . 〉] QiVi — 0 ,
+z=l
+Q%》0 ,
+分—1,2, • • • , TTl .
+求解后即可得到
+/(x) = w T (l)( x ) + b
+m
+= £ %%0(g)T °Q ) + b
+i= l
+m
+=
+£
+ OLiyi% ® g ) + b . 
+(6.24)
+2=1
+这里的函数片(•,•)就是“核函数" (kernel function).式(6.24)显示出模型最
+优解可通过训练样本的核函数展开，这一展式亦称“支持向量展式"(support
+vector expansion)..
+显然，若已知合适映射0(・)的具体形式，则可写出核函数/<,•).但在现实
+任务中我们通常不知道。(・)是什么形式，那么，合适的核函数是否一定存在呢?
+什么样的函数能做核函数呢？我们有下面的定理：
+
+128
+第6 章支持向量机
+证明可参阅［Scholkopf 
+定理6.1 (核函数)令％为输入空间，H
+- ) 是定义在北义无上的对称
+，
+d ^
+0 131 2 0 ° 2 L 
+' 
+函数，则K 是核函数当且仅当对于任意数据。=
+｛叫，物… ，而｝，"核矩
+阵" (kernel matrix) K 总是半正定的：
+片(叫 M
+i ) …
+6Q L 叼
+) …
+• 
+• 
+• 
+• •
+K =
+厘叫) 
+… 
+叼) 
+… 
+K(Xi.Xm )
+・
+・
+・
+・
+•
+况 1) 
+, … 
+K(X m i Xj^ 
+, • , 
+X m ^
+定理6.1表明，只要一个对称函数所对应的核矩阵半正定,.它就能作为核
+函数使用.事实上，对于一个半正定核矩阵，总能找到一个与之对应的映射
+0 . 换言之，任何一个核函数都隐式地定义了一个称为“再生核希尔伯特空
+间 ”(Reproducing Kernel Hilbert Space,简称 RKHS)的特征空间.
+通过前面的讨论可知，我们希望样本在特征空间内线性可分，因此特征空
+间的好坏对支持向量机的性能至关重要.需注意的是，在不知道特征映射的形
+式时，我们并不知道什么样的核函数是合适的，而核函数也仅是隐式地定义了
+叭弓赞吝二？去£譬今 这个特征空间.于是，“核函数选择”成为支持向量机的最大变数• 若核函数
+采用线性核，情况不明时 选择不合适，则意味着将样本映射到了一个不合适的特征空间，很可能导致性
+可先尝试高斯核. 
+能不佳
+表6.1列出了几种常用的核函数.
+表6 . 1 常用核函数
+名称
+表达式
+参数
+线性核
+K(X i,Xj) = x j x j
+d = 1 时退化为线性核.
+多项式核
+X j) —
+d 2 1 为多项式的次数
+高斯核亦称RBF核.
+高斯核
+M g , X j) = exp ( - 品,晨"3
+0 > 0 为高斯核的带宽(width)
+拉普拉斯核
+K(g , Xj) = exp (一
+(7 > 0
+Sigmoid 核
+K(Xi, Xj) = taiah(/3xjxj + O')
+ta n h 为双曲正切函数，/3 > 0, 0 < 0
+此外，还可通过函数组合得到，例如：
+• 若K 1 和汽2 为核函数，则对于任意正数7 1、7 2 ,其线性组合
+71^1 + 7 2 左 2
+(6.25)
+
+6 . 4 软间隔与正则化
+129
+也是核函数;
+•若州和用2 为核函数，则核函数的直积
+用1 8 用2 ( N ) = 凡1(力，Z)'2(/, N) 
+(6.26)
+也是核函数；
+• 若修为核函数，则对于任意函数仪力)，
+近况,N ) = 。0 ) 翅0 , N)g(z) 
+(6.27)
+也是核函数.
+6 .4 软间隔与正则化
+在前面的讨论中，我们一直假定训练样本在样本空间或特征空间中是线性
+可分的，即存在一个超平面能将不同类的样本完全划分开.然而，在现实任务
+中往往很难确定合适的核函数使得训练样本在特征空间中线性可分；退一步说,
+即便恰好找到了某个核函数使训练集在特征空间中线性可分，也很难断定这个
+貌似线性可分的结果不是由于过拟合所造成的.
+缓解该问题的一个办法是允许支持向量机在一些样本上出错.为此，要引
+入“软间隔”(soft margin)的概念,如图6.4所示.
+图6.4 
+软间隔示意图.红色圈出了一些不满足约束的样本.
+具体来说，前面介绍的支持向量机形式是要求所有样本均满足约束(6.3),
+即所有样本都必须划分正确，这称为“硬间隔”(hard margin),而软间隔则是
+
+130
+第6 章支持向量机
+允许某些样本不满足约束
+yi(w T Xi + b ) 2 1 . 
+(6.28)
+当然，在最大化间隔的同时，不满足约束的样本应尽可能少.于是，优化目标可
+写为
+1
+m
+m i n -||w||2 + C ^ 4 / 1 
+( w T ^ + &) - 1) , 
+(6.29)
+'
+i = 1
+其中。> o 是一个常数,4 / i 是“o/i损失函数”
+1, 
+if z < 0; 
+、
+A)/i (%) = 
+(6.30)
+0, otherwise.
+显然，当。为无穷大时，式(6.29)迫使所有样本均满足约束(6.28),于是
+式(6.29)等价于(6.6);当。取有限值时,式(6.29)允许一些样本不满足约束.
+然而,4 / 1 非凸、非连续,数学性质不太好,使得式(6.29)不易直接求解.于
+是，人们通常用其他一些函数来代替的1 ,称为“替代损失”(surrogate loss).
+替代损失函数一般具有较好的数学性质，如它们通常是凸的连续函数且是4/1
+的上界.图6.5给出了三种常用的替代损失函数：
+对率损失是对率函数的
+变形，对率函数参见3.3
+节.
+对率损失函数通常表示
+为& 3 (• ),因此式(6.33)把
+式(3.15)中的In (-)改写为
+hinge 损失：能“ ⑶ = m a x ( 0 J — z) ; 
+(6.31)
+指数损失(exponential loss): texp{z} = exp(—z) ; 
+(6.32)
+对率损失(logistic loss): 60g(z) = log(l + exp(-z)) . 
+(6.33)
+若采用hinge损失，则式(6.29)变成
+1
+m
+m i n -||w||2 + C Y 2 m a x (0,1 — yi ( w T Xi 4- 6)) . 
+(6.34)
+叫b 2 
+f2=1
+引入“松弛变量”(slack variables) & 》0 , 可将式(6.34)重写为
+] 
+m
+叫 2 5 M
+(6.35)
+孙温2 
+仁
+
+6 .4 软间隔与正则化
+131
+图6 . 5 三种常见的替代损失函数：hinge损失、指数损失、对率损失
+s.t. 
+T g + b)》l —&
+& 2 0 , i = 1)2)...
+这就是常用的“软间隔支持向量机”.
+显然，式(6.35)中每个样本都有一个对应的松弛变量，用以表征该样本不满
+足约束(6.28)的程度.但是，与式(6.6)相似，这仍是一个二次规划问题.于是，类
+似式(6.8),通过拉格朗日乘子法可得到式(6.35)的拉格朗日函数
+1
+m
+心= -||w||2 + C ^ 2 ^
+2=1
+m 
+m
++ £
+ % (1 - & - % (一T . 十 0) — £
+ 色& , 
+(6.36)
+i— l 
+i=l
+其
+中> 0, 
+> 0 是拉格朗日乘子.
+令
+对
+w, - & 的偏导为零可得
+m
+钝= 工8 物g , 
+(6.37)
+2=1
+m
+0 = £ 必比, 
+(6.38)
+i— l
+C = Q 分 + Hi .
+(6.39)
+
+132
+第6 章支持向量机
+将式(6.37)-(6.39)代入式(6.36)即可得到式(6.35)的对偶问题
+HL 
+] 
+lib 
+IIL
+max £ 仪
+—万£ £ 色
+% 仍%靖叼 
+(6.40)
+2=1 
+2=1 j=l
+m
+S . t . 〉] OLiVi = 0 ,
+2=1
+0 W 
+, 
+z -— 1 ,2 ,..., Tn .
+将式(6.40)与硬间隔下的对偶问题(6.11)对比可看出，两者唯一的差别就在
+于对偶变量的约束不同：前者是0 W
+后者是0 W 
+于是，可采用6.2
+节中同样的算法求解式(6.40);在引入核函数后能得到与式(6.24)同样的支持向
+量展式.
+类似式(6.13),对软间隔支持向量机,KK T条件要求
+✓
+%/( g ) — 1 + & 2 0 ,
+<
+(6.41)
+电仅"(宓/- 1+ &) = 0 ,
+、& ) 。，从忐= 。­
+于是，对任意训练样本(吃，m)，总有㈢= 0 或yif{xi) = 1 一 & . 若& = 0 ,则
+该样本不会对/(⑼有任何影响；若Q. > 0 ,则必有Vif(Xi) = 1 - 
+即该样本
+是支持向量：由式(6.39)可知，若必< C ,则网> 0 ,进而有& = 0 , 即该样本
+恰在最大间隔边界上；若％ = 。，则有M = 0 ,此时若& W 1 则该样本落在最
+大间隔内部，若& > 1 则该样本被错误分类.由此可看出，软间隔支持向量机的
+最终模型仅与支持向量有关，即通过采用hinge损失函数仍保持了稀疏性.
+那么，能否对式(6.29)使用其他的替代损失函数呢？
+可以发现，如果使用对率损失函数6 也来替代式(6.29)中的0 /1 损失函数,
+则几乎就得到了对率回归模型(3.27).实际上，支持向量机与对率回归的优化
+目标相近，通常情形下它们的性能也相当.对率回归的优势主要在于其输出具
+有自然的概率意义，即在给出预测标记的同时也给出了概率，而支持向量机的
+输出不具有概率意义，欲得到概率输出需进行特殊处理[Platt, 2000];此外，对
+率回归能直接用于多分类任务，支持向量机为此则需进行推广[Hsu and Lin,
+2002].另一方面，从图6.5可看出，hinge损失有一块“平坦”的零区域，这使
+
+6 . 5 支持向量回归
+133
+正则化可理解为一种
+“罚函数法”，即对不希
+望得到的结果施以惩罚,
+从而使得优化过程趋向于
+希望目标.从贝叶斯估计
+的角度来看，正则化项可
+认为是提供了模型的先验
+概率.
+参见1 1 .4节.
+得支持向量机的解具有稀疏性，而对率损失是光滑的单调递减函数，不能导出
+类似支持向量的概念，因此对率回归的解依赖于更多的训练样本，其预测开销
+更大.
+我们还可以把式(6.29)中的0 /1 损失函数换成别的替代损失函数以得到
+其他学习模型，这些模型的性质与所用的替代函数直接相关，但它们具有一
+个共性：优化目标中的第一项用来描述划分超平面的“间隔”大小，另一项
+£ 黑1以/(%),%)用来表述训练集上的误差，可写为更一般的形式
+m
+min Q
+(
+/
+)
+电
+) ，
+ 
+(6.42)
+f 
+i=l
+其中0 ( / ) 称为“结构风险”(structural risk),用于描述模型/ 的某些性质；第
+二
+项
+仍
+) 称
+为
+“经验风险”(empirical risk),用于描述模型与训练
+数据的契合程度;。用于对二者进行折中.从经验风险最小化的角度来看,Q(/)
+表述了我们希望获得具有何种性质的模型(例如希望获得复杂度较小的模型),
+这为引入领域知识和用户意图提供了途径；另一方面，该信息有助于削减假设
+空间，从而降低了最小化训练误差的过拟合风险.从这个角度来说，式(6.42)称
+为“正则化"(regularization)问题，。⑺称为正则化项，。则称为正则化常数.
+Lp 范数(norm)是常用的正则化项，其中L2 范数||w||2 倾向于w 的分量取值
+尽量均衡，即非零分量个数尽量稠密，而Lo 范数||训|o和L i 范数||列|1 则倾向
+于w 的分量尽量稀疏，即非零分量个数尽量少.
+6 .5 支持向量回归
+现在我们来考虑回归问题.给定训练样本。=
+{ ( g ,力),(冗2,公),...,
+Vi e R ,希望学得一个形如式(6.7)的回归模型，使得/(⑼与g 尽可
+能接近，w 和b 是待确定的模型参数.
+对样本Q ,g ),传统回归模型通常直接基于模型输出/(⑼与真实输出y 之
+间的差别来计算损失，当且仅当f 3 与y 完全相同时，损失才为零.与此不同,
+支持向量回归(Support Vector Regression,简称SVR)假设我们能容忍f(x)与
+y 之间最多有6 的偏差，即仅当/(⑼与y 之间的差别绝对值大于e 时才计算损
+失.如图6.6所示,这相当于以/ Q ) 为中心，构建了一个宽度为2e的间隔带,若
+训练样本落入此间隔带，则认为是被预测正确的.
+
+134
+第6 章支持向量机
+图6 . 6 支持向量回归示意图.红色显示出e 间隔带，落入其中的样本不计算损失.
+于是，S V R 问题可形式化为
+1
+TYL
+■
+ 5
+M
+/ 十。£
+6 ( 〃电)一%) , 
+(6.43)
+w.b 
+Z 
+z一/
+2=1
+其中C 为正则化常数，晨是图6 . 7所示的，不敏感损失(『insensitive loss)函数
+& ⑶=
+0, 
+if ⑶ W c ;
+⑶ — e, 
+otherwise.
+(6.44)
+间隔带两侧的松弛程度
+可有所不同.
+引入松弛变量&和也可将式(6.43)重写为
+1
+m
+m h \ 5 M H 2 + 。三怎+ &)
+/ 
+i = 1
+(6.45)
+if |z| W e；
+otherwise.
+图6 .7 
+e-不敏感损失函数
+
+6 . 5 支持向量回归
+135
+s.t. f(xi) 一班 W e + & ,
+yi - /(g) W £ + 石，
+& 》
+》。，。=1,2,..., tn.
+类似式(6.36),通过引入拉格朗日乘子饵》0,也》0,必》0,出》0,由拉
+格朗日乘子法可得到式(6.45)的拉格朗日函数
+£(叫 b, 以&,&£,出向)
+1 
+m 
+m 
+m
+=
+5 Mli2 + 。£ ( & + &) — £
+ 也&一 £
+ a店
+2=1 
+i=l 
+Z=1
+m 
+m
++ £ & ( / ( ◎) — 纳一c 一&) +
+£
+包(统一 /但)一 6 —G) . 
+(6.46)
+i=l 
+i=l
+将式(6.7)代入，再令L(w, 6, a, d, & £ 内阖对w, 6, & 和G 的偏导为零可得
+m
+W = £ ( 诙- oii)Xi , 
+(6.47)
+2=1
+m
+0 = £ ( 必 —& ) , 
+(6.48)
+2=1
+。= & + 
+, 
+(6.49)
+。= 包 + 饱. 
+(6.50)
+将式(6.47)-(6.50)代入式(6.46),即可得到S V R 的对偶问题
+m
+max £
+ 明(鱼- 色) , e(鱼 + &) 
+(6.51)
+5 
+i=l
+m m
+- 2 5 2 
+一8)(跖一% ) w 叼
+i=l j=l
+m
+S.t.) ：(&£ — a) = 0 ,
+i=l
+o w 
+自 w 。.
+上述过程中需满足K K T 条件，即要求
+
+136
+第6 章支持向量机
+落在6 间隔带中的样本
+都满足以= 0 且诙= 0.
+8 (/(g ) — yi — £ — &) — 0 ,
+&式亚一f 3 i ) - € - ^ ) = o ,
+< 
+人 
+(6.52)
+= 0 , && = 0 ,
+、(C - &)& = 0 ,
+—色尼= 0 .
+可以看出，当且仅当/ ( g ) — 
+& = 0 时&能取非零值，当且仅当
+y i - /(© ) — e — $ = 0 时也能取非零值.换言之，仅当样本(叫比)不落入e 间
+隔带中，相应的必和M 才能取非零值.止匕外，约束f ( X
+i ) —€ — & = o 和
+yi - f(xi) - 6 - ^ = 0 不能同时成立，因此a i 和a t 中至少有一个为零.
+将式(6.47)代入(6.7),则SVR的解形如
+m
+/ Q )= £
+(包一 a i)x fx + b • 
+(6.53)
+i=l
+能使式(6.53)中的(& —电)# 0 的样本即为SVR的支持向量，它们必落在
+e 间隔带之外.显然，SVR的支持向量仅是训练样本的一部分，即其解仍具有稀
+疏性.
+由K K T 条件(6.52)可看出，对每个样本(电,仇)都有(。-
+& = 0 且
+a0(/(g) — yi — e — 
+于是，在得到以后，若0 < & < C ,则必有& = 。,
+进而有
+m
+6 = % + € — 
+- a i)x fx . 
+(6.54)
+i=l
+因此在求解式(6.51)得到以后,理论上来说,可任意选取满足0 V a V C 的样
+本通过式(6.54)求得6 . 实践中常采用一种更鲁棒的办法：选取多个(或所有)满
+足条件0 < & < 。的样本求解b 后取平均值.
+. 若考虑特征映射形式(6.19),则相应的，式(6.47)将形如
+・
+m
+W = £ ( & - 
+. 
+(6.55)
+i— l
+将式(6.55)代入(6.19),则SVR可表示为
+
+6 . 6 核方法
+137
+证明参阅[Scholkopf and
+Smola, 2002],其中用到了
+关于实对称矩阵正定性充
+要条件的Mercer定理.
+线性判别分析见3.4节.
+/(”) = £ ( 自一电)左(宓，© )+ b ，
+ 
+(6.56)
+i=l
+其中K(Xi,Xj) = °(g)T 0(叼)为核函数.
+6 .6 核方法
+回顾式(6.24)和(6.56)可发现，给定训练样本{ ( % ，见乂也续),… ，
+3 m M ) } , 若不考虑偏移项" 则无论SVM还是SV R ,学得的模型总能表
+示成核函数厘Q , g ) 的线性组合.不仅如此，事实上我们有下面这个称为“表
+示定理“(representer theorem)的更一般的结论：
+定理6.2 (表示定理)令间为核函数K 对应的再生核希尔伯特空间，||加回
+表示E[空间中关于九的范数，对于任意单调递增函数口：
+ [0,oo] 
+和任意非
+负损失函数2 ：
+ 
+1 [0,oo],优化问题
+min F(h) = Q(||川|回)+ 2值(宓1)，%(宓2), … 消Qm)) 
+(6.57)
+的解总可写为
+m
+. 
+(6.58)
+2— 1
+表示定理对损失函数没有限制，对正则化项Q 仅要求单调递增，甚至不要
+求口是凸函数，意味着对于一般的损失函数和正则化项,优化问题(6.57)的最优
+解无*(宏)都可表示为核函数/＜叱g ) 的线性组合；这显示出核函数的巨大威力.
+人们发展出一系列基于核函数的学习方法，统称为“核方法”(kernel
+m ethods).最常见的，是通过“核化”(即引入核函数)来将线性学习器拓展为
+非线性学习器.下面我们以线性判别分析为例来演示如何通过核化来对其进
+行非线性拓展，从而得到“核线性判别分析"(Kernelized Linear Discriminant
+Analysis,简称 KLDA).
+我们先假设可通过某种映射0 : X 1 F 将样本映射到一个特征空间F ,然
+后在F 中执行线性判别分析，以求得
+h(x) = w T (^)(a?) . 
+(6.59)
+
+138
+第6 章支持向量机
+类似于式(3.35), K L D A 的学习目标是
+max J (w )=
+w
+w T s fw
+WT SwW
+(6.60)
+其中s f 和s t 分别为训练样本在特征空间N 中的类间散度矩阵和类内散
+度矩阵.令X 。表示第分e {0,1}类样本的集合，其样本数为人；总样本数
+m = 馆0 + 6 1 . 第E 类样本在特征空间F 中的均值为
+*
+=
+3
+ £
+。(⑼，
+ 
+(661)
+两个散度矩阵分别为
+Sf = (/4 —/ 4 ) ( / 4 - / 4 产；
+ 
+(6.62)
+1
+S * = £
+ £
+ (。⑸一谭)(。⑸- 好
+, 
+(663)
+Z=O XEXi
+通常我们难以知道映射。的具体形式，因此使用核函数上3 , 电) =
+0(g)T° ( ⑼来隐式地表达这个映射和特征空间F . 把J ( w ) 作为式(6.57)中
+的损失函数幺再令□三0 , 由表示定理，函数h (x )可写为
+m
+九(z).= 
+g ) , 
+(6.64)
+i=l
+于是由式(6.59)可得
+m
+w = ^ 2 J ° ( 宓/. 
+(6.65)
+i=l
+令K e J R m x m 为核函数6 所对应的核矩阵，( K W = M g , 叼).令L G
+口, 0y
+x i 为第i 类样本的指示向量，即u 的第j 个分量为1 当且仅当叼e 羽,
+否则L 的第•个分量为0 . 再令
+Mo = - - K I Q ,
+(6.66)
+m
+0
+Ai = — K l i ,
+(6.67)
+m i
+M = (
+/
+M
+人 
+o ~ f
+人i
+、i
+/'人)
+ 
+- M
+人
+i
+、1
+)
+T
+)
+(6.68)
+
+6 . 7 阅读材料
+139
+1
+N = KKT - £ miRi* . 
+(6.69)
+2=0
+于是,式(6.60)等价为
+max J ( a ) =
+a
+a T M a
+a T N a
+(6.70)
+求解方法参见3.4节.
+显然，使用线性判别分析求解方法即可得到a , 进而可由式(6.64)得到投影
+函数无Q).
+线性核SVM迄今仍是
+文本分类的首选技术.一
+个重要原因可能是：若将
+每个单词作为文本数据的
+一个属性，则该属性空间
+维数很高，冗余度很大，其
+描述能力足以将不同文档
+“打散”.关于打散,参见
+12.4 节.
+m 是样本个数.
+6 .7 阅读材料
+支持向量机于1995年正式发表[Cortes and Vapnik, 1995],由于在文本分
+类任务中显示出卓越性能[Joachims, 1998],很快成为机器学习的主流技术，并
+直接掀起了 “统计学习”(statistical learning)在2000年前后的高潮.但实际
+上，支持向量的概念早在二十世纪六十年代就已出现，统计学习理论在七十年
+代就已成型.对核函数的研究更早，Mercer定理[Cristianini and Shawe-Taylor,
+2000]可追溯到1909年，RKHS则在四十年代就已被研究，但在统计学习兴起
+后，核技巧才真正成为机器学习的通用基本技术.关于支持向量机和核方法有
+很多专门书籍和介绍性文章[Cristianini and Shawe-Taylor, 2000; Burges, 1998;
+邓乃扬与田英杰,2009; Scholkopf et al., 1999; Scholkopf and Smola, 2002],统
+计学习理论则可参阅[Vapnik, 1995, 1998, 1999].
+支持向量机的求解通常是借助于凸优化技术[Boyd and Vandenberghe,
+2004],如何提高效率，使SVM能适用于大规模数据一直是研究重点.对线性核
+SVM 已有很多成果，例如基于割平面法(cutting plane algorithm)的SVMperf
+具有线性复杂度[Joachims, 2006],基于随机梯度下降的Pegasos速度甚至更
+快[Shalev-Shwartz et al., 2011],而坐标下降法则在稀疏数据上有很高的效率
+[Hsieh et al, 2008].非线性核SVM的时间复杂度在理论上不可能低于O(m2),
+因此研究重点是设计快速近似算法，如基于采样的CVM [Tsang et al., 2006]>
+基于低秩逼近的Nystr6m方法[Williams and Seeger, 2001]>基于随机傅里叶
+特征的方法[Rahimi and Recht, 2007]等.最近有研究显示，当核矩阵特征值有
+很大差别时，Nystrom方法往往优于随机傅里叶特征方法[Yang et al, 2012].
+支持向量机是针对二分类任务设计的，对多分类任务要进行专门的推广
+[Hsu and Lin, 2002],对带结构输出的任务也已有相应的算法[Tsochantaridis
+
+140
+第6 章支持向量机
+集成学习参见第8 章.
+一致性亦称“相合性”.
+et al., 2005］.
+支持向量回归的研究始于［
+Drucker et al., 1997］, ［Smola and
+Scholkopf, 2004］给出了一个较为全面的介绍.
+核函数直接决定了支持向量机与核方法的最终性能，但遗憾的是，核函数
+的选择是一个未决问题.多核学习(multiple kernel learning)使用多个核函数并
+通过学习获得其最优凸组合作为最终的核函数［
+Lanckriet et al., 2004; Bach et
+al., 2004］, 这实际上是在借助集成学习机制.
+替代损失函数在机器学习中被广泛使用.但是，通过求解替代损失
+函数得到的是否仍是原问题的解？这在理论上称为替代损失的“一致
+性”(consistency)问题. ［
+Vapnik and Chervonenkis, 1991］给出 了基于替代损
+失进行经验风险最小化的一致性充要条件，［Zhang, 2004］证明了几种常见凸替
+代损失函数的一致性.
+SVM 已有很多软件包，比较著名的有LIBSVM ［Chang and Lin, 2011］和
+LIBLINEAR ［
+Fan et al., 2008］等.
+
+习题
+141
+习题
+6.1
+试证明样本空间中任意点比到超平面(叫6 )的距离为式(6.2).
+LIBSVM 见 http:〃www. 
+6 2
+csie.ntu.edu.tw/~cjlin/libsvm/.
+西瓜数据集3.0a见p.89
+的表4 5
+u c i数据集见 
+6・3
+http://archive.ics.uci.edu/ml/.
+试使用LIBSVM,在西瓜数据集3.0a上分别用线性核和高斯核训练
+一个SVM,并比较其支持向量的差别.
+选择两个UCI数据集，分别用线性核和高斯核训练一个SVM ,并与
+B P 神经网络和C4.5决策树进行实验比较.
+6.4
+试讨论线性判别分析与线性核支持向量机在何种条件下等价.
+6.5
+试述高斯核SVM与R B F神经网络之间的联系.
+6.6
+试析SVM对噪声敏感的原因.
+6.7
+试给出式(6.52)的完整K K T条件.
+6.8
+以西瓜数据集3 .0 a 的“密度”为输入，“含糖率”为输出，试使用
+LIBSVM 训练一个 SVR.
+6.9
+试使用核技巧推广对率回归，产生“核对率回归”.
+6 . 1 0 * 试设计一个能显著减少SVM 中支持向量的数目而不显著降低泛化性
+能的方法.
+
+142
+第6 章支持向量机
+参考文献
+邓乃扬与田英杰.(2009).支持向量机：理论、算法与拓展.科学出版社，北京.
+Bach, R. R., G. R. G. Lanckriet, and M. I. Jordan. (2004). “Multiple kernel
+learning, conic duality, and the SMO algorithm.5, In Proceedings of the 21st
+International Conference on Machine Learning (ICML)1 6-13, Banff, Cana­
+da.
+Boyd, S. and L. Vandenberghe. (2004). Convex Optimization. Cambridge Uni­
+versity Press, Cambridge, UK.
+Burges, C. J. C. (1998), “A tutorial on support vector machines for pattern
+recognition.55 Data Mining and Knowledge Discovery1 2(1):121-167.
+Chang, C.-C. and C.-J. Lin. (2011), “LLBSVM: A library for support vector
+machines.55 ACM Transactions on Intelligent Systems and Technology, 2(3):
+27.
+Cortes, C. and V. N. Vapnik. (1995), “Support vector networks.^^ Machine
+Learning1 20(3):273-297.
+Cristianini, N. and J. Shawe-Taylor. (2000). An Introduction to Support Vector
+Machines and Other Kernel-Based Learning Methods. Cambridge University
+Press, Cambridge, UK.
+Drucker, H., C. J. C. Burges, L. Kaufman, A. J. Smola, and V. Vapnik. (1997).
+uSupport vector regression m achines.In Advances in Neural Information
+Processing Systems 9 (NIPS) (M. C. Mozer, M. I. Jordan, and T. Petsche,
+eds.), 155-161, MIT Press, Cambridge, MA.
+Fan, R.-E., K.-W. Chang, C.-J. Hsieh, X.-R. Wang, and C.-J. Lin. (2008).
+“LIBLINEAR: A library for large linear classification.,, Journal of Machine
+Learning Research^ 9:1871-1874.
+Hsieh, C.-J., K.-W. Chang, C.-J. Lin, S. S. Keerthi, and S. Sundararajan.
+(2008). "A dual coordinate descent method for large-scale linear SVM.”
+In Proceedings of the 25th International Conference on Machine Learning
+(ICML). 408-415, Helsinki, Finland.
+Hsu, C.-W. and C.-J. Lin. (2002), “A comparison of methods for multi-class
+support vector machines.5, IEEE Transactions on Neural Networks, 13(2):
+415-425.
+
+参考文献
+143
+Joachims, T. (1998), “Text classification with support vector machines: Learn­
+ing with many relevant features.” In Proceedings of the 10th European Con­
+ference on Machine Learning (ECML)1137-142, Chemnitz, Germany.
+-Joachims, T. (2006). “Training linear SVMs in linear time.” In Proceedings of
+the 12th A CM SIGKDD International Conference on Knowledge Discovery
+and Data Mining (KDD), 217-226, Philadelphia, PA.
+Lanckriet, G. R. G., N. Cristianini, and M. I. Jordan P. Bartlett, L. El Ghaoui.
+(2004), “Learning the kernel matrix with semidefinite program m ing.Jour­
+nal of Machine Learning Research1 5:27-72.
+Osuna, E., R. Freund, and F. Girosi. (1997). “An improved training algorithm
+for support vector m achines.In Proceedings of the IEEE Workshop on Neu­
+ral Networks for Signal Processing (NNSP), 276-285, Amelia Island, FL.
+Platt, J. (1998). ^Sequential minimal optimization: A fast algorithm for train­
+ing support vector machines.57 Technical Report MSR-TR-98-14, Microsoft
+Research.
+Platt, J. (2000). ^Probabilities for (SV) m achines.In Advances in Large Mar­
+gin Classifiers (A. Smola, P. Bartlett, B. Scholkopf, and D. Schuurmans,
+eds.), 61-74, MIT Press, Cambridge, MA. 
+.
+Rahimi, A. and B. Recht. (2007). “Random features for large-scale kernel ma­
+chines.,5 In Advances in Neural Information Processing Systems 20 (NIPS)
+(J.C. Platt, D. Koller, Y. Singer, and S. Roweis, eds.), 1177-1184, MIT Press,
+Cambridge, MA.
+Scholkopf, B., C. J, C. Burges, and A. J. Smola, eds. (1999). Advances in Kernel
+Methods: Support Vector Learning. MIT Press, Cambridge, MA.
+Scholkopf, B. and A. J. Smola, eds. (2002). Learning with Kernels: Support Vec­
+tor Machines^ Regularization, Optimization and Beyond. MIT Press, Cam­
+bridge, MA.
+Shalev-Shwartz, S., Y. Singer, N. Sr ebro, and A. Cotter. (2011). uPegasos: Pri­
+mal estimated sub-gradient solver for SVM." Mathematical Programming^
+127(1):3-30.
+Smola, A. J, and B. Scholkopf. (2004). “A tutorial on support vector regres-
+sion.^^ Statistics and Computing, 14(3):199-222.
+
+144
+第6 章支持向量机
+Tsang, I. W., J. T. Kwok, and P. Cheung. (2006), “Core vector machines:
+Fast SVM training on very large data sets? Journal of Machine Learning
+Research 6:363-392.
+Tsochantaridis, L, T. Joachims, T. Hofmann, and Y. Altun. (2005). “Large
+margin methods for structured and interdependent output variables.Jour­
+nal of Machine Learning Research, 6:1453-1484.
+Vapnik, V. N. (1995). The Nature of Statistical Learning Theory. Springer, New
+York, NY.
+Vapnik, V. N. (1998). Statistical Learning Theory. Wiley, New York, NY.
+Vapnik, V. N. (1999). “An overview of statistical learning theory.5, IEEE Trans­
+actions on Neural Networks, 10(5):988-999.
+Vapnik, V. N. and A. J. Chervonenkis. (1991). “The necessary and sufficient
+conditions for consistency of the method of empirical risk." Pattern Recog­
+nition and Image Analysis, 1(3):284-305.
+Williams, C. K. and M. Seeger. (2001). “Using the Nystrom method to speed
+up kernel m achines.In Advances in Neural Information Processing Systems
+13 (NIPS) (T. K. Leen, T. G. Dietterich, and V. Tresp, eds.), 682-688, MIT
+Press, Cambridge, MA.
+Yang, T.-B., Y.-F. Li, M. Mahdavi, R. Jin, and Z.-H. Zhou. (2012),. ^Nystrom
+method vs random Fourier features: A theoretical and empirical compari-
+son." In Advances in Neural Information Processing Systems 25 (NIPS) (P.
+Bartlett, F. C. N. Pereira, C. J. C. Burges, L. Bottou, and K. Q. Weinberger,
+eds.), 485-493, MIT Press, Cambridge, MA.
+Zhang, T. (2004). ^Statistical behavior and consistency of classification meth­
+ods based on convex risk minimization (with discussion).Annals of Statis­
+tics, 32(5):56-85.
+
+休息一会儿
+145
+休息一会儿
+小故事：统计学习理论之父弗拉基米尔•瓦普尼克
+弗拉基米尔・瓦普尼克(Vladimir N. Vapnik, 1936— )
+是杰出的数学家、统计学家、计算机科学家.他出生于苏
+联，1958年在乌兹别克国立大学获数学硕士学位，1964年
+在莫斯科控制科学学院获统计学博士学位，此后一直在该校
+工作并担任计算机系主任. 1990年(苏联解体的前一年)他
+离开苏联来到新泽西州的美国电话电报公司贝尔实验室工作，1995年发表了
+最初的SVM 文章.当时神经网络正当红，因此这篇文章被权威期刊MaM加e
+SVM的确与神经网络有
+密切联系：若将隐层神经
+元数设置为训练样本数,
+且每个训练样本对应一
+个神经元中心，则以高斯
+径向基函数为激活函数的
+RBF网络(参见5.5.1节)恰
+与高斯核S V M 的预测函
+数相同.
+而g 要求以“支持向量网络”的名义发表.
+实际上，瓦普尼克在1963年就已提出了支持向量的概念，1968年他与另
+一位苏联数学家A. Chervonenkis提出了以他们两人的姓氏命名的“V C 维”，
+1974年又提出了结构风险最小化原则，使得统计学习理论在二十世纪七十年代
+就已成型.但这些工作主要是以俄文发表的，直到瓦普尼克随着东欧剧变和苏
+联解体导致的苏联科学家移民潮来到美国，这方面的研究才在西方学术界引起
+重视，统计学习理论、支持向量机、核方法在二十世纪末大红大紫.
+瓦普尼克2002年离开美国电话电报公司加入普林斯顿的N E C 实验室,
+2014年加盟脸书(Facebook)公司人工智能实验室. 1995年之后他还在伦敦大
+学、哥伦比亚大学等校任教授.据说瓦普尼克在苏联根据一本字典自学了英语
+及其发音.他有一句名言被广为传诵：“Nothing is more practical than a good
+theory.n
+

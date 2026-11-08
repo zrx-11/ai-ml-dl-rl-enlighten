@@ -1,0 +1,2828 @@
+第17 章前沿技术
+免眼球受到突然的戳击。类似地，恐惧和心率加快或者愣住之间的关联，也可以是内置
+的。智能体的设计者们可以做一些类似的事情，例如，自动驾驶汽车可以学习“向前开车
+会不会导致碰撞＂，然后将其“停车／避开”的行为建立一个内置反射，当预测值超过一定
+阅值时触发。或者考虑一个真空清洁机器人，其可以学习预测是否会在返回充电装置前用
+尽电量，并且在该预测值变为非零时，条件反射一样地掉头移动到充电站。准确的预测取
+决千房间的大小、机器人所在的房间、电池的年龄，机器人的设计者很难了解所有这些细
+节。让设计者使用传感器的手段设计一个有效的算法来决定是否回头是很困难的，但是使
+用学习到的预测则很容易做到这一点。我们预见到很多方法都会像这样将学习到的预测和
+内置控制行为的算法有效结合在一起。
+最后，也许辅助任务最重要的作用，是改进了我们本书之前所做的假设：即状态的表
+示是固定的，而且智能体知道这些表示。为了解释这个重要作用，我们首先要回过头来了
+解本书所做的假设的重要性以及去除它所带来的影响。这将在17.3 中介绍。
+17.2 
+基千选项理论的时序摘要
+马尔可夫决策过程形式上的一个吸引人的地方是，它可以有效地用在不同时间尺度的
+任务上。我们可以用它来形式化许多任务，例如决定收缩哪一块肌肉来抓取一个目标，乘
+坐哪一架航班方便地到达一个遥远的城市，选择哪一种工作来过上满意的生活。这些任务
+在时间尺度上差异很大，然而每一个都可以表达成马尔可夫决策过程(MDP) ，然后用本
+书中讲述的规划和学习过程完成。所有这些任务都涉及由与环境的相互作用、序贯决策以
+及一个随时间累积的收益构成的目标，因此它们都可以被形式化成马尔可夫决策过程。
+尽管所有这些任务都可以被形式化为MDP, 但是我们可能认为它们不能被形式化为
+一个单一的MDP,
+因为这些过程涉及的时间尺度都不同，例如选择的种类和动作都截然
+不同。例如，把预定跨洲的航班和肌肉收缩放在同一时间尺度上是不合适的。但是对千其
+他任务而言，例如抓取、掷标枪、击打棒球，用肌肉收缩的层次来刻画可能刚刚好。人类
+可以无缝地在各个时间层次上切换，而没有一点转换的痕迹。那么MDP 框架可不可以被
+拉伸．从而同步地覆盖所有这些时间层次呢？
+也许是可以的，一种流行的观点是：先形式化一个非常小的时间尺度上的MDP, 从
+而允许在更高的层次上使用扩展动作（每个时刻对应千更低层次上的多个时刻）的规划。
+为了做到这一点，我们需要使用一个展开到多个时刻的“动作方针＂的概念，并引入一个
+“终止＂的概念。对这两个概念的通用的形式化方式是将它们用一个策略T 和一个状态相
+453 
+
+强化学习（第2 版）
+关的终止函数勹来表达，就像在GVF 中定义的那样。我们将这样的一个“策略－终止函
+数”二元组定义为一种广义的动作，称之为“选项＂。在t 时刻执行一个选项w=(7r如'Yw),
+就表示从五（心）中获得一个动作At, 然后在t+l 时刻以
+1 －'Yw(St+1) 的概率终止。
+如果选项不在t+l 时刻停止，那么At+1 从五(·I St十1) 中选择，而且选项在t+2 时刻
+以
+1 －兀（St+2) 的概率终止。很容易就可以把低层次的动作看作选项的一种特例－每一
+个动作a 都对应千一个选项（如，'Yw) ，这个选项的策略会选出一个动作（对于每个
+s ES, 
+匹(s) = a) ，并且其终止函数是零（对于每个sES气飞(s) =0) 。选项有效地扩展了动作
+空间。智能体可以选择一个低层次的动作／选项，在单步之后终止，或者选一个扩展的选
+项，它可能在执行多步之后才终止。
+”选项＂的架构设计允许它与低级别的动作进行角色互换。例如，一个动作价值函数
+的记号q下可以被自然地推广为选项值函数，它以状态和选项作为输入，仍然返回期望回
+报，只是产生这个期望回报的过程包括了从输入状态开始，执行输入的选项直到它终止，
+并在之后继续遵循策略T 的整个过程。我们也可以把策略的概念推广到层次化策略，它
+选择的是选项而不是动作，其中每个选项被选中之后，都会一直运行到终止。在这些思想
+下，本书中的许多算法都可以推广到学习近似的选项值函数和层次化的策略。在最简单的
+情况下，学到的策略从选项开始直接跳到选项结束，更新只在选项结束的时候出现。更精
+细一些的做法是，更新可以在每一个时刻进行，使用一种“选项内部”的学习算法，这通
+常需要离轨策略算法。
+选项的思想带来的最重要的推广也许是第
+3 、
+4 和
+8 章中所提出的环境模型。关千
+“动作”的传统模型是状态转移概率和采取这个动作的即时收益的期望。那么传统的动作
+模型如何推广到选项模型呢？对千选项而言，合适的模型也应该包含有两部分：一个部分
+对应于执行选项后产生的状态转移结果；另一个对应于执行选项过程中的累积收益的期
+望。选项模型的收益部分，类比千＂状态－动作“二元组的期望收益式
+(3.5) ，对千所有的
+选项w 和所有的状态s ES, 定义为
+r(s,w) = E ［凡＋计岛＋'Y2凡＋
++ 'Yr-1 Rr I S。=s , A。r-1 ~1fw, T ～兀］，
+(17.2) 
+其中，
+T 是一个随机时刻，代表选项的终止时刻，它由参数'Yw 决定。在这个等式中，需
+要注意总体折扣系数勹所扮演的角色
+折扣是由？决定的，但是选项的终止是由凇
+决定的。一个选项模型的状态转移部分则更为精巧。这部分模型刻画了每一个可能的选项
+结果状态的概率（就像在式3.4 中一样），但是在这里，可能在多个时刻之后才能到达这个
+选项结果状态，其中的每个状态都有不同程度的折扣。选项w 的这部分模型在如下公式
+454 
+
+第17 章前沿技术
+中指定了w 的每个可能的起始状态
+S,
+以及w 的每个可能的终止状态
+sI
+p(s勹s,w) = ：寸Pr{Sk 气，T=k Is。=s , A。k-l ～庄，T ～兀｝
+(17.3) 
+k=l 
+注意，由千存在折扣系数项泸，这里的p(s'ls,w) 不再是一个转移概率，并且不再对
+于所有可能的
+s' 求和为1 （无论如何，我们会继续在p 中使用记号
+I) 。
+上面关于选项模型的状态转移部分的定义使得我们可以为所有的选项定义形式化的
+贝尔曼方程和动态规划算法，其中也包括作为选项特例的低级别的动作。例如，对于层次
+化策略
+7r 来说，通用的贝尔曼方程是
+吵）＝｀臼）[r(s,w) + ~p(,'ls,w)v,(s') l • 
+(17.4) 
+其中，
+n(s) 表示状态s 中所有可行的选项的集合。如果n(s) 仅仅包含低级别的动作，那
+么这个方程退化为通常的贝尔曼方程（式3.14) ，唯一不同的是1 被包含在新定义的p 中，
+即式
+(17 . 3) ，因此在此处没有出现。类似地，相应的选项的规划算法中也没有1 。
+例如，
+作为式
+(4 . 10) 的推广，带选项的价值迭代算法是
+VK+1(s) ＝皇船）[r(s,w) + ~p(s'ls,w)玑(s')l
+，对千所有s ES. 
+(17.5) 
+如果O(s) 包含了每个状态
+s 下所有可行的低级别动作，那么这个算法会收敛到通常
+意义上的V* ，从中我们可以计算出最优的策略。然而，如果我们能够在每一个状态下，
+只考虑所有可能选项Q(s) 的某个子集进行规划，则可能更有用。这样的话价值迭代将会
+收敛到限制在给定的选项子集下的最优的层次化策略。尽管这个策略从全局看可能是次优
+的，但收敛可能会更快，因为我们只考虑较少的选项，而且每个选项都可以在时间上跳跃
+多步。
+为了在有选项的情况下做规划，我们必须已知选项模型，或者学出选项模型。一个学
+出选项模型的自然方法是使用一系列的GVF （我们在上一节中定义过）来对它进行表示，
+然后使用本书中提到的方法来学习GVF 。对于选项模型的收益部分，不难看出如何做到
+这一点。我们仅仅需要把GVF 的累计扯选为收益
+(Ct =Rt) ，把它的策略设为选项的策
+略（T ＝元），把它的终止函数设为折扣系数乘以选项的终止函数（'Y(s) ＝勹飞(s) ）。如
+此一来，
+真实的GVF 将等同于选项模型的收益部分，
+V1r ,,,c (s) = r(s,w) ，并且本书中介
+绍的各种学习方法都可以用来近似它。选项模型的状态转移部分会更复杂一些。我们需
+要对选项对应的每一个可能的终止状态分配一个GVF 。除了在选项终止且终止于相应的
+455 
+
+强化学习（第2 版）
+状态时，我们不希望这些GVF 积累任何撮。这可以通过如下设定来实现：把预测转移
+到
+s' 的GVF 的累计扯写为Ct= (1 －兀（St)hs,=s' 。
+该GVF 的策略和终止函数都和选
+项模型的收益部分一样设置。那么真实的GVF 就等同于选项的状态转移模型的
+s' 部分：
+v1r'Y c(S) = p(s勹s,w) ，这样本书中介绍的方法也就可以用来学习它。尽管这其中的每一
+步看起来都很自然，但是把它们整合在一起（包括函数逼近和其他关键部分）是很有挑战
+性的，而且超出了现有最先进的技术水平。
+练习
+17.1
+在本节中展示了折扣情况下的选项，但是在使用函数逼近的时候，折扣对于控
+制问题是否合适是有争议的（参见
+10.4 节）。那么层次化策略的自然的贝尔曼方程形式应
+该是什么样的呢？它应当与式
+(17.4) 中的类似，但需要在平均收益设置
+(10.3 节）下进行
+定义。类比千式
+(17.2) 和式
+(17.3) ，在平均收益设置下，选项模型的两个部分分别是什么
+样子的呢？
+□
+ 
+17.3 
+观测量和状态
+在本书中，我们都把学到的近似价值函数（还有第13 章中的策略）写成关于状态的函
+数。这是本书的第
+1 部分中介绍的方法的重大局限，在这些方法中，学习得到的价值函数
+用一张表格来表示，因此任意的价值函数都能被精确近似。这种情况等同于假设环境的状
+态完全可以被智能体感知。但是在很多情况下，传感器输入只会告诉你这个世界状态的部
+分信息。有些对象可能被其他的东西遮挡住了，或者在智能体的身后，亦或是在几里之
+外。在这些情况下，关于环境的很重要的一部分信息可能并不能直接观察到。而且，把学
+习到的价值函数实现为一个关千环境状态空间的表格，是一种过强的、不现实而且局限性
+很大的假设。
+在本书第II部分提出的参数化函数逼近框架则限制要少得多，甚至可以说它是没有
+局限性的（虽然这种说法是有争议的）。在第II部分中，我们保留了学习到的价值函数（和
+策略）是关千环境的状态的函数这一假设，但是允许这些函数在参数化的框架下自由变化。
+一个有些令人吃惊而且并不被广泛认可的观点是，函数逼近包含了”部分可观测性”的很
+多方面。例如，如果有一个不可观测的状态变量，那么我们通过选择参数化的方式使得近
+似价值函数与这个变量无关。这样做的效果就如同这个状态变见是不可观测的。正因为如
+此，在所有参数化的情况下获得的结果都可以被应用在部分可观测的情况下，而不需要做
+任何改变。从这个意义上说，参数化函数逼近的情况包含了部分可观测性的情况。
+然而，如果不显式地、明确地为部分可观测性建模，仍然有很多问题无法被深入研
+456 
+
+第17 章前沿技术
+究。尽管我们在这里不能给出一个完整的处理部分可观测性的方法，但是我们可以大致列
+出需要做出的一些改变，以下是具体的四个步骤：
+首先，我们需要改变问题：环境所提供的不是其状态的精确信息，而仅仅是观测量、
+－这是一个依赖千状态的变址，就像机器人的传感器那样，提供关于状态的部分信息。
+为了简化问题，我们假设收益是一个关于状态的直接的、已知的函数（观测鼠可能是一个
+向量，收益可能是它的某一个分量）。那么环境交互将没有明确的状态或者收益，而仅仅
+给出一个简单的动作At EA 和观测挝OEO 的交互序列
+A。,01, A1 , 02, A2, 03, A3, 04. 
+永远这样持续下去（与式3.1 对比）或者形成“幕＂，每幕都以一个特殊的终止观测植
+来结束。
+然后我们可以用观测址和动作的序列来恢复本书中提到的状态的概念。
+我们
+使用术语历史以及记号凡表示一个轨迹从初始部分一直到当前的观测量：
+Ht = 
+A。,01,.
+. .,A仁1,0t 。历史代表了我们在不看数据流外部信息的情况下，对过去所能了解
+的最多信息（因为历史是整个过去的数据流）。
+当然历史会随着
+t 增长，从而变大而且笨
+重，状态的想法就是历史的某种“紧凑＂的总结，对千预测未来而言，它和真实的历史同
+等有用。我们看看这到底意味着什么
+：
+为了成为历史的总结，状态必须是一个历史的函
+数St= f(Ht) ，为了能够像历史一样对预测未来有用，它必须有我们所知道的马尔可夫
+性。更正式的说法是，这是函数J 的性质。对于所有的观测量o E 0 和动作a EA, 一
+个函数J 有马尔可夫性，当且仅当任意被预测到同一个状态(J(h) = J(h'））的两个历史h
+和
+h' 都对千它们的下一个观测撮有相同的概率。
+J(h) = J(h') * Pr{Ot+1=olHt=h,At=a} = Pr{Ot+1=olHt=h', At=a}, 
+(17.6) 
+如果J 是马尔可夫的｀那么St= J(Ht) 就是一个“状态”，这是本书中使用的术语。
+我们在之后会称其为马尔可夫状态，从而将其与那些虽然总结了历史却不具有马尔可夫性
+的状态区分开来（稍后讨论不具有马尔可夫性的状态）。
+一个马尔可夫状态是预测下一个观测拭（式17.6) 的良好基础，但更重要的是，它是预
+测／控制任何事情的良好基础。例如，令一个测试序列为任何特定的在未来可能发生的交替
+出现的“动作－观测量”序列。比如一个三步的测试序列可以记为
+：
+T = a1 , 01,a2,02, a3,03 0 
+给定历史h, 这个测试序列的概率被定义为
+p(TJh) ~ Pr{Ot+1 =01 , Ot+2=02 , Ot+3=03 I Ht=h, At =ai , At+i =a2, At+2=a叶
+(17.7) 
+457 
+
+强化学习（第2 版）
+如果J 是马尔可夫的，而且h 和
+h' 是在J 下会被映射到相同的状态的两个不同的
+历史，那么对于任意长度的任意测试序列T, 给定这两个历史时它们的概率一定是相同的
+f(h) = f(h') =:> p(Tlh) = p(Tlh') 
+(17.8) 
+换句话说，一个马尔可夫状态总结了对于预测测试序列的概率有用的所有历史信息。
+事实上，它总结了做任何预测所需要的全部信息，包括预测任意的GVF 以及最优的行
+为（如果J 是马尔可夫的，那么总会存在一个确定的函数T ，使得选择At~ 1r(f(Ht) ）是
+最优的）。
+将强化学习的概念扩展到部分可观测的清况的第三步是需要考虑一些计算上的问题。
+特别是，我们希望状态是历史的紧凑的总结。例如，对千一个马尔可夫的函数f,
+映射到
+自己的函数完全满足这个条件，然而并没有什么用，因为正如我们之前所提到的，对应
+的
+St ＝凡会随着时间增长而变得笨重。但是更本质的原因是，这个历史再也不会在未
+来出现了。智能体永远不会两次进入同一个状态（在一个持续性的任务中），因此永远不会
+从表格型学习方法中获益。我们希望我们的状态是＂紧凑＂的，而且是马尔可夫的。在如
+何获得和更新状态的问题上，我们也有类似的需求。我们并不真的想要一个包括”所有历
+史”的函数J 。相反地，出于计算上的考虑，我们偏向于通过相对简单的增社式递归计算
+获得与f 一样的效果，这个计算过程使用下一个时刻的增蜇At 和0t+1 ，从St 计算Si+1
+St+l = u(St, At, ot+l) ，对于所有t?O
+其中，初始状态s。是给定的。函数u 又被称作状态更新函数。例如，如果J 是映射到自
+身的函数(St= Ht) ，那么u 仅仅是在
+St 的后面加上了一个At 和Ot十1 。给定f,
+构造
+一个相应的u 总是可行的，但是可能在计算上并不方便，而且正如上面映射到自身的函
+数的例子，它可能不能产生一个“紧凑＂的状态。状态更新函数在任何智能体的架构中都
+是解决部分可观测性问题的核心部分。它必须在计算上是高效的，因为在看到状态之前，
+我们不能采取任何动作或者做任何预测。
+一个通过状态更新函数获得马尔可夫状态的典型例子采用了流行的贝叶斯方法，被
+称作”部分可观测MDP" (Partially Observable MDP, POMDP) 。在这个方法中，假定
+存在一个完备定义的隐变量Xt ，它真实反应环境的变化并产生可见的环境观测量，但
+它们对千智能体而言从来都是不可观测的（不要将它与智能体用于预测和决策的状态
+St
+相混淆）。对于POMDP 而言，一种自然的马尔可夫状态岛就是给定历史时在隐变址
+上的一个概率分布，这个”概率分布”被称作置信状态
+(belief state) 。为了更具体一些，
+假设在通常情况下，存在有限个隐变证：
+XtE{l , 2 ,· ··,d} ，那么置信状态则是一个向
+458 
+
+第17 章前沿技术
+矗St~ St E 配，其各个成员分址为
+st[i] == Pr{Xt=i I 比｝，对所有可能的隐状态iE{l,2,...,d}.
+(17.9) 
+无论t 如何增长，置信状态都保持相同的大小（相同数量的成员）。假设我们有足够多
+的关于环境内部如何工作的知识，它也可以由贝叶斯公式增量式地更新。特别地，置信状
+态更新函数的第
+i 个成员是
+u(s,a,o)[i] = 
+护区~=l s[x]p(i, olx, a) 
+护区~=l I:仁s[x]p(x', olx, a)' 
+(17.10) 
+其中，
+a E A,o E 0, 置信状态s E ]Rd I 其元素为s[x] 。这里有4 个变械的p 函数与MDP
+中（参见第3 章）通常使用的并不一样，而是在POMDP 情况下的基千隐状态的推广形
+式：
+p(x',olx,a) ~ Pr{Xt=x',Ot=O IX仁1=x,A仁1=a } 。这个方法在理论研究中非常流
+行，并且有非常重要的应用，但是其假设和计算复杂性的可扩展性太差，我们不推荐在人
+工智能中使用该方法。
+另一个马尔可夫状态的例子是预测状态表示(Predictive State Representations, PSR) 。
+PSR 解决了POMDP 方法的弱点在POMDP 中，智能体的状态St 的语义是以环境的
+隐状态凡为基础的。由于隐状态无法被观测，其学习也就比较困难。在PSR 和相关方
+法中，智能体状态的语义是以未来的观测戴和动作的预测值为基础的，因而是可以观测到
+的。在PSR 中，一个马尔可夫状态被定义为一个d 维的概率向量，由d 个“核心”测试
+序列的概率组成，测试序列则由前面介绍的式
+(17.7) 所定义。这个向量之后由状态更新
+函数u 更新，它是贝叶斯公式的一种扩展，但以可观测的数据为基础，这就让它的学习
+变得更容易了。这个方法已经在很多方面得到了扩展，包括终端测试、组合测试、强有力
+的＂谱”方法．还有从TD 方法中学到的闭环和时序摘要测试。最好的理论进展有些是
+针对被称为可观测的操作模型
+(Observable Operator Models, OOM) 和序列系统(Thon,
+2017) 的。
+在我们简短的概要介绍中，处理强化学习中的部分可观测性的第四步是重新引入近似
+的概念。正如我们在第二部分中所讨论的，想要达到人工智能必须得接受近似方法。不仅
+对千价值函数是这样，对千状态也是这样。我们必须接受并且在“近似状态”的概念下开
+展我们的工作。近似状态将会在我们的算法中扮演和原来一样的角色，因此我们继续对智
+能体使用的状态使用记号St, 尽管它可能不是马尔可夫的。
+也许近似状态的最简单的例子就是最近的观测擞St~ Ot 。当然这种方法不能够处理
+有隐变扯信息的情况。可能更好的表达方式是，对于某个k ~ l, 使用最近的K 个观测量
+459 
+
+强化学习（第2 版）
+和动作来表达状态：
+St~ Ot,A t一1 Ot- 1 · ··,A仁k, 这可以通过引入一个特殊的状态更新
+函数来实现：
+每次加入新数据并平移，同时把最旧的数据删除。
+K 阶历史的方法仍然非常
+简单，但是相比千直接使用单个观测鼠作为状态，它可以大大增加智能体的能力。
+当马尔可夫性质（式
+17.6) 只是被近似满足的时候会发生什么呢？不幸的是．当单步
+预测所定义的马尔可夫性变得哪怕有一点不准确的时候，长期预测的表现就可能会遭遇急
+剧的下滑。长期的测试序列、
+GVF, 还有状态更新函数都有可能近似得很糟糕。短期和长
+期的近似目标就是不一样的。当前也没有这个方面的有效的理论保证。
+然而，仍然有理由认为在本节中描述的通用思想可以用到近似的情况下。这个通用的
+思想就是：
+一个对千某些预测而言好的状态，对其他的情况也会是好的（特别是，对千一
+个马尔可夫状态，如果它足够做单步预测，则对其他的情况也是足够的）。如果我们退一
+步，不考虑马尔可夫情况下的特定结果，则前面的通用思想与我们在
+17.1 节中讨论的多
+头部学习和辅助任务是相似的。在
+17.1 节，我们讨论了对于辅助任务来说好的表示为什
+么对于主任务来说往往也是好的。这些思想合在一起就揭示了一个可以同时对部分可观测
+性和表征进行学习的方法：采用多重预测并以此来指导状态特征的构建。这样一来，完美
+但并不可行的马尔可夫性带来的理论保证就被一个启发式原则所替代，这个原则就是：对
+某些预测有益的信息对于其他预测而言也会是好的。这种方法可以很好地与计算资源的规
+模相匹配。在大型机器上，人们可以尝试大批的不同的预测：可能会倾向千那些接近千最
+感兴趣的目标、最容易可靠地学习的预测。在这里很重要的一点是，不要手动选择预测目
+标，而智能体应该做到这一点。而这可能需要一个通用的表达“预测＂的语言，使得智能
+体可以系统地试探一个广大的可行预测的空间，从中发现最有用的内容。
+特别地，
+POMDP 和PSR 方法都可以应用于近似状态。状态的语义在形成状态更新
+函数的时候非常有用，就像在这两种方法和K 阶的方法中那样。但对保持状态内信息的
+有用性而言，语义正确的需求并没有那么强烈。有些状态扩充的算法，例如回声状态网
+络
+(Jaeger,
+2002) ，几乎保留了关千历史的任何信息，但是依然表现很好。这个领域依然
+有很多的可能性，因此我们期待更多的工作和新的思想。针对近似状态，学习状态更新函
+数是强化学习中的表示学习问题的一个重要组成部分。
+17.4 
+设计收益信号
+强化学习相较千有监督学习的一个主要优势是，强化学习并不依赖于细节性的监督信
+息：生成一个收益信号并不依赖于“智能体的哪个动作才是正确的“这一先验知识细节。
+460 
+
+第17 章前沿技术
+但是强化学习的成功应用很大程度上依赖千我们的收益信号在多大程度上符合了设计者
+制定的目标，以及这些信号能够多好地衡撮在达到目标过程中的进步。
+出于这些原因，设
+计收益信号是任何一个强化学习应用的重要部分。
+设计收益信号指的是设计智能体所在的环境的一个部分，这部分负责在t 时刻产生一
+个标械收益凡送回到智能体。在第14 章末尾讨论术语的时候，我们提到，称凡更像一
+个在动物大脑内部产生的信号，而不是在动物的外部环境中的一个对象或者事件。大脑中
+产生这些信号的部分已经进化了数百万年，因此非常适应我们的祖先在将他们的基因传递
+下去的时候所面临的各种挑战。我们因此不应该认为设计收益信号是一件容易的事情。
+设计收益信号的一个挑战来自千，智能体需要学习，在行为上接近并在最终达到设计
+者所希望的目标。如果设计者的目标很容易辨别，那么这个任务可能很简单，例如寻找一
+个良好定义的问题的解，或者在一个良好定义的游戏中取得高分。在这些例子中，我们通
+常可以通过“问题是否解决”和“游戏分数是否提高”来定义收益函数。但是在有些问题
+中，目标并不容易被翻译成收益函数，尤其是当这些问题需要智能体做非常有技巧性的动
+作来完成复杂任务或者一系列任务的时候就更是如此，例如家务机器人助理所需要解决的
+问题。更进一步，强化学习智能体可能会发现一些意想不到的方法使得环境可以给出收益
+信号、但其中有一些可能是我们并不想要的，甚至有时是很危险的方法。这对于任何像
+强化学习这样依赖千优化的算法而言，都是一个长期存在并且非常关键的挑战。我们将
+在
+17.6 节，也就是本书的最后一节中详细讨论这个问题。
+即使有一个简单且易千辨识的目标，收益稀疏的问题仍然时常出现。足够频繁地提供
+非零收益让智能体实现一次目标，本身就已经是一个令人畏惧的挑战，更不要说让它高效
+地从各种各样的初始状态下进行学习了。那些可以明确地触发收益的＂状态－动作“二元组
+可能很少，而且相互之间隔得很远；且代表着向目标前进的收益也可能并不常见，因为朝
+向目标的进步总是很难甚至是无法衡旦的。智能体可能会长期没有目的地漫游(Minsky,
+1961 所称的“高原问题”) 。
+在实践中，设计收益信号通常会归到一个反复试验的搜索过程，直到找到一个可以产
+生合理结果的信号。如果智能体没有成功学习，学得太慢，或者学习到了错误的东西，那
+么这个应用的设计者会调整收益信号并且再试一次。为了做到这一点，设计者会对智能体
+的表现用某种评估标准来衡蜇，而他会把这种评估标准翻译成一个收益信号，使得智能体
+的目标和设计者自己的目标相匹配。如果学习的进程太慢了，那么设计者可能会尝试设计
+一个非稀疏的信号，其可以在智能体与环境交互的过程中更有效地指导学习。
+解决稀疏收益问题的一个非常诱人的手段是，以设计者认为达到最终目标所经历的重
+461 
+
+强化学习（第2 版）
+要的几个阶段作为子目标，对这些子目标提供收益函数。但是，当使用这些有明确目的性
+的补充收益来扩充原来的收益函数时，也可能会使智能体的行为与我们的预期大相径庭，
+智能体可能最终根本不会达到总的目标。一个更好的提供这样的指导的方法是，把收益函
+数放在一边而对价值函数的逼近过程进行扩充，给它扩充一个描述最终目标的初始猜测，
+或描述部分目标的初始猜测。例如，假设我们想把v。
+S 分股作为真实的最优价值函数
+v＊的一个初始猜测，并且我们使用关千特征X: S-t 配的线性函数逼近，那么我们可以
+把初始的价值函数逼近形式定义为
+v(s,w) = w T x(s) + v0(s), 
+(17.11) 
+然后按照惯例更新权重w, 如果初始的权重向拭是0. 那么初始的价值函数则是v叭
+但是渐近解的质批会像往常一样由特征向量决定。可以针对任意的非线性函数逼近器和任
+意形式的Vo 来做这种初始化，尽管这并不保证能加速学习。
+一个处理稀疏收益问题的非常有效的方式是塑造技术，它由心理学家B. F. Skinner 
+提出，并在本书的
+14.3 节中有所介绍。这种技术的有效性依赖千一个事实：稀疏收益问
+题并不只是收益信号本身的问题，它们也是智能体策略的问题，有些策略会阻碍智能体频
+繁达到可以产生收益的状态。塑造技术会在学习过程中不断改变收益信号：给定智能体的
+初始行为，从一个不那么稀疏的收益信号开始，渐渐地把它调整到适合最初感兴趣的问题
+的收益信号。智能体面临一系列难度逐渐增加的强化学习问题，其中在每个阶段学习到的
+东西，可以让下一个更难的问题变得相对简单一些。这是因为智能体通过学习简单问题得
+到了先验知识，这些知识使得它能够更加频繁地获得复杂问题下的收益；而如果不学习先
+验知识就直接优化复杂问题的收益，则收益会非常稀疏。＂塑造”是训练动物过程中的一
+个基础技术，它在计算强化学习中非常有效。
+如果我们对千收益信号如何设计一筹莫展，但是有另外一个智能体，它可能是一个人
+类，已经是该领域的专家，并且它的行为可以被我们观察到，那么我们可以如何利用这一
+点呢？在这种情况下，我们可以使用被称为“模仿学习”“从示范中学习”和“学徒学习”
+的算法。这里的思想是从专家智能体中获得收益，同时保留进一步提升的可能性。从专家
+的行为中学习可以通过直接的有监督学习，或者通过被称作“逆强化学习＂的技术抽取收
+益函数，然后使用强化学习算法从这个收益函数学出一个策略。
+Ng 和Russell (2000) 研
+究了逆强化学习的任务，他们尝试仅仅从专家的行为中恢复出专家的收益信号。但这种做
+法无法找到精确解，因为一个策略可能对很多个不同的收益信号而言都是最优的（例如，
+任何对所有状态和动作给予相同收益的信号）。但是，我们仍然可能找到合理的候选收益
+信号。只不过这个过程需要很强的假设，包括对环境动态特性的先验知识，以及与收益信
+462 
+
+第17 章前沿技术
+号成线性关系的特征向址。
+同时，这个方法也要求对问题做多次完全求解（例如通过动态
+规划）。虽然有这些困难，但是Abbeel 和Ng (2004) 称逆强化学习有时会比有监督学习更
+有效。
+另一个找到好的收益信号的方法，是将试错搜索过程自动化以找到好的信号。从应用
+角度来说，收益信号是学习算法的一个参数。正如我们可以对算法的其他参数所做的那
+样，我们可以自定义可行的搜索空间，然后用优化算法自动优化这些收益信号。优化算法
+是这样评估每一个候选收益信号的：以该收益信号运行强化学习算法若干步，然后用一个
+包含设计者真实目标的“高级”目标函数来计算评分，不需要考虑该智能体的局限。甚至
+可以通过在线梯度上升来提升收益信号，其中梯度来自于高级的目标函数(Sorg 、
+Lewis
+和Singh,
+2010) 。把这个算法与真实世界相联系的话，优化高级目标函数可以类比为进
+化，其中高级优化函数代表动物的进化适应程度，这通过能活到繁殖年龄的后代数址来
+衡鼠。
+这种具有上下两层优化算法（一层类似于进化，另一层是智能体个体的强化学习）
+的计算实验巳经证实，直觉本身并不总足以用来设计一个好的收益信号
+(Singh 、
+Lewis
+和Barto,
+2009) 。利用高级目标函数所衡址的强化学习智能体的性能表现，可能会对智能
+体收益信号的某些细节方面特别敏感，这些敏感性来源于智能体本身的局限以及它在其中
+活动和学习的环境。这些实验也表明一个智能体的目标不应该总是与智能体设计者的目标
+一致。
+最初这件事情显得很反直觉，但是对千一个智能体而言，它不可能不管收益信号是什
+么就达到设计者的目标。智能体需要在很多限制下学习，例如有限的计算能耗、有限的环
+境信息或者有限的学习时间。当有这样那样的限制的时候，学习去达成一个与设计者目标
+不同的目标，而不是直接去追求设计者的目标(Sorg 、
+Singh 和Lewis, 2010; Sorg, 2011), 
+这可能有时会更加接近于设计者的初衷。在自然界中很容易找到这样的例子，因为我们不
+能直接接触到大多数食物的营养值，我们的收益信号的设计者一进化－－给予我们
+一个收益信号让我们去找某些特定味道。尽管这当然并不绝对可靠（事实上，在某些与祖
+先环境不同的环境中可能是有害的），但这个信号补偿了我们之前许多的限制：有限的感
+官功能，有限的学习时间，以及在寻找健康饮食的过程中进行个体尝试实验所冒的风险。
+类似地，因为动物并不能实际观察到它的进化适应性，所以进化适应性的目标函数本身并
+不能作为收益信号。相反，进化过程所提供的一系列收益信号都是可以观测的，并且是对
+进化适应性敏感的。
+最后我们要记住，强化学习智能体并不一定是一个完整的有机物或者机器人。它可能
+463 
+
+强化学习（第2 版）
+是一个更大的行为系统的一部分。这意味着收益信号可能被更大的行动智能体内部的事情
+所影响，例如动机、记忆、想法甚至幻觉。收益信号可能也依赖千学习过程本身的一些性
+质，比如衡扯学习中进步了多少。让收益信号对这样的内部信息敏感，可以使智能体作为
+“认知架构”的一部分，学习如何控制认知架构，同时也可以获取一些特定的知识和技能，
+这些技能很难只依赖于外部的收益信号学习到。这种可能性导致了“内在激励的强化学
+习”这个思想，稍后我们会简要地讨论这个问题。
+17.5 
+遗留问题
+在本书中，我们介绍了通向人飞智能的强化学习方法的基础知识。粗略地说，这个方
+法依赖于模型无关和模型相关的方法的结合（如第8 章中的Dyna 框架所示），并利用第II部分中介绍的函数逼近技术。其中的关注焦点是“在线”和“增址式”的算法（我们甚至
+认为这些方法比基于模型的方法更为基本），以及如何在离轨策略训练的情形中使用这些
+算法。后者的完整应用只在这最后一章中有所阐述。也就是说，我们之前一直将离轨策略
+学习视为解决试探和开发之间矛盾的一种吸引人的方式，但是只有在这一章中，我们才真
+正完整地讨论了依赖于离轨策略学习的应用，包括学习GVF 的同时也学习多个不同的辅
+助任务，还有通过时序摘要的选项模型来对世界进行层次化的学习。正如我们不断在本书
+中指出的，并且本章中所讨论的未来潜在研究方向也表明，目前仍有很多工作有待完成。
+但是，假设我们认可本书中全部的内容以及本章到现在为止所概括的全部方向，那么还剩
+下的是什么呢？当然我们不能确切地知道什么是需要的，但是我们可以做一些猜测。在这
+一节中我们强调6 个更长远的问题，有待未来的研究去解决。
+第一个问题是，我们仍然需要更强大的参数化函数逼近方法，它应当可以在完全增扯
+式和在线式的设置下很好地T会作。基于深度学习和人工神经网络的方法是这个方向上的重
+要一步，但是它们仍然只是在极大的数据集上批扯训练才能得到很好的效果，要么是大址
+离线地自我对局博弈，要么是通过多个智能体在同一个任务上交错地采集经验来学习。这
+些以及其他的一些设置都是为了解决当下的深度学习方法的局限，即深度学习方法在增批
+式、在线式学习的设定下会陷入挣扎，而增扯式和在线式学习又恰恰是本书中强调的最自
+然的强化学习方法的特质。这个问题又被称作“灾难性的干扰＂，或者”相关的数据＂。每
+当学习到一些新的东西时，它都倾向千忘记之前学的东西，而不是将新知识作为补充，这
+会导致之前学习到的那些优点都丢失
+例如“回放缓存”之类的技术经常被用于储存和重
+新导出旧的数据，使得之前学到的优点不至于永久丢失。我们必须诚实地说，目前的深度
+学习方法并不完全适合在线学习
+我们找不到这种限制无法解决的理由，但是迄今为止，
+464 
+
+第17 章前沿技术
+在保持深度学习优势的同时解决这个问题的算法仍然还没有被设计出来。大部分当下的深
+度学习研究的导向是在这个限制下工作而不是去掉这个限制。
+第二点（也许是紧密相连的），我们仍然需要一些方法来学习特征表示，使得后续的学
+习能够很好地推广。这个问题是一个更广义的问题（被称为”表征学习”
+“构造型归纳”
+和“元学习”)的例子。我们如何使用经验去学习归纳各种偏差，使得未来的学习能够得
+到更好的推广也因此学得更快，而不只是学习一个想要的函数。这是一个很老的问题，可
+以追溯到20 世纪50 年代和60 年代的人工智能和模式识别的起源1 。这样的年代可能会
+让人感到犹豫，也许这个问题没有好的解决方案。但是同样也有可能是我们尚未到达找出
+解决方案并展示它的有效性的阶段。如今的机器学习是在一个远大于过去的规模上进行
+的。一个好的表征学习方法可能带来的收益越来越清晰。我们注意到，在一个新的机器学
+习年会一国际表征学习会议
+(International Conference on Learning Representations 
+ICLR) 上，自
+2013 年起每年都有人探讨这个问题。但在强化学习的语境下探索表征学习
+则不是那么常见。强化学习给这个旧问题带来了许多新的可能性．例如
+17 . l 节中提到的
+辅助任务。在强化学习中．表征学习的问题与
+17.3 节中讨论的学习状态更新函数的问题
+是一致的。
+第三点，我们仍然需要使用可扩展的方法在学习到的环境模型中进行规划
+。规划方
+法已经被证明在某些应用上极为有效，如AlphaGo Zero 和计算机国际象棋等，这些问题
+中的环境模型可以从游戏的规则或者人类设计者的知识中完整地得到。但是在完全基于模
+型的强化学习任务中，需要从数据中学习环境模型，然后再用于规划，可很少有成功的例
+子。第8 章中介绍的Dyna 系统是一个例子，但是正如我们当时所讨论并且也在大部分
+随后的工作中被人提及的，它使用了一个不带函数逼近的表格型模型，这在很大程度上限
+制了它的应用范围。只有少部分的研究探讨了线性模型的使用，更少的研究同时探索了
+在17.2 节中讨论的基千选项的时序摘要方法c
+为了使规划方法可以在学习得到的环境模型上有效地使用，我们还需要做很多T作。
+例如，模型的学习过程应该是选择式的，因为模型的范围会严重影响规划的效率。如果一
+个模型注重千最重要的选项的关键结果，则规划可能是快速和高效的；但是如果一个模型
+包含了不太可能被选到的选项的非主要后果的详细信息．则规划可能几乎没有什么用。环
+境模型应该以优化规划过程为目标，谨慎而明智地构建其状态和动态特性。应该持续地监
+测模型的各个方面，以了解它们对规划效率贡献或者减损的程度。本领域尚未解决这个复
+1 
+有些人可能会宜称深度学习解决了这个问题．例如，
+16.5 节中描述的DQN 就是一个韶决方案，但是
+我们并不认为它有足够的说服力。
+目前只有很少的证据表明深度学习本身可以用一种通用且高效的方案解决表
+征学习问题。
+465 
+
+强化学习（第2 版）
+杂的问题或者设计出考虑其影响的模型学习算法。
+第四个在未来的研究中需要重点解决的问题，是自动化智能体的任务选择过程，智能
+体在这些任务上工作并且使用这些任务提升自己的竞争力。在机器学习中，人类设计者为
+智能体设计学习的目标是一件很常见的事情。因为这些任务是提前已知而且固定的，因此
+它们可以被内嵌在学习算法的代码中。然而如果我们看得更远一些，则我们可能希望智能
+体对千将来想掌握什么技能做出自己的选择。这可能是某个特定的已知的大任务中的一个
+子任务，或者它们可能意图创造一些积木式的模块，允许智能体在一些尚未见过但是将来
+可能面临的问题上更加高效地学习。
+这些任务可能像
+17.1 节中讨论的辅助任务或者GVF, 或者是用
+17.2 节中讨论的基
+千选项的方法解决的任务。例如在构建一个GVF 的过程中，累积狱、策略、终止函数分
+别应该是什么样子的？当前的最优方法是手动选择它们，但是如果我们可以把这些任务选
+择变得自动化，那么它可能会更强大并且推广性也更强，尤其是当任务选择来自千智能体
+已经构建的一些“积木”的时候就更是如此，这些“积木”可能是之前在表征学习或者在
+子问题的经验学习中产生的结果。如果GVF 的设计是自动化的，那么设计的选择本身将
+会被显式地表达出来：它们将会在计算机中以一种可以设置、改变、操控、筛选和搜索的
+方式自动组织起来，而不是在设计者的大脑中，随后写进代码里。之后任务可以一个接着
+一个地被层次化组织起来，就像人工神经网络中的特征一样。任务就是一个一个的问题，
+而人工神经网络的内容就是这些问题的答案。我们期望将来有一个完整的层次化的问题与
+现代深度学习方法提供的层次化的答案相匹配。
+第五个我们认为对未来研究至关重要的问题是，通过实现某种可计算的好奇心来推动
+行为和学习之间的相互作用。在本章中我们想象过一个场景
+：
+从一个经验流中．通过离轨
+策略的方法，同时学习多个任务。采取的动作当然会影响经验流，而经验流反过来也会决
+定学习会出现多少次，什么任务将会被学习。当收益信号不可用，或者不被智能体行为强
+烈影响的时候，智能体可以自由选择动作，在某种意义上最优化这些任务上的学习，也就
+是说使用某些衡量学习进度的指标作为内在的收益，来实现一种“好奇心”的计算形式。
+除了衡批学习进度之外，内在的收益函数可以以其他的可能性，找到最出入意料、新奇或
+者有趣的输入，或者评价智能体对环境造成影响的能力。用这些方式产生的内在收益信
+号，可以被智能体用来给自己提出任务，任务的提出可以通过定义辅助任务、
+GVF 或者
+选项等方式实现，以使得学到的技能可以提升智能体掌握未来任务的能力。从结果上看，
+这很像计算意义上的玩耍。现在已经有了很多关于使用内在收益信号的研究，在这个大的
+方向上还有很多激动人心的话题，等待未来的研究去揭示。
+466 
+
+第17 章前沿技术
+最后一个在将来的研究中需要注意的问题是开发足够安全（达到可以接受的程度）的
+方法将强化学习智能体嵌入真实物理环境中，从而保证强化学习带来的好处超过其带来的
+危害。这是未来研究最重要的一个方向之一，我们将在下一节中讨论它。
+17.6 
+人工智能的未来
+我们在20 世纪90 年代中期撰写本书第
+1 版的时候，人工智能取得了显著的进展，
+而且产生了一定的社会效应，尽管这个时期大多数激动人心的进展只是显示出人工智能可
+能的前景而已。机器学习就是这个前景中的一部分，但是对千人工智能而言还不能算是不
+可或缺的。如今人工智能的前景已经落地为应用，而且正在改变百万人的生活。机器学习
+本身也成为了一项关键技术。在我们写本书第
+2 版的时候，一些人工智能方面最卓越的
+成就巳经包括了强化学习技术，比如著名的“深度强化学习” 一— 强化学习与深度人工神
+经网络结合。我们正处在一波人工智能真实场景应用的浪潮之中，它们中将会有很多都使
+用深度或者非深度的强化学习，我们很难预料它们将以什么样的方式影响我们的生活。
+但是大鼠真实世界中的成功案例并不代表真正的人工智能已经实现了。尽管人工智能
+在很多领域都取得了很大的进展，但是人工智能与人类智能，甚至与动物智能之间的鸿沟
+都是很大的。人工智能在某些领域能有超过人类的表现，甚至是围棋这种非常难的游戏，
+然而开发像人类这样完整地拥有通用适应性和解决问题的能力、复杂的情感系统和创造
+力，以及从经验中快速学习的能力的可交互式的智能体仍然任重道远。强化学习作为一个
+关注于动态环境交互式学习的技术，在将来会发展为这种智能体的不可或缺的部分。
+强化学习与心理学及神经科学的联系（第
+14 和
+15 章）弱化了其与人工智能其他的长
+期目标之间的关联，即揭示关千心智的一些关键问题，以及心智如何从大脑中产生。强化
+学习已经帮助我们理解了大脑的收益机制、动机和做决策的过程。因此有理由相信，在与
+计算精神疾病学相结合之后，强化学习将会帮助我们研发治疗精神紊乱，包括药物滥用和
+药物成瘾的方法。
+强化学习在未来将会取得的另一个成就是辅助人类决策。在模拟仿真环境中进行强化
+学习，从中得到的决策函数可以指导人类做决策，比如教育、医疗、交通、能源、公共部
+门的资源调度。与其密切相关的一个强化学习的特征是，它总是考虑决策的长期效应。这
+在围棋和西洋双陆棋中是非常明显的，这些也正是强化学习给人留下最深刻印象的案例。
+同时这也是攸关我们人类和星球命运的诸多高风险决策的特征。在过去的很多领域中，决
+策分析人员已经使用了强化学习，并将其决策用千指导人类。使用高级的函数逼近方法和
+467 
+
+强化学习（第2 版）
+大批的计算资源，强化学习方法已经展现出了一些潜力，期望攻克将传统决策辅助方法推
+广到更大规模、更复杂问题的难题。
+人下智能的快速发展让我们开始担心它可能对社会甚至人类本身造成严重的威胁。著
+名的科学家和人工智能先驱Herbert Simon 早在2000 年(Simon,
+2000) 于CMU 举办的
+地球研讨会
+(Earthware Symposium) 上的一个演讲中，就预言了这一点。他指出在任何
+新形式的知识中，前景和危险都存在着永恒的冲突。他用古希腊神话中普罗米修斯和潘多
+拉之盒的例子打比方，现代科学的英雄普罗米修斯，为了人类的福扯，从诸神那里盗取火
+种；而开启潘多拉之盒、只是一个小小的无意之举，却给人类带来了灾难。
+Simon 认为我
+们需要承认这样的冲突是不可避免的，同时应该把自己当作未来的设计者而不是观众，我
+们更倾向千做普罗米修斯那样的决策。这对于强化学习来说非常正确，如果不就地部署强
+化学习，它在给社会带来福利的同时，也有可能造成我们不希望看到的后果。因此，包括
+强化学习在内的人工智能应用，其安全性是一个需要重视的课题。
+一个强化学习智能体可以通过与真实世界环境、模拟环境（模拟真实世界的一部分）
+或者这两者的结合环境进行交互而学习。模拟器提供安全的环境，以供智能体自由试探、
+而不需要考虑对自己／环境带来的危害。在大多数现有的应用中，决策是通过与模拟环境
+交互，而不是直接与真实世界交互学习到的。除了避免在真实世界中造成不希望看到的后
+果之外，在模拟环境中学习，可以得到模拟的无穷无尽的数据，这比在真实环境中得到这
+些数据要容易得多。而且由千在模拟环境下，因此交互的速度通常比在真实环境中快，一
+般在模拟环境中的学习也要快千在真实世界环境中的学习。
+然而，展现强化学习的全部潜力需要将智能体置千真实世界的经验流中，在我们的真
+实世界中行动、试探、学习，而不是仅仅在它们的虚拟世界中。总而言之，强化学习算
+法（至少在本书中关注的那些）被设计成在线式的，并且它们在很多方面都在效仿动物如
+何在不稳定和有敌人的环境下存活。嵌入真实世界中的强化学习智能体可以在实现人工智
+能放大、扩充人类能力的过程中起到变革性的作用。
+希望我们的强化学习智能体在真实环境中学习的一个主要原因是：以极高的保真度模
+拟真实世界的经验通常是很困难甚至是不可能的，因而很难保证在模拟世界学习到的策
+略，无论是通过强化学习还是其他别的方法学到的，其可以安全并良好地指导真实的动
+作。这对于某些依赖于人类行为的动态环境而言尤其明显，例如，教育、医疗、交通、公
+共政策，在这些环境中，提升决策力可以带来切实的收益。然而部署这些智能体到真实世
+界中，需要考虑人工智能可能造成的危险。
+其中有些危险是与强化学习密切相关的。因为强化学习依赖于优化，因此它继承所
+468 
+
+第17 章前沿技术
+有优化方法的优点和缺点。其中一个缺点是设计目标函数的问题，在强化学习中这被称
+作收益信号，它帮助智能体学到我们想要的行为，同时规避那些我们不想要的行为。我
+们在
+17.4 节中提到，强化学习智能体可能会试探到意想不到的方式，通过这种方式使
+它们的环境传递收益，而有些方式并不是我们想要的，甚至是危险的。当我们只是非直
+接地制定我们想要系统学习的东西时，正如我们设计强化学习的收益信号那样，在学习
+结束之前，我们不会知道我们的智能体距离完成我们的期望有多近。这并不是强化学习
+所带来的新问题，在文学和工程实践中这个问题的提出已经很久了，例如在歌德的诗歌
+＂庞法师的学徒”(Goethe 1878) 中，学徒对扫帚施法，以帮助他取水，但结果却造成了出
+人意料的洪水，这是因为学徒对魔法的掌握不到家。在工程中，
+Norbert Wiener,
+控制
+论
+(cybernetics) 的奠基人，早在半个世纪以前就指出了这个问题。他把这个问题联系到
+了一个超自然的故事｀｀猴子的爪子”(Wiener, 1964): 
+＂它满足了你向他要的，但并不是
+你应该向他要的，或者不是你本来的意图。”这个问题也在现代的文献中有长篇讨论(Nick
+Bostrom 2014) 。任何在强化学习方面有经验的人都可能发现他们的系统找到了一些出人
+意料的方式来提高收益。有些时候意想不到的行为是很好的，它以一种全新的方式解决了
+问题。但是在其他情况下，智能体学习到的东西违背了系统设计者的初衷，因为设计者完
+全没有考虑到某些情况。仔细设计收益函数是非常重要的，它帮助智能体在真实世界中行
+动，且不会给人类以观察其行为和动机并轻易干扰它的行为的机会。
+尽管优化可能带来非预期的负面效果，但数百年来，优化一直在被工程师、架构师，
+还有潜在的可能造福人类的设计者们广泛使用。我们生活中很多好的方面都依赖于优化算
+法的应用。另一方面，也有很多方法被提出来解决优化潜在的风险，例如增加硬或软的约
+束，使用鲁棒和风险低的策略来限制优化，使用多目标函数优化等。这些方法中有些已经
+被用到了强化学习中，而且更多这方面的研究还有待进行。如何把强化学习智能体的目标
+调整成我们人类的目标，仍然是个难题。
+另一个强化学习在真实世界中行动和学习带来的挑战是，我们不仅仅关注智能体学习
+的最终效果，而且关注其在学习时的行为方式。如何保证智能体可以得到足够多的经验以
+学习一个高性能的决策，同时又能保证不损害环境、其他智能体或者它本身（更现实地说，
+如何把伤害的可能性降得尽可能低）？这个问题并不新鲜，也不只在强化学习中存在。对
+于嵌入式强化学习，风险控制和减轻问题与控制工程师们在最初使用自动化控制时所面临
+的问题是一样的。那时控制器的行为并不可控，很多时候还可能有灾难性后果，例如对飞
+机和精密化学过程的控制。控制的应用依赖千精细的系统建模、模型验证和大量的测试。
+关于让事先完全不了解的动态系统保证收敛和适配控制器的稳定性，已经有大械的理论。
+理论的保证从来不是万能的，因为它们依赖千数学上的假设成立。但是如果没有这些理论
+469 
+
+强化学习（第2 版）
+与风险控制和减轻的实践相结合，自适应或者其他类型的自动控制就不会像今天我们看到
+的那样，可以有效地提升质扯、效率和成本收益。未来强化学习研究最重要的方向之一是
+适应和改善现有方法，以控制嵌入式的智能体在可接受的程度上足够安全地在真实物理环
+境中工作。
+在最后，我们回到Simon 的号召：我们要意识到我们是未来的设计者，而不仅仅是
+观众。通过我们作为个体所做的决策，以及我们对于社会如何治理所施加的影响，我们可
+以共同努力以保证新科技带来的好处大于其带来的危害。在强化学习领域里有充足的机会
+来做这件事情，因为它既可以帮助提升这个星球上生命的质量，促进公平和可持续发展，
+也有可能带来新的危机。现在已经存在的一个威胁就是人工智能应用造成了许多人的失
+业。当然我们也有充分的理由去相信，人工智能带来的好处将远大于其造成的危害。关于
+安全问题，强化学习带来的危害并没有和当下已经被广泛采用的相关领域的控制优化算法
+带来的危害有本质的区别。强化学习未来的应用涉足真实世界时，开发者们有义务遵循同
+类技术中成熟的实践经验，同时拓展它们，以保证普罗米修斯一直占据上风。
+参考文献和历史评注
+17.1 
+广义的价值函数最早是Sutton 和他的同事(Sutton, 1995a; Sutton et al., 2011; Moday止
+W血e 和Sutton,
+2013) 提出的。和ng 提出了（正在准备中）一种使用GVF (“预报”)的
+延伸思想实验，已经有一定的影响力，不过尚未发表。
+使用多个头部的强化学习是由
+Jaderberg et al. (2017) 首次展示的，
+Bellemare 、
+Dabney
+和Munos (2017) 等人证实了预测收益分布的更多信息可以显著提升学习速度来实现对其期望
+的优化（这也是辅助任务的一个例子）。在这之后，很多研究者都开始在这个方向开展研究工
+作。
+就我们所知，经典条件反射作为学习预测的一般理论以及对预测的内在反射性反应并没有在
+心理学的文献中得到过明确阐述。
+Modayil 和Sutton (2014) 将其描述为一种控制机器人和其
+他智能体的方法，称为“巴甫洛夫控制” ，暗示其根源为条件反射
+17.2 
+将动作的时序摘要过程形式化为”选项”的过程是Sutton 、
+Precup 和Singh (1999) 等人提出
+的，这也基于前人的工作，包括Parr (1998) 和Sutton (1995a) 以及半MDP 的经典工作（例
+如，见Puterman,
+1994) 。
+Precup (2000) 的博士论文完整地提出了选项的思想。这些早期工
+作一个很大的局限是它们没有处理离轨策略情况下的函数逼近。选项内部的学习通常来说需
+要离轨策略方法，那时还不能通过函数逼近来可靠地完成。尽管现在我们有了一系列使用函
+数逼近的稳定离轨策略贷法，但它们与选项的结合并没有在本书出版的时候被真正地发掘出
+来。
+Barto 和Mahadevan (2003) 还有Hengst (2012) 回顾了形式化的选项，还有其他的时序
+摘要算法。
+使用GVF 实现带选项的模型在前文中没有提到。我们的介绍中使用了
+Modayil 、
+White
+470 
+
+第17 章前沿技术
+和Sutton
+(2014) 等人提出的技巧，在策略结束的时候预测信号。
+使用函数逼近来学习带选项的模型的部分工作由Bacon 、
+Harb 和Precup (2017) 等人提出。
+目前的文献中还没有人提出把选项和带选项的模型拓展到平均收益的情形。
+17.3 
+Monahan (1982) 给出了一个关于POMDP 方法的很好的展示。
+PSR 和测试序列的概念
+由Littman 、
+Sutton 和Singh
+(2002) 等人提出。OOM 由
+Jaeger (1997, 1998, 2000) 提出。
+统一PSR 、
+OOM 和很多其他下作的序列系统，巾
+Michael Thon (2017; Thon 和
+Jaeger,
+2015) 在博士论文中提出。
+强化学习与非马尔可夫状态表示的理论由Singh 、Jaakkola 和Jordan(l994;
+Jaakkola 、
+Singh
+和Jordan,
+1995) 明确提出，早期的处理部分可观测性的强化学习方法由
+Chrisman (1992), 
+McCallum (1993, 1995), Parr 和Russell (1995), Littman 、
+Cassandra 和Kaelbling (1995), 
+还有by Lin 和Mitchell
+(1992) 提出。
+17.4 
+早期关千强化学习的建议和教学参考包括
+Lin (1992), Maclin 和
+Shavlik (1994), Clouse 
+(1996) ，还有Clouse 和Utgoff (1992) 。
+不应该将Skinner 的塑造技术与Ng 、
+Harada 和Russe ll
+(1999) 提出的“基于势的塑造”技
+术相混淆v Wiewiora (2003) 说明了该技术实际上与一个更简单的思想等价：给价值函数提供
+初始近似，如式
+(17.11) 所示。
+17.5 
+我们推荐由
+Goodfellow 、
+Bengio 和
+Courville
+(2016) 所著的讨论当下深度学习技术的书。
+ANN 中的灾难性干扰问题由
+McCJoskey 和
+Cohen (1989). Ratcliff (1990) ，还有
+French
+(1999) 提出。
+回放缓存的技术由
+Lin
+(1992) 提出，其著名应用是Atari 游戏系统
+(16.5 节，
+Mnih et al., 2013, 2015) 。
+Minsky (1961) 是第一个认识到表征学习问题的人。
+为数不多的使用学习到的近似模型做规划的研究巾
+Kuvayev 和
+Sutton (1996), 
+Sutton 、
+Szepesvari 、
+Geramifard 和Bowling (2008), Nouri 和Littman (2009) ，还有Hester 和Stone
+(2012) 等人做。
+在人下智能中，模型的设计需要仔细选择以避免过慢的规划，这是人们熟知的。一些经典的工
+作包括Minton (1990) 和Tambe 、
+Newell, 还有Rosenbloom (1990) 。Hauskrecht 、Meuleau 、
+Kaelbling 、
+Dean 和
+Boutilier
+( 1998) 在带确定性的选项的MDP 中展示了相应的效果。
+Schmidhuber (1991a, b) 指出，如果收益信号是关于智能体的环境改善得有多快的一个函数，
+那么像好奇心那样的事悄会导致怎样的后果。
+由
+Klyubin 、
+Polani 和Nehaniv (2005) 提出的
+授权函数是一个信息理论的度址，衡扯智能体控制环境的能力，它也可以作为一种内在的收益
+信号。
+Baldassarre 和Mirolli (2013) 的文章研究生物学和计算角度上的内在收益和动机，包
+括一种“内在激励的强化学习＂的观点．使用了由
+Singh 、
+Barto 和Chentenez
+(2004) 提出
+的术语。同时可以参考Oudeyer 和Kaplan (2007), Oudeyer 、
+Kaplan 和Hafner (2007) ，还
+有Barto (2013) 的工作。
+471 
+
+
+参考文献
+Abbeel, P., Ng, A. Y. (2004). Apprenticeship learning via inverse reinforcement learning. In 
+Proceedings of the 21st International Conference on Machine Learning (ICML 2004). ACM, 
+New York. 
+Abramson, B. (1990). Expected-outcome: A general model of static evaluation. IEEE 加nsac­
+tions on Pattern Analysis and Machine Intelligence, 12(2): 182- 193. 
+Adams, C. D. (1982). Variations in the sensitivity of instrumental responding to reinforcer deval-
+uation. The Quarterly Journal of Expe讨mental Psychology, 34(2): 77- 98. 
+Adams, C. D., Dickinson, A. (1981). Instrumental responding following reinforcer devaluation 
+The Quarterly Journal of Experimental Psychology, 33(2): 109- 121 
+Adams, R. A., Huys, Q. J. M., Roiser, J. P. (2015). Computational Psychiatry: towards a math-
+ematically informed understanding of mental illness. Journal of Neurology, Neurosurgery f3 
+Psychiatry. doi: 10.l 136/jnnp-2015-310737 
+Agrawal, R. (1995). Sample mean based index policies with O(logn) regret for the multi-armed 
+bandit problem. Advances in Applied Probability, 27(4): 1054- 1078 
+Agre, P. E. (1988). The Dynamic Structu?、e of Everyday Life. Ph.D. thesis, Massachusetts Institute 
+of Technology, Cambridge MA. AI-TR 1085, MIT Artificial Intelligence Laboratory. 
+Agre, P. E., Chapman, D. (1990). What are plans for? Robotics and Autonomous Systems, 6(1-2) 
+17- 34. 
+Aizerman, M.A., Braverman, E. i., Rozonoer, L. I. (1964). Probability problem of pattern recog-
+nition learning and potential functions method. Avtomat. i Telemekh, 25(9): 1307- 1323. 
+Albus, J. S. (1971) . A theory of cerebellar function. Mathematical Biosciences, 10(1-2): 25--61. 
+Albus, J. S. (1981). Brain, Behavior, and Robotics. Byte Books, Peterborough, NH. 
+Aleksandrov, V. M., Sysoev, V. I., Shemeneva, V. V. (1968). Stochastic optimization of systems 
+加．
+Akad. Nauk SSSR, Tekh. Kibernetika: 14- 19. 
+Amari, S. I. (1998). Natural gra出ent works efficiently in learning. Neural Computation, 10(2): 
+251- 276. 
+An, P. C. E. (1991). An Improved Multi-dimensional GMAC Neural netwo咕：
+Recep tive Field 
+Function and Placement. Ph.D. thesis, University of New Hampshire, Durham. 
+An, P. C. E. , Miller, W. T., Parks, P. C. (1991). Design improvements ir1 associative memories for 
+473 
+
+强化学习（第2 版）
+cerebellar model articulation controllers (CMAC) . Artificial Neuml Networks, pp. 1207- 1210, 
+Elsevier North-Holland. http://www.incompleteideas.net/papers/ AnMillerParks1991.pdf 
+Anderson, C. W. (1986). Learning and Problem Solving with Multilayer Connectionist Systems 
+Ph.D. thesis, University of Massachusetts, Amherst. 
+Anderson, C. W. (1987). Strategy learning with multilayer connectionist representations. In Pro-
+ceedings of the 4th International Wo吠shop on Machine Learning, pp. 103- 114. Morgan Kauf-
+mann. 
+Anderson, C. W. (1989). Learning to control an inverted pendulum using neural networks. IEEE 
+Control Systems Magazine, 9(3): 31- 37 
+Anderson, J . A., Silverstein, J. W., Ritz, S. A., Jones, R. S. (1977). Distinctive features, categor-
+ical perception, and probability learning: Some applications of a neural model. Psychological 
+Review, 84(5): 413- 451. 
+Andreae, J. H. (1963). STELLA, A scheme for a learning machine. Ln Proceedings of the 2nd 
+IFAC Congress, Basle, pp. 497- 502. Butterworths, London. 
+Andreae, J. H. (1969a). A learning machine with monologue. International Journal of Man-
+Mach切e Studies, 1(1): 1- 20. 
+Andreae, J. H. (1969b). Learning machines—
+a unified view. In A. R. Meetham and R. A. Hud-
+son (Eds.), Encyclopedia of Information, Linguistics, and Control, pp. 261- 270. Pergamon, 
+Oxford 
+Andreae, J. H. (1977). Thinking with the Teachable Machine. Academic Press, London. 
+Arthur, W. B. (1991). Designing economic agents that act like human agents: A behavioral 
+approach to bounded rationality. The American Econorr/,ic Review, 81(2): 353- 359. 
+Atkeson, C. G. (1992). Memory-based approaches to approximating continuous fw心ons. In 
+Sante Fe Institute Studies in the Sciences of Complexity, Proceedings Vol. 12, pp. 521- 521 
+Addison-Wesley. 
+Atkeson, C. G., Moore, A. W., Schaal, S. (1997). Locally weighted learning. Artificial Intelligence 
+Review 11: 11- 73. 
+Auer, P., Cesa-Bianchi, N., Fischer, P. (2002). Finite-time analysis of the multiarmed band 比
+problem. Machine learning, 47(2-3): 235- 256 
+Bacon, P. L., Harb, J., Precup, D. (2017). The Option-Critic Arc压tecture . In Proceedings of th 
+Association for the Advancement of A九ificial Intelligence, pp. 1726- 1734 
+Baird, L. C. (1995). Residual algorit血s : Reinforcement learning with function approximation 
+In Proceedings of the 12th International Conference on Machine Learning (ICML 1995), pp 
+雒37 . Morgan Kaufmann. 
+Baird, L. C. (1999). Reinforcement Learning through Gmdienl Descent. Ph.D. thesis, Carneg汜
+Mellon University, Pittsburgh PA. 
+Baird, L. C. , Klopf, A. H. (1993). Reinforcement learning with high-dimensional, continuous 
+474 
+
+参考文献
+actions. Wright Laboratory, Wright-Patterson Air Force Base, Tech. Rep. WL-TR-93-1147. 
+Baird, L., Moore, A. W. (1999). Gradient descent for general reinforcement lear11ing. In Ad-
+vances in Neural Information Processing Systems 11 (NIPS 1998}, pp. 968- 974. MIT Press, 
+Cambridge MA. 
+Baldassarre, G., Mirolli, M. (Eds.) (2013). Intrinsically Motivated Learning in Natuml and A玉
+加al Systems. Springer-Verlag, Berlin Heidelberg 
+Balke, A., Pearl, J. (1994). Counterfactual probab山ties: Computational methods, bounds and 
+applications. In Proceedings of the Tenth Intemational Conference on Uncertainty in Artificial 
+Intelligence {UAI-1994, pp. 46-54. Morgan Kaufmann 
+Baras, D., Meir, R. (2007). Reinforcement learning, spike-time-dependent plasticity, and the BCM 
+rule. Neuml Computation, 19(8): 2245- 2279. 
+Barnard, E. (1993). Temporal-difference methods and Markov models. IEEE Transactions on 
+Systems, Man, and Cybernetics, 23(2): 357- 365 
+Barreto, A. S. , Precup, D. , Pineau, J. (2011). Reinforcement learning using kernel-based stochas-
+tic factorization. In Advances in Neural Information Processing Systems 24 {NIPS 2011}, pp. 
+720- 728. Curran Associates, Inc. 
+Bartlett, P. L., Baxter, J. (1999). Hebbiao synaptic modifications in spiking neurons that learn 
+Technical report, Research School of Information Sciences and Engineering, Australian Na-
+tional University 
+Bartlett, P. L., Baxter, J. (2000). A biologically plausible and locally optimal learning algorithm 
+for spiking neurons. Rapport technique, Australian National University. 
+Barto, A. G. (1985). Learning by statistical cooperation of self-interested neuron-like computing 
+elements. Human Neurobiology, 4(4): 229- 256. 
+Barto, A. G. (1986). Game-theoretic cooperativity in networks of self-interested units. In J. S. 
+Denker (Ed.), Neuml Networks for Computing, pp. 41- 46. American Institute of Physics, New 
+York. 
+Barto, A. G. (1989). From chemota劝s to cooperativity: Abstract exercises in neuronal learning 
+strategies. In R. Durbin, R. Maill and G. Mitchison (Eds.) , The Computing Neuron, pp. 73-
+98. Addison-Wesley, Reading, MA. 
+Barto, A. G. (1990). Connectionist learning for control: An overview. In T. Miller, R. S. Sutton, 
+and P. J. Werbos (Eds.), Neuml Networks for Control, pp. 5- 58. MIT Press, Cambridge, MA 
+Barto, A. G. (1991) . Some learning tasks from a control perspective. In L. Nadel and D. L. Stein 
+(Eds.), 1990 Lectures in Complex Systems, pp. 195- 223. Addison-Wesley, Redwood City, CA 
+Barto, A. G. (1992). Reinforcement learning and adaptive critic methods. ln D. A. W血e and D. 
+A. Sofge (Eds.) , Handbook of Intelligent Control: Neural, Fuzzy, and Adaptive Approaches, 
+pp. 469-491. Van Nostrand Reinhold, New York. 
+Barto, A. G. (1995a). Adaptive critics and the basal ganglia. In J. C. Houk, J. L. Davis, and D 
+475 
+
+强化学习（第2 版）
+G. Beiser (Eds.), Models of Information Processing in the Basal Ganglia, pp. 215- 232. MIT 
+Press, Cambridge, MA. 
+Barto, A. G. (1995b). Reinforcement learning. In M. A. 应b (Eel.), Handbook of Brain Theory 
+and Neural Networks, pp. 804- 809. MIT Press, Cambridge, MA. 
+Barto, A. G. (2011). Adaptive real-time dynamic programming. In C. Sammut and G. I Webb 
+(Eds.), Encyclopedia of Machine Learning, pp. 19- 22. Springer Science and Business Media. 
+Barto, A. G. (2013). Intrinsic motivation and reinforcement learning. In G. Baldassarre and M. 
+Mirolli (Eds.) , Intrinsically Motivated Learning in Natural and A讨ificial Systems, pp. 17- 47 
+Springer-Verlag, Berlin Heidelberg 
+Barto, A.G., Anandan, P. (1985). Pattern recognizing stoch础c learrung automata. IEEE 加ns­
+actions on Systems, Man, and Cybernetics, 15(3): 360- 375 
+Barto, A. G., Anderson, C. W. (1985). Structural learning in connectionist systems. In Program 
+of the Seventh Annual Conference of the Cognitive Science Society, pp. 43- 54 
+Barto, A. G., Anderson, C. W ., Sutton, R. S. (1982). Synthesis of n01tlinear control surfaces by 
+a layered 邸sociative search network. Biological Cybernetics, 43(3): 175- 185. 
+Barto, A. G., Bradtke, S. J., Singh, S. P. (1991). Real-time learrung and control using asyn-
+chronous dynamic program皿ng. Technical Report 91-57. Department of Computer and In-
+formation Science, Unjversity of Massachusetts, Amherst. 
+Barto, A. G., Bradtke, S. J., Singh, S. P. (1995). Learning to act using real-time dyna血C pro-
+gramming. Artificial Intelligence, 72(1-2): 81- 138. 
+Barto, A. G. , Duff, M. (1994) . Monte Carlo matrix inversion and reinforcement learning. In 
+Advances in Neural Information Processing Systems 6 (NIPS 1993}, pp. 687- 694. Morgan 
+Kaufmann, San Francisco. 
+Barto, A. G., Jordan, M. I. (1987). Gradient following without back-propagation in layered net-
+works. In M. Caudill and C. Butler (Eds.), Proceedings of the IEEE First Annual Conference 
+on Neural Networks, pp. Il629- II636. SOS Printing, San Diego. 
+Barto, A. G. , Mahadevan, S. (2003). Recent advances in hierarchical reinforcement learning 
+Discrete Event Dynamic Systems, 13(4): 341- 379. 
+Barto, A. G., Singh, S. P. (1990). On the computational econontics of reinforcement learning. In 
+Connectionist Models: Proceedings of the 1990 Summer School. Morgan Kaufmann. 
+Barto, A. G., Sutton, R. S. (1981a). Goal seeking components for adaptive intelligence: An initial 
+邸sessment. Technical Report AFWAL-TR-81-1070. Air Force Wright Aeronautical Laborato-
+ries/ Avionics Laboratory, Wright-Patterson AFB, OH. 
+Barto, A. G., Sutton, R. S. (1981b). Landmark learning: An illustration of associative search. 
+Biological Cybernetics, 42(1): 1-8. 
+Barto, A. G., Sutton, R. S. (1982). Simulation of anticipatory responses in cl邸sical conditioning 
+by a neuron-like adaptive element. Behavioural Brain Research, 4(3): 221- 235. 
+476 
+
+参考文献
+Barto, A. G. , Sutton, R. S., Anderson, C. W. (1983). Neuronlike elements that can solve difficult 
+learning control problems. IEEE 加nsactions on Systems, Man, and Cybernetics, 13(5): 835-
+846. Reprinted in J. A. Anderson and E. Rosenfeld (Eds.), Neurocomputing: Foundations of 
+Research, pp. 535- 549. MIT Press, Cambridge, MA, 1988 
+Barto, A. G., Sutton, R. S., Brouwer, P. S. (1981). Associative search network: A reinforcement 
+learning associative memory. Biological Cybernetics, 40(3): 201- 211 
+Barto, A.G., Sutton, R. S., Watkins, C. J.C. H. (1990). Learning and sequential decision making 
+In M. Gabriel and J. Moore (Eds.), Learning and Computational Neuroscience: Foundations 
+of Adaptive Networks, pp. 539- 602. MIT Press, Cambridge, MA 
+Baxter, J ., Bartlett, P. L. (2001). Infinite-horizon policy-gradient estimation. Journal of A 九ificial
+Intelligence Resea动，
+15 : 319-350.
+Baxter, J ., Bartlett, P. L., Weaver, L. (2001). Experiments with infinite-horizon, policy-gradient 
+estimation. Journal of A九ificial Intelligence Research, 15: 351- 381. 
+Bellemare, M. G., Dabney, W., Munos, R. (2017). A distributional perspective on reinforcement 
+learning. arXiv preprint arXiv:1707.06887. 
+Bellemare, M. G., Naddaf, Y., Veness, J., Bowling, M. (2013). The arcade learning environment: 
+An evaluation platform for general agents. Journal of Artificial Intelligence Research, 47: 253-
+279. 
+Bellemare, M. G., Veness, J., Bowling, M. (2012). Investigating contingency awareness using Atari 
+2600 games. In Proceedings of the Twenty-Sixth AAA! Conference on A计ificial Intelligence 
+(AAAI-12), pp. 864- 871. AAAI Press, Menlo Park, CA. 
+Bellman, R. E. (1956). A problem in the sequential design of experiments. Sankhya, 16: 221- 229 
+Bellman, R. E. (1957a). Dynamic Programming. Princeton University Press, Princeton. 
+Bellman, R. E. (1957b). A Markov decision process. Journal of Mathematics and Mechanics, 6(5): 
+679-684. 
+Bellman, R. E. , Dreyfus, S. E. (1959). Functional approximations and dynamic programming. 
+Mathematical Tables and Other Aids to Computation, 13: 247- 251. 
+Bellman, R. E., Kalaba, R., Kotkin, B. (1973) . Polynomial approximation- A new computational 
+technique in dynamic programming: Allocation processes. Mathematical Computation, 17: 
+155- 161. 
+Bengio, Y. (2009). Learning deep architectures for AI. Foundations and Trends in Machine Learn-
+ing, 2(1): 1- 27 
+Bengio, Y., Courville, A. C., Vincent, P. (2012). Unsupervised feature learning and deep learning 
+A review and new perspectives. CoRR 1, arXiv 1206.5538 
+Bentley, J. L. (1975). Multidimensional binary search trees used for associative searching. Com-
+munications of the ACM, 18(9): 509-517. 
+Berg, H. C. (1975). Chemotaxis in bacteria. Annual review of biophysics and bioenginee讨ng, 从1)
+477 
+
+强化学习（第2 版）
+119- 136. 
+Berns, G. S., McClure, S. M., Fagnoni, G., Montague, P. R. (2001). Predictability modulates 
+human brain response to reward. The journal of neuroscience, 21(8): 2793- 2798 
+Berridge, K. C., Kringelbach, M. L. (2008). Affective neuroscience of pleasure: reward iil humans 
+and animals. Psychopharmacology, 199(3): 457-480. 
+Berridge, K. C., Robinson, T. E. (1998). What is the role of dopamine in reward: hedonic impact, 
+reward learning, or incentive salience? Brain Research Reviews, 28(3): 309-369. 
+Berry, D. A., Fristedt, B. (1985). Bandit Problems. Chapman and Hall, London. 
+Bertsekas, D. P. (1982). Distributed dynamic programming. IEEE Transactions on Automatic 
+Control, 切（3): 610- 616. 
+Bertsekas, D. P. (1983). Distributed asynchronous computation of fixed points. Mathematical 
+Programm吵，吹1): 107- 120. 
+Bertsekas, D. P. (1987). Dynamic Programming: Deterministic and Stochastic Models. Prentice-
+Hall, Englewood Cliffs, NJ. 
+Bertsekas, D. P. (2005). Dynamic Programming and Optimal Control, Volume 1, third edition. 
+Athena Scientific, Belinont, MA. 
+Bertsekas, D. P. (2012). Dynamic Programming and Optimal Control, Volume 2: Appro说mate
+Dynamic Programming, fourth edition. Athena Scientific, Belmont, MA. 
+Bertsekas, D. P. (2013). Rollout algorithms for discrete optilnization: A survey. In Handbook of 
+Combinatorial Optimization, pp. 2989- 3013. Springer, New York. 
+Bertsekas, D. P., Tsitsiklis, J. N. (1989). Parallel and Distributed Computation: Nume讨cal Meth-
+ods. Prentice-Hall, Englewood Cliffs, NJ. 
+Bertsekas, D. P., Tsitsiklis, J. N. (1996). Neuro-Dynamic Programming. Athena Scientific, Bel-
+mont, MA. 
+Bertsekas, D. P., Ts比siklis, J. N., Wu, C. (1997). Rollout algorithms for combinatorial optimiza-
+tion. Journal of Heuristics, 3(3): 245- 262. 
+Bertsekas, D. P., Yu, H. (2009). Projected equation methods for appro沁mate solution of large 
+linear systems. Journal of Computational and Applied Mathematics, 2的(1): 27- 50 
+Bhat, N. , Farias, V., Moallemi, C. C. (2012). Non-parametric approximate dynamic programming 
+via the kernel method. In Advances in Neural Inf01mation Processing Systems 25 (NIPS 2012}, 
+pp. 386-394. Curran Associates, Inc. 
+Bhatnagar, S., Sutton, R., Ghavamzadeh, M., Lee, M. (2009). Natural actor-critic algorithms 
+Automatica, 45(11). 
+Biermann, A. W., Fairfield, J. R. C., Beres, T. R. (1982). Signature table systems and learning 
+IEEE Transactions on Systems, Man, and Cybernetics, 12(5): 635- 648. 
+Bishop, C. M. (1995). Neural Networks Jo?、Pattern Recognition. Clarendon, Oxford. 
+Bishop, C. M. (2006). Pattern Recognition and Machine Leaming. SpriI1ger Science + Business 
+478 
+
+参考文献
+Media New York LLC. 
+Blodgett, H. C. (1929). The effect of the introduction of reward upon the maze performance of 
+rats. UniveTsity of California Publications in Psychology, 4: 113- 134. 
+Boakes, R. A., Costa, D. S. J. (2014). Temporal contiguity in 邸sociative learning: !interference 
+and decay from an llistorical perspective. Joumal of Expe讨mental Psychology: Animal Learn-
+叩and Cognition, 40(4): 381- 400 
+Booker, L. B. (1982). Intelligent BehavioT as an Adaptation to the Task Env订onment. Ph.D. 
+thesis, University of M咖gan , Ann Arbor. 
+Bostrom. N. (2014). Supe讨ntelligence : Paths, DangeTs, Strategies. Oxford University Press, Ox-
+ford. 
+Bottou, L. , Vapnik, V. (1992). Local leanting algorithms. Neural Computation, 4(6): 888- 900 
+Boyan, J . A. (1999). Least-squares temporal difference learning. In Prnceedings of the 16th Inte尸
+national Conference on Machine Learning (ICML 1999}, pp. 49- 56 
+Boyan, J . A. (2002). Technical update: Least-squares temporal difference !ear血g. Machine 
+Leaming, 49(2): 233- 246. 
+Boyan, J. A., Moore, A. W. (1995). Generalization in reinforcement leat·ning: Safely approximat-
+ing the value function. In Advances in Neural JnfoTmation Prncessing Systems 7 (NIPS 1994), 
+pp. 369- 376. MIT Press, Cambridge, MA. 
+Bradtke, S. J. (1993). Reinforcement learning applied to linear quadratic regulation. In Advances 
+'in Neural JnfoTmation Prncessing Systems 5 (NIPS 1992), pp. 295- 302. Morgan Kaufmann. 
+Bradtke, S. J. (1994). Incremental Dynamic Prngmmming foT On-Line Adaptive Optimal Contrnl 
+Ph.D. thesis, University of M邸sachusetts , A呻erst. Appeared as CMPSCI Tec加ical Report 
+94-62. 
+Bradtke, S. J. , Barto, A. G. (1996). Linear least- squares algorithms for temporal difference 
+learning. Machine Learning, 邸：
+33-57
+Bradtke, S. J. , Ydstie, B. E. , Barto, A. G. (1994). Adaptive linear quadratic control using pol-
+icy iteration. In Proceedings of the American Control Confernnce, pp. 3475- 3479. American 
+Automatic Control Council, Evanston, IL 
+Brafman, R. I., Tennenholtz, M. (2003). R-max - a general polyno皿al time algorithm for near-
+optimal reinforcement learning. Joumal of Machine Leaming ReseaTch, 3: 213- 231. 
+Breiman, L. (2001). Random forests. Machine Learning, 45(1): 5- 32. 
+Breiter, H. C., Aharon, I., Kahneman, D. , Dale, A. , Shizgal, P. (2001). Functional imaging of 
+neural responses to expectancy and experience of monetary gains and losses. Neuron, 30(2): 
+619- 639 
+Breland, I<. , Breland, M. (1961). The nlisbehavior of organisms. American Psycholog湿，
+16(11):
+681- 684 
+Bridle, J . S. (1990) ．飞aining stochastic model recognition algorithms as networks can lead to 
+479 
+
+强化学习（第2 版）
+maximum mutual information estimates of parameters. In Advances in Neural Information 
+Processing Systems 2 (NIPS 1989), pp. 211- 217. Morgan Kaufmann, San Mateo, CA. 
+Broomhead, D.S., Lowe, D. (1988). Multivariable functional interpolation and adaptive networks 
+Complex Systems, 2: 321- 355 
+Bromberg-Martin, E. S., Mats皿oto , M. , Hong, S., Hikosaka, 0. (2010). A pallidus-habenula-
+dopamine pathway signals inferred stimulus values. Journal of Neurophysiology, 104(2): 1068-
+1076. 
+Browne, C.B., Powley, E., Whitehouse, D., Lucas, S.M. , Cowling, P.l., Roblfshagen, P., Tavener, 
+S., Perez, D., Samothra炬s, S., Colton, S. (2012). A survey of monte carlo tree search methods. 
+IEEE Transac扰ons on Computational Intelligence and AI in Games, 4(1): 1- 43. 
+Brown, J., Bullock, D., Grossberg, S. (1999). How the basal ganglia use parallel excitatory and 
+inh巾itory learning pathways to selectively respond to unexpected rewarding cues. The Journal 
+of Neuroscience, 19(23): 10502- 10511. 
+Bryson, A. E., Jr. (1996). Optimal control—1950 to 1985. IEEE Control Systems, 13(3): 26-33. 
+Buchanan, B. G., Mitchell, T., Smith, R. G., Johnson, C. R., Jr. (1978). Models of learning 
+systems. Encyclopedia of Computer Science and technology, 11 
+Buhusi, C. V., Schmajuk, N. A. (1999). Timi 
+iming in simple conditioning and occasion setting: A 
+neural network approach. Behavioural Processes, 45(1): 33- 57. 
+Bu§oniu, L., Lazaric, A., Gbavarnzadeh, M., Munos, R., Babuska, R., De Schutter, B. (2012) 
+Least-squares methods for policy iteration. In M. Wiering and M. van Otterlo (Eds.), Rein-
+f orcement Lea叩ng:
+State-of-the-A计，pp . 75- 109. Springer-Verlag Berlin Heidelberg. 
+Bush, R. R., Mosteller, F. (1955). Stochastic Models for Learning. Wiley, New York 
+Byrne, J. H., Gingrich, K. J., Baxter, D. A. (1990). Computational capabilities of single neurons 
+Relationship to simple forms of associative and nonassociative learning in aplys妞
+In R. D. 
+Haw如ns and G. H. Bower (Eds.), Computational Models of Learning, pp. 31-63. Academic 
+Press, New York. 
+Calabresi, P., Picconi, B. , Tozzi, A. , Filippo, M. D. (2007). Dopamine-mediated regulation of 
+corticostriatal synaptic plasticity. Trends in Neuroscience, 30(5): 211- 219. 
+Camerer, C. (2011). Behavioral Game Theory: Experiments in Strategic Interaction. Princeton 
+University Press. 
+Campbell, D. T. (1960). Blind variation and selective survival as a general strategy in knowledge-
+processes. In M. C. Yovits and S. Cameron (Eds.), Self-Organizing Systems, pp. 205- 231. 
+Pergamon, New York. 
+Cao, X. R. (2009). Stochastic learning and optimization—A sensitivity-based approach. Annual 
+Reviews in Control, 33(1): 11- 24. 
+Cao, X. R., Chen, H. F. (1997). Perturbation realization, potentials, and sensitivity analysis of 
+Markov processes. IEEE Transactions on Automatic Control, 42(10): 1382- 1393 
+480 
+
+参考文献
+Carlstrom, J., Nordstrom, E. (1997). Control of self-s皿ilar ATM call traffic by reinforcement 
+learning. In Proceedings of the International Workshop on Applications of Neural Networks to 
+Telecommunications 3, pp. 54- 62. Erlbaum, Hillsdale, NJ. 
+Chapman, D., Kaelbling, L. P. (1991). Input generalization in delayed reinforcement learning: 
+An algorithm and performance comparisons. In Proceedings of the Twelfth International Con-
+ference on Artificial Intelligence (JJCAI-91}, pp. 726- 731. Morgan Kaufmann, San Mateo, 
+CA. 
+Cha.slot, G., Bakkes, S., Szita, I., Spronck, P. {2008). Monte-Carlo tree search: A new framework 
+for game AI. In Proceedings of the Fourth AAA! Conference on Artificial Intelligence and 
+Interactive Digital Entertainment (AIDE-OB}, pp. 216- 217. AAAI Press, Menlo Park, CA. 
+Chow, C.-S., Tsits凶!is, J. N. {1991). An optimal one-way multigrid algorithm for discrete-time 
+stochastic control. IEEE 介ansactions on Automatic Control, 36(8): 898- 914. 
+Chrisman, L. {1992). Reinforcement learning with perceptual aliasing: The perceptual distinctions 
+approach. In Proceedings of the Tenth National Conference on Artificial Intelligence (AAA!-
+92), pp. 183- 188. AAAI/MIT Press, Menlo Park, CA. 
+Christensen, J., Korf, R. E. {1986). A unified theory of heuristic evaluation functions and its ap-
+plication to learning. In Proceedings of the Fifth National Conference on Artificial Intelligence, 
+pp. 148- 152. Morgan Kaufmann. 
+Cichosz, P. (1995) 飞uncating temporal differences: On the efficient implementation of TD （入）
+for reinforcement learning. Journal of Artificial Intelligence Research, 2: 287- 318. 
+Claridge-Chang, A., Roorda, R. D., Vrontou, E., Sju]son, L., Li, H., Hirsh, J. , Miesenbock, G. 
+{2009). Writing memories with light-addressable reinforcement circuitry. Cell, 139(2): 405-
+415. 
+Clark, R. E., Squire, L. R. {1998). Classical conditioning and brain systems: the role of awareness 
+Science, 280(5360): 77- 81. 
+Clark, W. A., Farley, B. G. {1955). Generalization of pattern recognition in a self-organizing 
+system. In Proceedings of the 1955 Western Joint Computer Conference, pp. 86- 91 
+Clouse, J. {1996). On Integrating Apprentice Leaming and Reinforcement Learning TITLE2. 
+Ph.D. thesis, University of Massachusetts, Amherst. Appeared as CMPSCI Technical Report 
+96-026. 
+Clouse, J. , Utgoff, P. {1992). A teaching method for reinforcement learning systems. In Proceed'ings 
+of the 9th International Workshop on Machine Leaming, pp. 92- 101. Morgan Kaufmann 
+Cobo, L. C., Zang, P., Isbell, C. L., Thomaz, A. L. {2011). Automatic state abstraction from 
+demonstration. In Proceedings of the Twenty-Second International Joint Conference on Arti-
+ficial Intelligence (JJCAI-11), pp. 1243- 1248. AAAI Press. 
+Connell, J. (1989). A colony architecture for an artificial creature. Technical Report AI-TR-1151. 
+MIT Artificial Intelligence Laboratory, Cambridge, MA. 
+481 
+
+强化学习（第2 版）
+Connell, M. E., Utgoff, P. E. (1987). Learning to control a dynamic physical system. Computa-
+忧anal intelligence, 3(1): 330-337. 
+Contreras趴dal, J. L., Schultz, W. (1999). A predictive reinforcement model of dopamine neurons 
+如learning approach behavior. Journal of Computational Neuroscience, 6(3): 191- 214. 
+Coulom, R. (2006). Efficient selectivity and backup operators in Monte-Carlo tree search. In 
+Proceedings of the 5th International Conference on Computers and Games {CG'06}, pp. 72-
+83. Springer-Verlag Berlin, Heidelberg 
+Courville, A. C., Daw, N. D. , Touretzky, D. S. (2006). Bayesian theories of conditioning in a 
+changing world 介ends in Cognitive Science, 10(7): 294- 300. 
+Craik, K. J. W. (1943). The Nature of E叩lanation. Cambridge University Press. Cambridge 
+Cross, J. G. (1973). A stochastic learning model of econom」c behavior. The Quarterly Journal of 
+Economics, 87(2): 239-266 
+Crow, T. J. (1968). Cortical synapses and reinforcement: a hypothesis. Nature, 219(5155): 736-
+737. 
+Curtiss, J. H. (1954). A theoretical comparison of the efficiencies of two classical methods and a 
+Monte Carlo method for computing one component of the solution of a set of linear algebraic 
+equations. Ii1 H. A. Meyer (Ed.), Symposium on Monte Carlo Methods, pp. 191- 233. Wiley, 
+New York. 
+Cybenko, G. (1989). Approximation by superpositions of a sigmoidal function. Mathematics of 
+control, signals and systems, 2(4): 303- 314. 
+Cziko, G. (1995). Without M的cles: Universal Selection Theory and the Second Dar"Vinian Rev-
+olution. MIT Press, Cambridge, MA. 
+Dabney, W. (2014). Adaptive step-sizes for reinforcement learning. Pl心
+thesis, University of 
+Massachusetts, Amherst. 
+Dabney, W., B釭to , A. G. (2012). Adaptive step-size for online temporal difference learning. In 
+Proceedings of the A 九九ual Conference of the Association for the Advancement of Art~.ficial 
+Intelligence (AAA[). 
+Daniel, J. W. (1976). Splines and efficiency in dynamic programming. Jo,Urnal of Mathematical 
+Analysis and Applications, 54: 402- 407 
+Dann, C., Neumann, G., Peters, J. (2014). Policy evaluation with temporal differences: A survey 
+and comparison. Journal of Machine Learning Research, 15: 809- 883. 
+Daw. N. D., Courville, A. C., Touretzky, D. S. (2003). Timing and partial observabiHty in the 
+dopamine system. In Advances in Neural Information Processing Syste1ns 15 (NIPS 2002), 
+pp. 99- 106. MIT Press, Cambridge, MA. 
+Daw, N. D., Courville, A. C., Touretzky, D. S. (2006). Representation and timing in theories of 
+the dopamine system. Neural Computation, 18(7): 1637- 1677 
+Daw, N. D., Niv, Y., Dayan, P. (2005). Uncertainty based competition between prefrontal and 
+482 
+
+参考文献
+dorsolateral striatal systems for behavioral control. Nature Neuroscience, 8(12): 1704- 1711. 
+Daw, N. D., Shohamy, D. (2008). The cognitive neuroscience of motivation and le釭·ning. Social 
+Cognition, 26(5): 593-620. 
+Dayan, P. (1991). Reinforcement comparison. In D. S. Touretzky, J. L. Elman, T . J. Sejnowski, 
+and G. E. Hinton (Eds.), Connectionist Models: Proceedings of the 1990 Summer School, pp 
+45- 51. Morgan Kaufmann. 
+Dayan, P. (1992). The convergence of TD （入）
+for general 入Machine Learning, 8(3): 341- 362. 
+Dayan, P. (2002). Matters temporal. 介ends in Cognitive Sciences, 6(3): 105- 106 
+Dayan, P., Abbott, L. F. (2001). Theoretical Neuroscience: Computational and Mathematical 
+Modeling of Neural Systems. MIT Press, Cambridge, MA. 
+Dayan, P., Berridge, K. C. (2014). Model-based and model-free Pavlovian reward learning 
+Revaluation, revision, and revaluation. Cognitive, Affective, €3 Behavioral Neuroscience, 14(2) 
+473-492. 
+Dayan, P., Niv, Y. (2008). Reinforcement learning: the good, the bad and the ugly. Cu汀ent
+Opinion in N euro阮ology, 18(2): 185- 196 
+Dayan, P., Niv, Y., Seymour, B., Daw, N. D. (2006). The misbehavior of value and the discipline 
+of the will. Neural N etwo志，
+19(8): 1153- 1160. 
+Dayan, P., Sejnowski, T. (1994). TD （入）
+converges with probability 1. Machine Learning, 14(3) 
+295- 301. 
+De Asis, K., Hernandez-Garcia, J. F. , Holland, G. Z. , Sutton, R. S. (2017). Multi-step Reinforce-
+ment Learning: A Unifying Algorithm. arXiv preprint arXiv: 1703.01327 
+Dean, T., Lin, S.-H. (1995). Decomposition techniques for planning in stochastic domains. In Pro-
+ceedings of the Fourteenth International Joint Conference on A讨ificial Intelligence {IJCAJ-95}, 
+pp. 1121- 1127. Morgan Kaufmann. See also Technical Report CS-95-10, Brown University, 
+Department of Computer Science, 1995. 
+Degris, T., White, M., Sutton, R. S. (2012). 0_ff-policy actor-critic. In Proceedings of the 29th In-
+ternational Conj盯ence on Machine Learning (ICML 2012). ar沁v preprint arXiv: 1205.4839, 
+2012. 
+Denardo, E. V. (1967). Contraction mappings in the theory underlying dynamic prog顷mm.ing
+SIAM Review, 9(2): 165- 177. 
+Dennett, D. C. (1978). Why the Law of Effect Will Not Go Away. Brainstorms, pp. 71- 89. 
+Bradford/MIT Press, Cambridge, MA. 
+Derthick, M. (1984). Variations on the Boltzmann machine learning algorithm. Carnegie-Mellon 
+University Department of Computer Science Technical Report No. CMU-CS-84-120 
+Deutsch, J. A. (1953). A new type of behaviour theory. British Journal of Psychology. General 
+Section, 44(4): 304- 317. 
+Deutsch, J. A. (1954). A machine with insight. Qua忧erly Journal of Experimental Psychology, 
+483 
+
+强化学习（第2 版）
+6(1): 6-11. 
+Dick, T. (2015). Policy Gradient Reinforcement Learning Without Regret. M.Sc. thesis, University 
+of Alberta, Edmonton. 
+Dickinson, A. (1980). Contemporary Animal Learn叩Theo内Cambridge University Press, Cam-
+bridge. 
+Dickinson, A. (1985). Actions and habits: the development of behavioral autonomy. Phil. 开ans.
+R. Soc. Lond. B, 308(1135): 67-78. 
+Dickinson, A., Balleine, B. W. (2002). The role of learning in motivation. In C.R. Gallistel (Ed.) 
+Stevens'Handbook of Experimental Psychology, volume 3, pp. 497- 533. Wiley, NY. 
+Dietterich, T. G., Buchanan, B. G. (1984). The role of the critic in learning systems. In 0. G 
+Selfridge, E. L. 凡ssland, and M. A. Arbib (Eds.) , Adaptive Control of 几I-Defined Systems, 
+pp. 127-147. Plenum Press, NY. Proceedings of the NATO Advanced Research Institute on 
+Adaptive Control of Ill-defined Systems, NATO Conference Series II, Systems Science, Vol 
+16. 
+Dietterich, T. G., Fiann, N. S. (1995). Explanation-b邸ed learning and reinforcement learning: 
+A unified view. In A. Prieditis and S. Russell (Eds.), Proceedings of the 126h International 
+Conference on Machine Learning {ICML 1995}, pp. 176- 184. Morgan Kaufmann 
+Dietterich, T. G., Wang, X. (2002). Batch value function approximation via support vectors. In 
+Advances in Neural Information Process叩Systems 14 (NIPS 2001}, pp. 1491- 1498. MIT 
+Press, Cambridge, MA. 
+Diuk, C., Cohen, A., Littman, M. L. (2008). An object-oriented representation for efficient rein-
+forcernent learning. In Proceedings of the 25th International Conference on Machine Learning 
+(ICML 2008), pp. 240-247. ACM, New York. 
+Dolan, R. J., Dayan, P. (2013). Goals and habits in the brain. Neuron, 80(2): 312-325 
+Doll, B. B., Simon, D. A., Daw, N. D. (2012). The ubiquity of model-b邸ed reinforcement learning 
+Current Opinion in Neurobiology, 22(6): 1- 7. 
+Donahoe, J. W., Burgos, J. E. (2000). Behavior analysis and revaluation. Journal of the Experi-
+mental Analysis of Behavior, 74(3): 331- 346 
+Dorigo, M., Colombetti, M. (1994). Robot shaping: Developing autonomous agents through 
+learning. Artificial Intelligence, 71(2): 321- 370 
+Doya, K. (1996). Temporal difference learning in continuous time and space. In Advances in Neural 
+Information Processing Systems 8 (NIPS 1995), pp. 1073- 1079. MIT Press, Cambridge, MA 
+Doya, K., Sejnowski, T. J. (1995). A novel reinforcement model of birdsong vocalization learning. 
+In Advances in Neural Information Processing Systems 7 (NIPS 1994), pp. 101- 108. MIT 
+Press, Cambridge, MA 
+Doya, K., Sejnowski, T. J. (1998). A computational model of birdsong learning by auditory 
+experience and auditory feedback. In P. W. F. Poon and J. F. Brugge (Eds.), Central Auditory 
+484 
+
+参考文献
+Processing and Neural Modeling, pp. 77- 88. Springer, Boston, MA 
+Doyle, P. G., Snell, J. L. (1984). Random Walks and Electric Networks. The Mathematical Asso-
+ciation of America. Caius Mathematical Monograph 22. 
+Dreyfus, S. E., Law, A. M. (1977). The Art and The01-y of Dynamic Programming. Academic 
+Press, New York. 
+Duda, R. 0., Hart, P. E. (1973). Pattern Classification and Scene Analysis. Wiley, New York. 
+Duff, M. 0. (1995). Q-learning for bandit problems. In Proceedings of the 12th International 
+Conference on Machine Learning (ICML 1995), pp. 209- 217. Morgan Kaufmann 
+Egger, D. M., Miller, N. E. (1962). Secondary reinforcement in rats as a function of information 
+value and reliability of the stimulus. Journal of Experimental Psychology,
+创：
+97- 104
+Eshel, N. , Tian, J ., Bukwich, M., Uchida, N. (2016). Dopamine neurons share common response 
+function for reward prediction error. Nature Neuroscience, 19(3): 479--486. 
+Estes, W. K. (1943). Discriminative cond 止ioning. I. A discriminative property of conditioned 
+anticipation. Journal of Experimental Psychology, 32(2): 150-155 
+Estes, W. K. (1948). Discriminative conditioning. II. Effects of a Pavlovian conditioned stimulus 
+upon a subsequently established operant response. Journal of Experimental Psychology, 38(2): 
+173- 177. 
+Estes, W. K. (1950). Toward a statistical theory of learning. Psychololgical Review, 57(2): 94-
+107. 
+Farley, B. G., Clark, W. A. (1954). Simulation of self-organizing systems by digital computer 
+IRE Transactions on Information Theo对，
+4(4): 76- 84. 
+Farries, M. A., Fairhall, A. L. (2007). Reinforcement learning with modulated spike timing? 
+dependent synaptic plasticity. Journal of Neurophysiology, 98(6): 3648- 3665 
+Feldbaum, A. A. (1965). Optimal Control Systems. Academic Press, New York 
+Finch, G. , Culler, E. (1934). Higher order conditioning with constant motivation. The American 
+Journal of Psychology: 596-602. 
+Finnsson, H., Bjornsson, Y. (2008). Simulation-based approach to general game playing. In Pro-
+ceedings of the Association for the Advancement of Artificial Intelligence, pp. 259- 264. 
+Fiorillo, C. D., Yun, S. R. , Song, M. R. (2013). Diversity and homogeneity in responses of midbrain 
+dopamine neurons. The Journal of Neuroscience, 33(11): 4693- 4709. 
+Florian, R. V. (2007). Reinforcement learning through modulation of spike-timing-dependent 
+synaptic plasticity. Neural Computation, 19(6): 1468- 1502 
+Fogel, L. J. , Owens, A. J., Walsh, M. J. (1966). Artificial Intelligence through Simulated Evolution 
+John Wiley and Sons. 
+French, R. M. (1999). Catastrophic forgetting in connectionist networks. Trends in cognitive 
+sciences, 3(4): 128- 135. 
+Frey, U., Morris, R. G. M. (1997). Synaptic tagging and long-term potentiation. Nature, 385(6616) 
+485 
+
+强化学习（第2 版）
+533- 536. 
+Fremaux, N., Sprekeler, H., Gerstner, W. (2010). Functional requirements for reward-modulated 
+spike-timing-dependent plasticity. The Journal of Neuroscience, 30(40): 13326-13337 
+Friedman, J. H. , Bentley, J. L., F呻el , R. A. (1977). An algorithm for finding best matches in 
+logarithmic expected time. ACM Transactions on Mathematical Software, 3(3): 209-226. 
+氏ston, K. J., Tononi, G., Reeke, G. N., Sporns, 0., Edelman, G. M. (1994). Value-dependent 
+selection in the brain: Simulation in a synthetic neural model. Neuroscience, 59(2): 229-243. 
+Fu, K. S. (1970). Learning control systems—Review and outlook. IEEE 升ansactions on Auto-
+matic Control, 15(2): 210-221. 
+Galanter, E., Gerstenhaber, M. (1956). On thought: The extrinsic theory. Psychological Review, 
+63(4): 218- 227. 
+Calliste!, C. R. (2005). Deconstructing the law of effect. Games and Economic Behavior, 52(2) 
+410-423. 
+Gardner, M. (1973). Mathematical games. Scientific American, 228(1): 108- 115 
+Geist, M., Scherrer, B. (2014). Off-policy learning with eligibility traces: A survey. Journal of 
+Mach切e Learning Research, 15(1): 289- 333. 
+Gelly, S., Silver, D. (2007). Combining online and offiine knowledge in UCT. Proceedings of the 
+2劭International Conference on Machine Learning {ICML 2007), pp. 273- 280. 
+Gelperin, A., Hopfield, J. J., Ta吐，D . W. (1985). The logic of limax learning. In A. Selverston 
+(Ed.) , Model Neural Networks and Behav加，pp . 247- 261. Plenum Press, New York 
+Genesereth, M., Thielscher, M. (2014). General game playing. Synthesis Lectures on Artificial 
+Intelligence and Machine Learning, 8(2): 1- 229. 
+Gershman, S. J., Moustafa, A. A., Ludvig, E. A. (2014). Time representation in reinforce-
+ment learning models of the basal ganglia. 肝ontiers in Computational Neuroscience, 7: 194 
+DOI= 10.3389 /fncom.2013.00194. 
+Gershman, S. J ., Pesaran, B., Daw, N. D. (2009). Human reinforcement learning subdivides 
+structured action spaces by learning effector-specific values. The Journal of Neuroscience, 
+29(43): 13524- 13531. 
+Ghiassian, S., Rafiee, B., Sutton, R. S. (2016). A first empirical study of emphatic temporal 
+difference learning. Workshop on Continual Learning and Deep Learning at the Conference 
+on Neural Information Processing Systems (NIPS 2016). ArXiv: 1705.04185. 
+Gibbs, C. M., Cool, V. , Land, T. , Kehoe, E. J., Gormezano, I. (1991). Second-order conditioning of 
+the rabbit's nictitating membrane response. Integrative Physiological and Behavioral Science, 
+26(4): 282- 295. 
+Gittins, J. C., Jones, D. M. (1974). A dynamic allocation index for the sequential design of 
+experiments. In J. Gani, K. Sarkadi, and I. Vincze (Eds.), Progress in Statistics, pp. 241- 266. 
+North-Holland, Amsterdam- London. 
+486 
+
+参考文献
+Glimcher, P. W. (2011). Understanding dopamine and reinforcement learning: The dopamine re-
+ward prediction error hypothesis. Proceedings of the National Academy of Sciences, 108 (Sup-
+plement 3): 15647- 15654. 
+Glimcher, P. W. (2003). Decisions, Uncertainty, and the B呻：
+The science of Neuroeconomics. 
+MIT Press, Cambridge, MA. 
+Glimcher, P. W., Fehr, E. (Eds.) (2013). Neuroeconomics: Decision Making and the Brain, Second 
+Ed识on. Academic Press. 
+Goethe, J. W. V. (1878). The Sorcerer's Apprentice. In The Permanent Goethe, p. 349. The Dial 
+Press, Inc., New York. 
+Goldstein, H. (1957). Classical Mecha成cs. Addison-Wesley, Reading, MA. 
+Goodfellow, I. , Bengio. Y. , Courville, A. (2016). Deep Learning. MIT Press, Cambridge, MA. 
+Goodwin, G. C., Sin, K. S. (1984). Adaptive Filtering Prediction and Control. Prentice-Hall, 
+Englewood Cliffs, NJ. 
+Gopnik, A., Glymour, C., Sobel, D. , Schulz, L. E., K 郘hn 江，
+T., Danks, D. (2004). A theory of 
+causal learning in c皿dren: Causal maps and Bayes nets. Psychological Review, 111(1): 3- 32 
+Gordon, G. J. (1995). Stable function approximation in dynamic programming. In A. Prieditis 
+and S. Russell (Eds.), Proceedings of the 12th International Conference on Machine Learning 
+(JCML 1995), pp. 261- 268. 
+Morgan Kaufmann. An expanded version was published as 
+Technical Report CMU-CS-95-103. Carnegie Mellon University, Pittsburgh, PA, 1995. 
+Gordon, G. J. (1996a). Chattering in SARSA （入）CMU learning lab internal report. 
+Gordon, G. J. (1996b). Stable fitted reinforcement learning. In Advances in Neural Information 
+Processing Systems 8 (NIPS 1995), pp. 1052- 1058. MIT Press, Cambridge, MA 
+Gordon, G. J. (1999). Approximate Solutions to Markov Decision Processes. Ph.D. thesis, Carnegie 
+Mellon University, Pittsburgh PA. Pittsburgh, PA. 
+Gordon, G. J. (2001). Reinforcement learning with function approximation converges to a region. 
+In Advances in Neural Jnforrriation Processing Systems 13 (NIPS 2000), pp. 1040-1046. MIT 
+Press, Cambridge, MA. 
+Graybiel, A. M. (2000). The basal ganglia. Cu订ent Biology, 10(14): R509- R51 l. 
+Greensmith, E., Bartlett, P. L., Baxter, J. (2002). Variance reduction techniques for gradient 
+estimates in reinforcement learning. In Advances in Neural Information Processing Systems 
+14 (NIPS 2001), pp. 1507- 1514. MIT Press, Cambridge, MA. 
+Greensmith, E., Ba几lett , P. L., Baxter, J. (2004). Variance reduction techniques for gra小ent
+estimates in reinforcement learning. Journal of Machine Learning Research, S(Nov): 1471-
+1530. 
+Griffith, A. K. (1966). A new machine learning technique applied to the game of checkers. Tech-
+nical Report Project MAC, Artificial Intelligence Memo 94. Massachusetts Institute of Tech-
+nology, Cambridge, MA 
+487 
+
+强化学习（第2 版）
+Griffith, A. K. (1974). A comparison and evaluation of three machine learning procedures as 
+applied to the game of cl1eckers. Artificial Intelligence, 5(2): 137- 14u. 
+Grondman, I., Busoniu, L., Lopes, G. A., Babuska, R. (2012). A survey of actor-critic reinforce--
+ment learning: Standard and natural policy gradients. IEEE Transactions on Systems, Man, 
+and Cybernetics, Part C (Applications and Reviews), 42(6): 1291- 1307. 
+Grossberg, S. (1975). A neural model of attention, reinforcement, and discrimination learning. 
+International Review of Neuro杖ology , 18: 263- 327. 
+Grossberg, S., Schmajuk, N. A. (1989). Neural dynamics of adaptive timing and temporal dis-
+crimination dming associative le釭ning. Neural Networks, 2(2): 79- 102 
+Gullapa!Li, V. (1990). A stochastic reinforcement algorithm for learning real-valued functions. 
+Neural Networks, 3(6): 671- 692. 
+Gullapalli, V., Barto, A. G. (1992). Shaping as a method for accelerating reinforcement learning 
+In Proceedings of the 1992 IEEE International Symposium on Intelligent Control, pp. 554-
+559. IEEE. 
+Gurvits, L., Lin, L.-J. , Hanson, S. J. (1994). Incremental learning of evaluation functions for ab-
+sorbing Markov chains: New methods and theorems. Siemans Corporate Research, Princeton, 
+NJ. 
+Hackn1an, L. (2012). Faster Gradient-TD Algorithms. M.Sc. thesis, University of Alberta, Ed-
+mouton. 
+Hallak, A. , Tamar, A., Mannor, S. (2015). Emphatic TD Bellman operator is a contraction. 
+ArXiv: 1508.03411. 
+Hallak, A., Tamar, A., Munos, R., Mannor, S. {2016). Generalized emphatic temporal difference 
+learning: Bias-variance analysis. In Proceedings of the Thirtieth AAAI Conference on Artificial 
+Intelligence (AAAJ-16), pp. 1631- 1637. AAA! Press, Me11'0 Park, CA. 
+Hammer, M. (1997). The neural basis of associative reward learning in honeybees. Trends in 
+Neuroscience, 20(6): 245- 252. 
+Hammer, M., Menzel, R. (1995). Learning and memory in the honeybee. The Journal of Neuro-
+science, 15(3): 1617- 1630. 
+Hampson, S. E. (1983) . A Neural Model of Adaptive Behavior. Ph.D. thesis, University of Cali-
+fornia, Irvine. 
+Hampson, S. E. {1989). Connectionist Problem Solving: Computational Aspects of Biological 
+Learning. Birkhauser, Boston. 
+Hare, T. A., O'Doherty, J., Camerer, C. F., Schultz, W., Rangel, A. (2008). Dissociating the role 
+of the orbitofrontal cortex and the striatum in the computation of goal values and prediction 
+errors. The Journal of Neuroscience, 28(22): 5623- 5630. 
+Harth, E. , Tzanakou, E. (1974). Alopex: A stochastic method for determining visual receptive 
+fields. Vision Research, 14(12): 1475-1482. 
+488 
+
+参考文献
+Hassabis, D., Maguire, E. A. (2007). Deconstructing episodic memory with construction. Tr·ends 
+in cognitive sciences, 11(7): 299-306 
+Hauskrecht, M., Meuleau, N., Kaelbling, L. P., Dean, T., Boutilier, C. (1998). Hierarchical so-
+lution of Markov decision processes using macro-actions. In Proceedings of the Fourteenth 
+Conference on Uncertainty in Ar啡cial Intelligence, pp. 220-229. Morgan Kaufn1ann 
+Hawki郎，
+R. D., Kandel, E. R. (1984). Is there a cell-biological alphabet for simple forms of 
+learning? Psychological Revie切，
+91(3) : 375- 391. 
+Hay如n , S. (1994). Neural networks: A Compreherisive Foundation, Macmillan college publishing 
+company, New York. 
+He, K., Huertas, M., Hong, S. Z. , 兀e, X., Hell, J . W. , Shouval, H., Kirkwood, A. (2015). Distinct 
+eligibility traces for LTP and LTD in cortical synapses. Neur-on, 88(3): 528-538 
+He, K., Zhang, X., Ren, S., Sllll, J. (2016). Deep residual learning for image recognition. In 
+Proceedings of the 1992 IEEE Conference on Computer Vision and Pattern Recognition, pp 
+770-778. 
+Hebb, D. 0. (1949). The Organization of Behavior: A Neuropsychological Theory. John Wiley 
+and Sons Inc. , New York. Reissued by Lawrence Erlbaum Associates Inc., Mahwah NJ , 2002. 
+Hengst, B. (2012). Hierarchical approaches. 1n M. Wiering and M. van Otterlo (Eds.), Re切force­
+ment Learning: State-of-the-A 讨，
+pp. 293- 323. Springer-Verlag Berlin Heidelberg 
+Herrnstein, R. J. (1970). On the Law of Effect. Journal of the Experimental Analysis of Behavior, 
+13(2): 243- 266. 
+Hersh, R., Griego, R. J. (1969). Brownian motion and potential theory. Scientific American, 
+220(3): 66- 74. 
+Hester, T., Stone, P. (2012). Learning and using models. In M. Wiering and M. van Otterlo (Eds.), 
+Reinforcement Learning: State-of-the-A 计，
+pp. 111- 141. Springer-Verlag Berlin Heidelberg. 
+Hesterberg, T. C. (1988), Advances in Importance Sampling, Ph.D. thesis, Stat的cs Department, 
+Stanford University. 
+Hilgard, E. R. (1956) . Theo讨es of Learning, Second Ed诅on . Appleton-Century-Cofts, Inc., New 
+York. 
+Hilgard, E. R., Bower, G. H. (1975). Theories of Lea而ng. Prentice-HalJ, Englewood Cliffs, NJ 
+Hinton, G. E. (1984). Distributed representations. Technical Report CMU-CS-84-157. Department 
+of Computer Science, Carnegie-Mellon University, Pittsbmgh, PA 
+Hinton, G. E., Osindero, S., Teh, Y. (2006). A fast learning algorithm for deep belief nets. Neural 
+Computation, 18(7): 1527- 1554. 
+Hochreiter, S., Schmidhuber, J. (1997). LTSM can solve hard time lag problems. In Advances in 
+Neural Information Process叩Systems 9 (NIPS 1996), pp. 473- 479. MIT Press, Cambridge. 
+MA. 
+Holland, J. H. (1975). Adaptation in Natural and Artificial Systems. University of Michigan Press, 
+489 
+
+强化学习（第2 版）
+Ann Arbor. 
+Holland, J. H. (1976). Adaptation. In R. Rosen and F. M. Snell (Eds.), Progress in Theoretical 
+Biology, vol. 4, pp. 263- 293. Academic Press, New York. 
+Holland, J. H. (1986). Escaping brittleness: The poss伽lity of general-purpose learning algo-
+rithms applied to rule-based systems. In R. S. Michalski, J. G. Carbonell, and T. M. Mitchell 
+(Eds.), Machine Learning: An Artificial Intelligence Approach, vol. 2, pp. 593-623. Morgan 
+Kaufmann. 
+Hollerman, J. R., Schultz, W. (1998). Dopmine neurons report an error in the temporal prediction 
+of reward during learning. Nature Neuroscience, 1(4): 304- 309 
+Houk, J. C., Adams, J. L., Barto, A.G. (1995). A model of how the basal ganglia generates and 
+uses neural signals that predict reinforcement. In J. C. Houk, J. L. Davis, and D. G. Beiser 
+(Eds.), Models of Information Processing in the Basal Ganglia, pp. 249-270. MIT Press, 
+Cambridge, MA. 
+Howard, R. (1960). Dynamic Progmmming and Markov Processes. MIT Press, Cambridge, MA 
+Hull, C. L. (1932). The goal-gradient hypothesis and maze learning. Psychological Review, 39(1) 
+25-43. 
+Hull, C. L. (1943). Principles of Behavior. Appleton-Century, New York 
+Hull, C. L. (1952). A Behavior System. Wiley, New York 
+Ioffe, S., Szegedy, C. (2015). Batch normalization: Accelerating deep network training by reducing 
+internal covariate shift. arXiv:1502.03167. 
+ipek, E., Mutlu, 0., Martinez, J. F., Caruana, R. (2008). Self-optimizing memory controllers: 
+A reinforcement learning approach. In !SCA'08:Proceedings of the 35th Annual International 
+Symposium on Computer Architecture, pp. 39-50. IEEE Computer Society Washington, DC, 
+USA 
+lzhikevich, E. M. (2007). Solving the distal reward problem through linkage of STDP and 
+dopamine signaling. Cerebml Cortex, 17(10): 2443-2452 
+Jaakkola, T., Jordan, M. I., Singh, S. P. (1994). On the convergence of stochastic iterative dynamic 
+programming algorithms. Neuml Computation, 6:1185-1201 
+Jaakkola, T., Singh, S. P., Jordan, M. I. (1995). Reinforcement learning algorithm for partially 
+observable Markov decision problems. In Advances in Neuml Information Processing Systems 
+7 (NIPS 1994), pp. 345-352. MIT Press, Cambridge, MA. 
+Jacobs, R. A. (1988). Increased rates of convergence through learning rate adaptation. Neural 
+Networks, 1(4): 295- 307. 
+Jaderberg, M., Mnib, V., Czarnec如，W. M., Schaul, T., Leibo, J. Z., Silver, D., Kavukcuoglu, 
+K. (2016). Reinforcement learning with unsupervised auxiliary tasks. arXiv preprint arXiv 
+1611.05397. 
+Jaeger, H. (1997). Observable operator models and conditioned continuation representations. Ar-
+490 
+
+参考文献
+beitspapiere der GMD 1043, GMD Forschungszentrum Informationstechnik, Sankt Augustin, 
+Germany. 
+Jaeger, H. (1998). Discrete Time, Discrete Valued Observable Operator Models: A Tutorial. 
+G MD-Forsch ungszentrum Informationstechnik. 
+Jaeger, H. (2000). Observable operator models for discrete stochastic time series. Neural Compu-
+tation, 12(6): 1371- 1398. 
+Jaeger, H. (2002). Tutorial on training recurrent neural networks, covering BPPT, RTRL, EKF 
+and the'echo state network'approach. German National Research Center for Information 
+Technology, Technical Report GMD report 159, 2002. 
+Joel, D., Niv, Y., Ruppin, E. (2002). Actor-critic models of the basal ganglia: New anatomical 
+and computational perspectives. Neural Networks, 15(4): 535- 547 
+Johnson, A., Redish, A. D. (2007). Neural ensembles in CA3 transiently encode paths forward of 
+the animal at a decision point. The Journal of Neuroscience, 27(45): 12176- 12189. 
+Kaelbling, L. P. (1993a). Hierarchical learning in stochastic domains: Preliminary results. In 
+Proceedings of the 10th Jntemational Conference on Machine Leaming (ICML 1993), pp 
+167- 173. Morgan Kaufmann. 
+Kaelbling, L. P. (1993b). Leaming in Embedded Systems. MIT Press, Cambridge, MA. 
+Kaelbling, L. P. (Ed.) (1996) . Special triple issue on reinforcement learning, Machine Leam吨
+22(1/2/3) 
+Kaelbling, L. P. , Littman, M. L., Moore, A. W. (1996) . Reinforcement learning: A survey. Joumal 
+of Artificial Intelligence Research, 4: 237- 285 
+Kakade, S. M. (2002). A natural policy gradient. In Advances in Neural Information Processing 
+Systems 14 (NIPS 2001), pp. 1531- 1538. MIT Press, Cambridge, MA. 
+Kakade, S. M. (2003) . On the Sample Compl五ty of Reinforcement Learn叩Ph.D. thesis, Uni-
+versity of London. 
+Kakutani, S. (1945). Markov processes and the Dirichlet problem. Proceedings of the Japan 
+Academy, 21(3-10): 227- 233. 
+Kalos, M. H., Wh 比lock , P. A. (1986). Monte Carlo Methods. Wiley, New York 
+Kamin, L. J . (1968). "Attention-like" processes in classical cond山oning. In M. R. Jones (Ed.), 
+Miami Symposium on the Prediction of Behavior, 1967: Aversive Stimulation, pp. 9- 31. 
+University of Miami Press, Coral Gables, Florida. 
+Kamin, L. J. (1969). Predictability, surprise, attention, and cond山oning. In B. A. Campbell and 
+R. M. Church (Eds.), Punishment and Aversive Behavior, pp. 279- 296. Appleton-Century-
+Crofts, New York. 
+Kandel, E. R. , Schwartz, J. H., Jessell, T. M., Siegelbaum, S. A. , Hudspeth, A. J. (Eds.) (2013). 
+Principles of Neural Science, Fifth Ed也on. McGraw-Hill Companies, Inc 
+Karampatzia记s , N., Langford, J . (2010). Online importance weight aware updates. Ar沁v: 1011.1576 
+491 
+
+强化学习（第2 版）
+Kashyap, R. L., Blaydon, C. C., Fu, K. S. (1970). Stochastic approximation. In J. M. Mendel 
+and K. S. Fu (Eds.), Adaptive, Learning, and Pattern Recognition Systems: Theory and 
+Applications, pp. 329- 355. Academic Press, New York. 
+Kearney, A., Veeriah, V, Travnik, J, Sutton, R. S., Pilarski, P. M. (in preparation) . TIDBD 
+Adapting TemporaJ-djfference Step-sizes Through Stochastic Meta-descent. 
+Kearns, M., Singh, S. (2002). Near-optimal reinforcement learning in polynomial time. Machine 
+Learning, 49(2-3): 209- 232. 
+Keerthi, S. S., R.avindran, B. (1997). Re画orcement learning. In E. Fieslerm and R. Beale (Eds.), 
+Handbook of Neural Computation, C3. Oxford University Press, New York. 
+Kehoe, E. J. (1982). Conditioning with serial compound stimuli: Theoretical and empirical issues 
+Experimental Animal Behavior, 1: 30-65. 
+Kehoe, E. J., Schreurs, B. G., Graham, P. (1987). Temporal primacy overrides prior training in 
+serial compound conditioning of the rabbit's nictitating membrane response. Animal Learning 
+8 Behavior, 15(4): 455- 464. 
+Keiflin, R., Janak, P. H. (2015). Dopamine prediction errors in reward learning and addiction: 
+Ffrom theory to neural c江cuitry. Neuron, 88(2): 247- 263 
+Kimble, G. A. (1961). Hilgard and Marquis'Conditioning and Learning. Appleton-Century-Crofts, 
+New York 
+Kimble, G. A. (1967). Foundations of Cond山oning and Learning. Appleton-Century-Crofts, New 
+York. 
+Kingma, D., Ba, J. (2014). Adam: A method for stochastic optimization. ArXiv: 1412.6980. 
+Klopf, A. H. (1972). Brain function and adaptive systems—A heterostatic theory. Technical Re-
+port AFCRL-72-0164, A江Force Cambridge Research Laboratories, Bedford, MA. A summary 
+appears in Proceedings of the International Conference on Systems, Man, and Cybernetics 
+{1974). IEEE Systems, Man, and Cybernetics Society, Dallas, TX. 
+Klopf, A. H. (1975). A comparison of natural and artificial intelligence. SIGART Newsletter, 53: 
+11- 13. 
+Klopf, A. H. (1982). The Hedonistic Neuron: A Theory of Memory, Learning, and Intelligence. 
+Hemisphere, Washington, DC. 
+Klopf, A. H. (1988). A neuronal model of classical conditioning. Psychobiology, 16(2): 85- 125 
+Klyubin, A. S., Polani, D., Nehaniv, C. L. (2005). Empowerment: A universal agent-centric 
+measure of control. In Proceedings of the 2005 IEEE Congress on Evolutionary Computation 
+(Vol. 1, pp. 128- 135). IEEE. 
+Kober, J., Peters, J. (2012). Reinforcement learning in robotics: A survey. In M. Wiering, M. 
+van Otterlo (Eds.), Reinforcement Learning: State-of-the-A rt, pp. 579- 610. Springer-Verlag 
+Berlin Heidelberg. 
+Kocsis, L., Szepesv釭i, Cs. (2006). Bandit based Monte-Carlo planning. In Proceedings of the 
+492 
+
+参考文献
+European Conference on Machine Learn切g, pp. 282- 293. Springer-Verlag Berlin Heidelberg. 
+Kohonen, T. (1977). Associative Memory: A System Theoretic Approach. Springer-Verlag, Berlin 
+Koller, D. , Friedman, N. (2009). Probabilistic Graphical Models: Principles and Techniques. MIT 
+Press. 
+Kolodziejski, C., Porr, B., W6rg6tter, F. (2009). On the asymptotic equivalence between differ-
+ential Hebbian and temporal difference learning. Neural Computation, 21(4): 1173- 1202. 
+Kolter, J. Z. (2011). The fixed points of off-policy TD. In Advances in Neural Information Pro-
+cessing Systems 24 (NIPS 2011), pp. 2169- 2177. Curran Associates, Inc. 
+Konda, V. R., Tsitsiklis, J. N. (2000). Actor-critic algorithms. In Advances in Neural Information 
+Processing Systems 12 (NIPS 1999), pp. 1008- 1014. MIT Press, Cambridge, MA. 
+Konda, V. R., Tsitsiklis, J. N. (2003). On actor-critic algorithms. SIAM Journal on Control and 
+Opt切iization, 42(4): 1143- 1166. 
+Konidaris, G. D., Osentoski, S., Thomas, P. S. (2011) . Value function approximation in rein-
+forcement learning using the Fourier basis. In Proceedings of the Twenty-Fifth Conference of 
+the Association for the Advancement of Artificial Intelligence, pp. 380- 385. 
+Korf, R. E. (1988). Optimal path finding algorithms. In L. N. Kanai and V. Kumar (Eds.) , Search 
+in Artificial Intelligence, pp. 223- 267. Springer-Verlag, Berlin. 
+Korf, R. E. (1990). Real-time heuristic search. Artificial Intelligence, 42(2- 3), 189- 211. 
+Koshland, D. E. (1980). Bacte讨al Chemotaxis as a Model Behavioral System. Raven Press, New 
+York. 
+Koza, J. R. (1992). Genetic Programming: On the Programming of Computers by Means of 
+Natural Selection (Vol. 1). MIT Press., Cambridge, MA 
+Kraft, L. G., Campagna, D. P. (1990). A summary comparison of CMAC neural network and 
+traditional adaptive control systems. In T. Miller, R. S. Sutton, and P. J . Werbos (Eds.), 
+Neural Networks for Control, pp. 143- 169. MIT Press, Cambridge, MA 
+Kraft, L. G., Miller, W. T., Dietz, D. (1992). Development and application of CMAC neural 
+network-based control. In D. A. White and D. A. Sofge (Eds.), Handbook of Intelligent Control: 
+Neural, 压zzy, and Adaptive Approaches, pp. 215- 232. Van Nostrand Reinhold, New York. 
+Kumar, P. R., Varaiya, P. (1986). Stochastic Systems: Estimation, Identification, and Adaptive 
+Control. Prentice-Hall, Englewood Cliffs, NJ. 
+Kumar, P. R. (1985). A survey of some results in stochastic adaptive control. SIAM Journal of 
+Control and Optimization, 23(3): 329-380. 
+Kumar, V. , Kanai, L. N. (1988). The CDP, A unifying formulation for heuristic search, dy-
+namic programming, and branch-and-bound. In L. N. Kanai and V. Kumar (Eds.), Search 切
+A巾．ficial Intelligence, pp. 1- 37. Springer-Verlag, Ber血
+Kushner, H. J., Dupuis, P. (1992). Nume讨cal Methods for Stochastic Control Problems in Con-
+tinuous Time. Springer-Verlag, New York. 
+493 
+
+强化学习（第2 版）
+Kuvayev, L., Sutton, R.S. (1996). Model-based reinforcement learning with an approximate, 
+learned model. Proceedings of the Ninth Yale Workshop on Adaptive and Learning Systems, 
+pp. 101- 105, Yale University, New Haven, CT. 
+Lagoudakis, M., Parr, R. (2003). Least squares poUcy iteration. Journal of Machine Learning 
+Research, 4(Dec): 1107-1149. 
+Lai, T. L., Robbins, H. {1985). Asymptotically efficient adaptive allocation rules. Advances in 
+Applied Mathematics, 6(1): 4- 22. 
+Lakshmivarahan, 8., Narendra, K. S. (1982). Learning algorithms for two-person zero-sum stochas-
+tic games with incomplete information: A Wlified approach. SIAM Journal of Control and 
+Optimization, 20(4): 541- 552. 
+Lammel, 8., Lim, B. K., Malenka, R. C. (2014). Reward and aversion in a heterogeneous midbrain 
+dopamine system. Neuropharmacology, 76: 353- 359 
+Lane, 8. H., Handelman, D. A., Gelfand, J. J . {1992). Theory and development of higher-order 
+GMAC neural networks. IEEE Control Systems, 12(2): 23- 30. 
+LeCun, Y. (1985). Une proc?dure d'apprentissage pour r?seau a seuil asymmetrique (a learning 
+scheme for asymmetric threshold networks). In Proceedings of Cognitiva 85, Paris, France. 
+LeCun, Y., Bottou, L., Bengio, Y., Haffner, P. {1998). Gradient-based learning applied to docu-
+ment recogn山on. Proceedings of the IEEE, 86(11): 2278-2324 
+Legenstein, R. W., Maass, D. P. (2008). A learning theory for reward-modulated spike-timing-
+dependent plasticity with application to biofeedback. PLoS Computational Biology, 4(10). 
+Levy, W. B., Steward, D. (1983). Temporal cont咖ty reqwrements for long-term associative 
+potentiation/depression in the hippocampus. Neuroscience, 8(4): 791- 797. 
+Lewis, F. L., Liu, D. (Eds.) (2012). Reinforcement Learning and Approx'tmate Dynamic Program-
+而ng for Feedback Control. John Wiley and Sons. 
+Lewis, R. L., Howes, A. , Singh, S. (2014). Computational rationality: Linking mechanism and 
+behavior through utility maximization. Topics in Cognitive Science, 6(2): 279-311. 
+Li, L. (2012) . Sample complexity bounds of exploration. In M. Wiering and M. van Otterlo (Eds.), 
+Reinforcement Learning: State-of-the-Art, pp. 175-204. Springer-Verlag Berlin Heidelberg. 
+Li, L., Chu, W., Langford, J., Schapire, R. E. (2010). A contextual-bandjt approach to person-
+alized news article recommendation. In Proceedings of the 19th International Conference on 
+World Wide Web, pp. 661- 670. ACM, New York. 
+Lin, C.-S. , Kim, H. (1991). GMAC-based adaptive critic self-learning control. IEEE 加nsactions
+on Neural Networks, 2(5): 530- 533. 
+Lin, L.-J. (1992). Self-improving reactive agents based on reinforcement learning, planning and 
+teaching. Machine Learning, 8(3-4): 293- 321. 
+Lin, L.-J., Mitchell, T. (1992). Reinforcement learning with hidden states. In Proceedings of 
+the Second International Conference on Simulation of Adaptive Behavior: From Animals to 
+494 
+
+参考文献
+Animals, pp. 271- 280. MIT Press, Cambridge, MA. 
+Littman, M. L., Cassandra, A. R., Kaelbling, L. P. (1995). Learning policies for partially ob-
+ervable environments: Scaling up. In Proceedings of the 12th International Conference on 
+Machine Learning {ICML 1995), pp. 362- 370. Morgan Kaufmann 
+Littman, M. L., Dean, T. L., Kaelbling, L. P. (1995). On the comple劝ty of solving Markov decision 
+problems. In Proceedings of the Eleventh Annual Conference on Uncertainty in Artificial 
+Intelligence, pp. 394-402. 
+Littman, M. L. , Sutton, R. S., Singh (2002). Predictive representations of state. In Advances 切
+Neural Information Processing Systems 14 (NIPS 2001), pp. 1555-1561. MlT Press, Cambridge, 
+MA. 
+Liu, J . S. (2001). Monte Carlo Strategies in Scientific Computing. Springer-Verlag, Berlin 
+Ljung, L. (1998). System identification. In A. Proch缸ka, J. U画，
+P. W. J. Rayner, and N. G. 
+Kingsbury (Eds.), Signal Analysis and Prediction, pp. 163- 173. Springer Science + Business 
+Media New York, LLC. 
+切ung, L. , Soderstrom, T. (1983). Theo'r'1Jand Practice of Recursive Identification. MIT Press, 
+Cambridge, MA. 
+切ungberg, T. , Apicella, P., Schultz, W. (1992). Responses of monkey dopamine neurons during 
+learning of behavioral reactions. Journal of Neurophysiology, 67(1): 145- 163 
+Lovejoy, W. S. (1991). A survey of algorithmic methods for partially observed Markov decision 
+processes. Annals of Operations Research, 28(1): 47- 66 
+Luce, D. (1959). Individual Choice Behavior.':""iley, New York. 
+Ludvig, E. A. , Bellemare, M. G., Pearson, K. G. (2011). A primer on reinforcement learning in the 
+brain: Psychological, computational, and neural perspectives. In E. Alonso and E. Mondragon 
+(Eds.), Computational Neuroscience for Advancing Artificial Intelligence: Models, Methods 
+and Applications, pp. 111- 44. Medical Information Science Reference, Hershey PA. 
+Ludvig, E. A., Sutton, R. S. , Kehoe, E. J. (2008) . Stimulus representation and the timing of 
+reward-prediction errors in models of the dopamine system. Neural Computation, 20(12) 
+3034- 3054. 
+Ludvig, E. A., Sutton, R. S., Kehoe, E. J. (2012) . Evaluating the TD model of classical condi-
+tioning. Learning f1 behavior, 拉（3): 305- 319 
+Machado, A. (1997). Learning the temporal dynamics of behavior. Psychological Review, 104(2) 
+241- 265. 
+Mackintosh, N. J. (1975). A theory of attention: Variations in the associability of stimuli with 
+reinforcement. Psychological Review, 82(4): 276- 298. 
+Mackintosh, N. J. (1983). Cond讥ioning and Associative Learning. Clarendon Press, Oxford. 
+Maclin, R. , Shavlik, J. W. (1994). Incorporating advice into agents that learn from reinforcements. 
+In Proceedings of the Twelfth National Conference on Artificial Intelligence (AAAl-94), pp. 
+495 
+
+强化学习（第2 版）
+694- 699. AAAI Press, Menlo Park, CA. 
+Maei, H. R. (2011). Gradient Temporal-Difference Leaming Algorithms. Ph.D. thesis, University 
+of Alberta, Edmonton. 
+Maei, H. R., Sutton, R. S. (2010). GQ （入）：
+A general gradient algorithm for temporal-difference 
+prediction learning with eligibility traces. In Proceedings of the Third Conference on Artificial 
+General Intelligence, pp. 91- 96. 
+Maei, H. R., Szepes唯ri , Cs., Bhatnagar, S. , Precup, D., Silver, D., Sutton, R. S. (2009) . Conver-
+gent temporal-difference learning with arbitrary smooth function approximation. In Advances 
+切Neural Information Processing Systems 22 (NIPS 2009}, pp. 1204- 1212. Curran Associates, 
+Inc. 
+Maei, H. R., Szepesv知，
+Cs. , Bhatnagar, S., Sutton, R. S. (2010). Toward off-policy learning 
+control with function approximation. In Proceedings of the 27th lnterriational Conference on 
+Machine Learn叨(ICM£ 2010}, pp. 719- 726). 
+Mahadevan, S. (1996). Average reward reinforcement learning: Foundations, algorithms, and 
+empirical results. Machine Leaming, 22(1): 159- 196. 
+Mahadevan, S., Liu, B., Thomas, P., Dabney, W., Giguere, S., Jacek, N., Gemp, I., Liu, J. (2014) 
+Proximal reinforcement learning: A new theory of sequential decision making in primal-dual 
+spaces. ArXiv preprint arXiv: 1405.6757. 
+Mahadevan, S., Connell, J. (1992). Automatic programming of behavior-based robots using rein-
+forcement learning. Artificial Intelligence, 55(2-3): 311- 365. 
+Mahmood, A. R. (2017). Incremental Off-Policy Reinforcement Leaming Algorithms. Ph.D 
+thesis, University of Alberta, Edmonton 
+Mal1Il1ood, A. R. , Sutton, R. S. (2015). Off-policy learnir1g based on weighted importance sampling 
+with linear computational complexity. In Proceedings of the 31st Conference on Uncertainty 
+in A付ificial Intelligence {UAI-2015), pp. 552- 561. AUAI Press Corvallis, Oregon 
+Mahmood, A. R., Sutton, R. S., Degris, T. , Pilarski, P. M. (2012). Tuning-free step-size adap-
+tation. In 2012 IEEE International Conference on Acoustics, Speech and Signal Processing 
+(ICASSP), Proceedings, pp. 2121- 2124. IEEE. 
+Mahmood, A. R., Yu, H, Sutton, R. S. (2017). Multi-step off-policy learning without importance 
+samplir1g ratios. ArXiv 1702.03006. 
+Mahmood, A. R., van Hasselt, H., Sutton, R. S. (2014). Weighted importance sampling for off-
+policy learning with linear function approximation. Advances in Neural Information Processing 
+Systems 27 {NIPS 2014), pp. 3014- 3022. Curran Associates, Inc 
+Marbach, P., Tsits灿s , J . N. (1998). Simulation-based opt皿ization of Markov reward processes 
+MIT Technical Report LIDS-P-2411. 
+Marbach, P., Tsitsiklis, J. N. (2001). Simulation-based optimization of Markov reward processes. 
+IEEE Transactions on Automatic Control, 46(2): 191- 209. 
+496 
+
+参考文献
+Markram, H., Lubke, J., Frotscher, M., Sakmann, B. (1997). Regulation of synaptic efficacy by 
+coincidence of postsynaptic APs and EPSPs. Science, 275(5297): 213- 215. 
+Martinez, J. F., ipek, E. (2009). Dynamic multicore resource management: A machine learning 
+approach. Micro, IEEE, 29(5): 8- 17 
+Mataric, M. J. (1994). Reward functions for accelerated learning. In Proceedings of the 11th In-
+ternational Conference on Machine Learning {ICML 1994), pp. 181- 189. Morgan Kaufmann 
+Matsuda, W., Furuta, T., Nakamura, K. C., Hioki, H., Fujiyama, F., Arai, R., Kaneko, T 
+(2009). Single nigrostriatal dopaminergic neurons form widely spread and highly dense axonal 
+arborizations in the neostriatum. The Journal of Neuroscience, 29(2): 444- 453. 
+Mazur, J.E. (1994). Learning and Behavior, 3rd ed. Prentice-Hall, Englewood Cliffs, NJ 
+McCallum, A. K. (1993). Overcoming incomplete perception with utile distinction memo1-y. In 
+Proceedings of the 10th International Conference on Machine Learning {ICML 1993), pp. 190-
+196. Morgan Kaufma皿
+McCallum, A. K. (1995). Reinforcement Learning with Selective Perception and Hidden State. 
+Ph.D. thesis, University of Rochester, Rochester NY. 
+McCloskey, M., Cohen, N. J. (1989). Catastrophic interference in connectionist networks: The 
+sequential learning problem. Psychology of Learning and Motivation,
+凶：109- 165.
+McClure, S. M., Daw, N. D., Montague, P. R. (2003). A computational substrate for incentive 
+salience. Trends in Neurosciences, 26(8): 423- 428. 
+McCulloch, W. S., Pitts, W. (1943). A logical calculus of the ideas immanent in nervous activity. 
+Bulletin of Mathematical Biophysics, 5(4): 115- 133. 
+McMahan, H. B ., Gordon, G. J. (2005). Fast Exact Planning in Markov Decision Processes 
+In Proceedings of the International Conference on Automated Planning and Scheduling, pp 
+151-160. 
+Melo, F. S., Meyn, S. P., Ribe江o , M. I. (2008). An analysis of reinforcement learning with function 
+approximation. In Proceedings of the 25th International Conference on Machine Learning 
+(ICM£ 2008), pp. 664- 671. 
+Mendel, J. M. (1966). A survey of learning control systems. ISA Transactions, 5:297- 303. 
+Mendel, J. M., McLaren, R. W. (1970). Reinforcement learning control and pattern recogn山on
+systems. In J. M. Mendel and K. S. Fu (Eds.), Adaptive, Learning and Pattern Recognition 
+Systems: Theory and Applications, pp. 287- 318. Academic Press, New York. 
+Michie, D. (1961). Trial and error. In S. A. Barnett and A. McLaren (Eds.) , Scie九ce Survey, Part 
+2, pp. 129-145. Penguin, Harmondsworth. 
+Michie, D. (1963). Experiments on the mechanisation of game learning. 1. characterization of the 
+model and its parameters. The Computer Journal, 6(3): 232- 263 
+Michie, D. (1974) . On Machine Intelligence. E如burgh University Press, Edinburgh 
+Michie, D., Chambers, R. A. (1968). BOXES, An experiment in adaptive control. In E. Dale and 
+497 
+
+强化学习（第2 版）
+D. Michie (Eds.), Machine Intelligence 2, pp. 137- 152. Oliver and Boyd, Edinburgh 
+Miller, R. (1981). Meaning and Pu叩ose in the Intact Brain: A Philosophical, Psychological, and 
+Biological Account of Conscious Process. Clarendon Press, Oxford. 
+Miller, W. T., An, E., Glanz, F., Carter, M. (1990). The design of GMAC neural networks for 
+control. Adaptive and Learning System.s, 1:140-145 
+Miller, W . T., Glanz, F. H. (1996). UNH_CMAC verison 2.1: The University of New Hampshire 
+Implementation of the Cerebellar Model Arithmetic Computer - GMAC. Robotics Laboratory 
+Tec血ical Report, University of New H血pshire, Durham. 
+汕Ber, S., W仙ams, R. J. (1992). Learning to control a bioreactor using a neural net Dyna-Q 
+system. In Proceedings of the Seventh Yale Workshop on Adaptive and Learning Systems, pp. 
+167- 172. Center for Systems Science, Dunham Laboratory, Yale University, New Haven 
+Miller, W. T., Scalera, S. M., Kim, A. (1994). Neural network control of dynamic balance for a 
+biped walking robot. In Proceed·ings of the E勾hth Yale Workshop on Adaptive and Learn叩
+Systems, pp. 156- 161. Center for Systems Science, Dunham Laboratory, Yale University, New 
+Haven. 
+Minton, S. (1990). Quantitative results concerning the utility of explanation-based learning. Ar-
+tificial Intelligence, 42(2-3): 363- 391 
+Minsky, M. L. (1954). Theory of Neural-Analog Reinforcement Systems and Its Application to the 
+Brain-Model Problem. Ph.D. thesis, Princeton University. 
+Minsky, M. L. (1961). Steps toward artificial intelligence. Proceedings of the Institute of Radio 
+Engineers, 49:8-30. Reprinted in E. A. Feigenbaum and J. Feldman (Eds.), Computers and 
+Thought, pp. 406- 450. McGraw-Hill, New York, 1963 
+Minsky, M. L. (1967). Computation: Finite and Infinite Machines. Prentice-Hall, Englewood 
+Cliffs, NJ. 
+Mnih, V., Kavukcuoglu, K., Silver, D., Graves, A., Antonoglou, I., Wierstra, D. ，凡edmiller , M. 
+(2013). Playing atari with deep reinforcement learning. arXiv preprint arXiv:1312.5602 
+Mnih, V., Kavukcuoglu, K., Silver, D., Rusu, A. A., Veness, J ., Bellemare, M. G., Graves, 
+A., Riedmiller, M., F呴e land, A. K., Ostrovski, G., Petersen, S., Beattie, C., Sadik, A., 
+Antonoglou, I., King, H., Kumaran, D., Wierstra, D. , Legg, S., Hassabis, D. (2015). Hwnan-
+level control through deep reinforcement learning. Nature, 518(7540): 529- 533. 
+Modayil, J., Sutton, R. S. (2014). Prediction driven behavior: Learning pred心ons that drive 
+fixed responses. In AAAI-14 Workshop on A忧ificial Intelligence and Robotics, Quebec City, 
+Canada. 
+Modayil, J., W}ute, A., Sutton, R. S. (2014). Multi-timescale nexting in a reinforcement learning 
+robot. Adaptive Behavior, 22(2): 146- 160 
+Monahan, G. E. (1982). State of the art—
+a survey of partially observable Markov decision pro-
+cesses: theory, models, and algorithms. Management Science, 28(1): 1- 16 
+498 
+
+参考文献
+Montague, P. R., Dayan, P., Nowlan, S. J., Pouget, A., Sejnows如，
+T. J. (1993). Using aperi-
+odic reinforcement for directed self-organization during development. In Advances in Neural 
+呻rmation Processing Systems 5 (NIPS 1992), pp. 969- 976. Morgan Kaufmann 
+Montague, P. R., Dayan, P., Person, C., Sejnows如，
+T. J. (1995). Bee foraging in uncert血
+environments using predictive hebbian learning. Nature, 377(6551): 725- 728 
+Montague, P. R., Dayan, P., Sejnowski, T. J. (1996). A framework for mesencephalic dopamine 
+systems based on predictive Hebbian learning. The Journal of Neuroscience, 16(5): 1936-
+1947. 
+Montague, P.R., Dolan, R. J., Friston, K. J., Dayan, P. (2012). Computational psychiatry. Trends 
+in Cognitive Sciences, 16(1): 72- 80 
+Montague, P. R., Sejnowski, T. J. (1994). The predictive brain: Temporal coincidence and tem-
+poral order in synaptic learningmechanisms. Learning & Memo飞，
+1(1): 1- 33. 
+Moore, A. W. (1990). Efficient Memory-Based Learning for Robot Control. Ph.D. thesis, Univer-
+sity of Cambridge. 
+Moore, A. W., Atkeson, C. G. (1993). Prioritized sweeping: Reinforcement learning with less 
+data and less real time. Mach切e Learning, 13(1): 103- 130. 
+Moore, A. W. , Schneider, J., Deng, K (1997). Efficient locally weighted polynomial regression 
+pred心ons. In Proceedings of the 14th International Conference on Machine Learning (JCML 
+1997}. Morgan Kaufmann. 
+Moore, J. W. , Blazis, D. E. J. (1989). Simulation of a classically conditioned response: A cerebellar 
+implementation of the sutton-barto-desmond model. In J. H. Byrne and W. 0. Berry (Eds.), 
+Neural Models of Plasticity, pp. 187- 207. Academic Press, San Diego, CA. 
+Moore, J. W., Choi, J.-S. , Brunzel!, D. H. (1998). Predictive timing under temporal uncertainty: 
+The time derivative model of the conditioned response. In D. A. Rosenbaum and C. E. Collyer 
+(Eds.), Timing of Behavior, pp. 3- 34. :tvilT Press, Cambridge, MA. 
+Moore, J. W., Desmond, J. E., Berthier, N. E., Blazis, E. J., Sutton, R. S., Barto, A. G. (1986) . 
+Simulation of the classically cond山oned nictitating membrane response by a neuron-like adap-
+tive element: I. Response topography, neuronal firing, and interstimulus intervals. Behavioural 
+Brain Research, 21(2): 143- 154. 
+Moore, J. W., Marks, J. S., Castagna, V. E., Polewan, R. J. (2001). Parameter stability in the 
+TD model of complex CR topographies. In Society for Neuroscience Abstracts, 切642.
+Moore, J. W., Schmajuk, N. A. (2008). Kamin blocking. Scholarpedia, 3(5): 3542. 
+Moore, J. W. , Stickney, K. J. (1980). Formation of attentional-associative networks in real 
+tirne:Role of the hippocampus and implications for cond山oning. Physiological Psychology, 
+8(2): 207- 217. 
+Mukundan, J., Martinez, J . F. (2012). MORSE, Multi-objective reconfigurable self-optiinizing 
+memory scheduler. In IEEE 18th International Symposium on High Performance Computer 
+499 
+
+强化学习（第2 版）
+Architecture {HPCA), pp. 1- 12. 
+Miiller, M. (2002). Computer Go. A九ificial Intelligence, 134(1): 145- 179. 
+Munos, R., Stepleton, T., Harutyunyan, A. , Bellemare, M. (2016). Safe and efficient off-policy 
+reinforcement learning. In Advances in Neural Information Processing Systems 29 (NIPS 
+2016), pp. 1046- 1054. Curran Associates, Inc. 
+Naddaf, Y. (2010). Game-Independent AI Agents for Playing Ata讨2600 Console Games. Ph.D. 
+thesis, University of Alberta, Edmonton. 
+Narendra, K. S., Thathachar, M. A. L. (1974). Learning automata- A survey. IEEE Transactions 
+on Systems, Man, and Cybernetics, 4:323- 334. 
+Narendra, K. S., Thathachar, M. A. L. (1989). Learning Automata: An Introduction. Prentice-
+Hall, Englewood Cliffs, NJ. 
+Narendra, K. S., Wheeler, R. M. (1983). An N-player sequential stochastic game with identical 
+payoffs. IEEE Transactions on Systems, Man, and Cybernetics, 6:1154- 1158 
+Narendra, K. S. , Wheeler, R. M. (1986). Decentralized learning in finite Markov chains. IEEE 
+Transactions on Automatic Control, 31(6): 519- 526. 
+Ne邮，A., Bertsekas, D. P. (2003). Least squares policy evaluation algorithms with linear function 
+approximation. Discrete Event Dynamic Systems, 13(1-2): 79- 110. 
+Ng, A. Y. (2003). Shaping and Policy Search in Reinforcement Learning. Ph.D. thesis, University 
+of California, Berkeley. 
+Ng, A. Y. , Harada, D., Russell, S. (1999). Policy invariance under reward transformations: Theory 
+and application to reward shaping. In I. Bratko and S. Dzeroski (Eds.) , Proceedings of the 
+16th International Conf,盯ence on Machine Learning (ICML 1999), pp. 278- 287. 
+Ng, A. Y., Russell, S. J . (2000). Algorithms for inverse reinforcement learning. In Proceedings of 
+the 17th International Conference on Machine Learning (ICML 2000), pp. 663- 670. 
+Niv, Y. (2009). Reinforcement learning in the brain. Journal of Mathematical Psychology, 53(3): 
+139- 154. 
+Niv, Y., Daw, N. D., Dayan, P. (2006). How fast to work: Response vigor, motivation and tonic 
+dopamine. In Advances in Neural Information Processing Systems 18 {NIPS 2005), pp. 1019-
+1026. MIT Press, Cambridge, MA. 
+Niv, Y., Daw, N. D., Joel, D., Dayan, P. (2007). Tonic dopamine: opportunity costs and the 
+control of response vigor. Psychopharmacology, 191(3): 507- 520. 
+Niv, Y., Joel, D., Dayan, P. (2006). A normative perspective on motivation. Trends in Cognitive 
+Sciences, 10(8): 375- 381. 
+Nouri, A., Littman, M. L. (2009). Multi-resolution exploration in continuous spaces. In Advances 
+in Neural Information Processing Systems 21 (NIPS 2008), pp. 1209- 1216. Curran Associates, 
+Inc. 
+Nowe, A. , Vrancx, P., Hauwere, Y.-M. D. (2012). Game theory and multi-agent reinforcement 
+500 
+
+参考文献
+learning. In M. Wiering and M. van Otterlo (Eds.), Reinforcement Learning: State-of-the-Art, 
+pp. 441- 467. Springer-Verlag Berlln Heidelberg. 
+Nutt, D. J., Lingford-Hughes, A., Erritzoe, D., Stokes, P. R. A. (2015). The dopa汀line theory of 
+add心on: 40 years of highs and lows. Nature Reviews Neuroscience, 16(5): 305- 312. 
+O'Doherty, J. P., Dayan, P. ，阳ston , K. , Critchley, H., Dolan, R. J. (2003). Temporal difference 
+models and reward-related learning in the human brain. Neuron, 38(2): 329- 337. 
+O'Doherty, J.P., Dayan, P., Schultz, J ., Deichmann, R ，阳ston, K., Dolan, R. J. (2004). Disso-
+ciable roles of ventral and dorsal striatum in instrumental conditioning. Science, 304(5669): 
+452-454. 
+6Lafsd6ttir, H. F., Barry, C. , Saleem, A. B., Hassabis, D., Spiers, H. J. (2015). Hippocampal 
+place cells construct reward related sequences through unexplored space. Elife, 4: e06063. 
+Oh. J., Guo, X. , Lee, H., Lewis, R. L., Singh, S. (2015). Action-conditional video prediction 
+using deep networks in Atari games. In Advances in Neural Information Processing Systems 
+28 (NIPS 2015}, pp. 2845- 2853. Curran Associates, Inc 
+Olds, J., Milner, P. (1954). Positive reinforcement produced by electrical stimulation of the septa! 
+area and other regions of rat brain. Journal of Comparative and Physiological Psychology, 
+肛(6): 419-427. 
+O'Reilly, R. C. , Frank, M. J. (2006). Making working memory work: A computational model of 
+learning in the prefrontal cortex and basal ganglia. Neural Computation, 18(2): 283- 328 
+O'Reilly, R. C., Frank, M. J., Hazy, T. E., Watz, B. (2007). PVLV, the primary value and learned 
+value Pavlovian learning algorithm. Behavioral Neuroscience, 121(1): 31- 49. 
+Omohundro, S. M. (1987). Efficient algorithms with neural network behavior. Technical Report 
+Department of Computer Science, University of Illinois at Urbana-Champaign. 
+Ormoncit, D., Sen, S. (2002). Kernel-based reinforcement learning. Machine Learning, 49(2-3): 
+161- 178. 
+Oudeyer, P.-Y., Kaplan, F. (2007). What is intrinsic motivation? A typology of computational 
+approaches. 丹ontiers in Neurorobotics, 1: 6. 
+Oudeyer, P.-Y., Kaplan, F., Hafuer, V. V. (2007) . Intrinsic motivation systems for autonomous 
+mental development. IEEE 开ansactions on Evol,U材ona内
+Computation, 11(2): 265- 286. 
+eurons in the orbitofrontal cortex encode economic 
+Padoa-Schioppa, C., Assad, J. A. (2006). Neurons in the orbitofrontal cortex encod 
+value. Nature, 441(7090): 223- 226. 
+Page, C. V. (1977). Heuristics for signature table analysis as a pattern recognition technique. 
+IEEE Transactions on Systems, Man, and Cybernetics, 7(2): 77- 86 
+Pagnoni, G., Zink, C. F., Montague, P.R., Berns, G. S. (2002). Activity in human ventral striatum 
+locked to errors of reward prediction. Nature Neuros吐ience , 5(2): 97- 98. 
+Pan, W.-X. , Schmidt, R., Wickens, J. R., Hyland, B. I. (2005). Dopamine cells respond to 
+pre小cted events during classical conditioni_ng: Evidence for eligibility traces in the reward-
+501 
+
+强化学习（第2 版）
+learning network. The Journal of Neuroscience, 25(26): 6235-6242 
+Park, J., Kim, J.. Kang, D. (2005). An RLS-based natural actor-c1如c algorithm for locomotion 
+of a two-linked robot arm. Computational Intelligence and Sec叩ty: 65-72. 
+Parks, P. C., M山tzer, J. (1991). Improved allocation of weights for 邸sociative memory storage in 
+learning control systems. In IFAC Design Methods of Control Systems, Zurich, Switzerland. 
+pp. 507- 512. 
+Parr, R. (1988). H缸archical Control and Learning for Markov Decision Processes. Ph.D. thesis 
+University of California, Berkeley. 
+Parr, R., Russell, S. (1995). Approximating optimal policies for p釭tially observable stoch础c
+domains. In Proceedings of the Fourteenth International Joint Conference on Artificial Intel-
+ligence, pp. 1088- 1094. Morgan Ka吐nann
+Pavlov, I. P. (1927). Conditioned Refl釭es. Oxford University Press, London. 
+Pawlak, V., Kerr, J. N. D. (2008). Dopamine receptor activation is required for corticostriatal 
+spike-timing-dependent plasticity. The Journal of Neuroscience, 28(10): 2435-2446. 
+Pawlak, V., Wickens, J. R., Kirkwood, A., Kerr, J. N. D. (2010). Timing is not every伽ng:
+neuromodulation opens the STDP gate. 肝ontiers in Synaptic Neuroscience, 2: 146. doi: 
+10.3389 / fnsyn.2010.00146. 
+Pearce, J. M., Hall, G. (1980). A model for Pavlovian learning: Variation in the effectiveness of 
+conditioning but not uncond 山oned stimuli. Psychological Review, 87(6): 532- 552 
+Pearl, J . (1984). Heuristics: Intelligent Search Strategies for Computer Problem Solving. Addison-
+Wesley, Reading, MA. 
+Pearl, J. (1995). Causal diagrams for empirical research. Biometrika, 82(4): 669-688 
+Pecevs如，
+D., Maass, W., Legenstein, R. A. (2008). Theoretical analysis of learning with reward-
+modulated spike-timing-dependent plasticity. In Advances in Neural Information Processing 
+Systems 20 (NIPS 2007), pp. 881- 888. Curran Associates, Inc. 
+Peng, J. (1993). Effi戊ent Dynamic Programming-Based Leaming for Control. Ph.D. thesis, North-
+eastern University, Boston MA. 
+Peng, J. (1995). Efficient memory-b邸ed dynamic programming. In Proceedings of the 12th Inter-
+national Conference on Machine Learning (ICML 1995), pp. 438-446 
+Peng, J., WilliarrlS, R. J. (1993). Efficient learning and planniug w咖n the Dyna framework 
+Adaptive Behavior, 1(4): 437- 454 
+Peng, J., Williams, R. J. (1994). Incremental multi-step Q-Iearning. In Proceedings of the 11th In-
+temational Conference on Machine Learning (ICML 1994), pp. 226- 232. Morgan Kaufmann, 
+San Francisco. 
+Peng, J., Williams. R. J. (1996). Incremental multi-step Q-learning. Machine Learning, 22(1): 
+283- 290. 
+Perkins, T. J. , Penclr儿h , M. D. (2002). On the existence of fixed points for Q-learning and Sarsa in 
+502 
+
+参考文献
+partially observable domains. In Proceedings of the 19th International Conference on Machine 
+Leaming (ICML 2002}, pp. 490-497. 
+Perkins, T. J., Precup, D. (2003). A convergent form of approximate policy iteration. In Advances 
+in Neural Information Processing Systems 15 {NIPS 2002}, pp. 1627- 1634. MIT Press, Cam-
+bridge, MA. 
+Peters, J., Biichel, C. (2010) . Neural representations of subjective reward value. Behavioral Brain 
+Research, 213(2): 135- 141 
+Peters, J., Schaal, S. (2008). Natural actor- critic. Neurocomputing, 71(7): 1180- 1190. 
+Peters, J. , Vijayakumar, S., Schaal, S. (2005). Natural actor- critic. In European Conference on 
+Machine Leaming, pp. 280-291. Springer Berlin Heidelberg 
+Pezzulo, G., van der Meer, M. A. A., Lansink, C. S. , Pennartz, C. M. A. (2014). Internally 
+generated sequences in learning and executing goal-directed behavior. Trends in Cognitive 
+Science, 18(12): 647- 657. 
+Pfeiffer, B. E., Foster, D. J. (2013). Hippocampal place-cell sequences depict future paths to 
+remembered goals. Nature, 497(7447): 74- 79. 
+Phansalkar, V. V., Thathachar, M. A. L. (1995). Local and global optimization algorithms for 
+generalized learning automata. Neural Computation, 7(5): 950-973 
+Poggio, T. , G 江osi , F. (1989). A theory of networks for approximation and learning. A.I. Memo 
+1140. Artificial Intelligence Laboratory, Massachusetts Institute of Tec匝ology, Cambridge, 
+MA. 
+Poggio, T ., G 汀osi , F. (1990). Regularization algorithms for learning that are equivalent to mu!-
+tilayer networks. Science, 247(4945): 978- 982 
+Polyak, B. T. (1990). New stochastic approximation type procedures. Automat. i Telemekh, 7(98-
+107): 2 (in Russian) 
+Polyak, B. T. , Juditsky, A. B. (1992). Acceleration of stochastic approximation by averaging 
+SIAM Journal on Control and Optimization, 30(4): 838- 855. 
+Powell, M. J. D. (1987). Radial basis functions for multivariate interpolation: A review. In J. C. 
+Mason and M. G. Cox (Eds.), Algorithms for Approximation, pp. 143- 167. Clarendon Press, 
+Oxford. 
+Powell, W. B. (2011). Approximate Dynamic Programming: Solving the Curses of Dimensionality, 
+Second edition. John Wiley and Sons. 
+Powers, W. T. (1973). Behavior: The Control of Perception. Aldine de Gruyter, Chicago. 2nd 
+expanded edition 2005. 
+Precup, D. (2000). Temporal Abstraction in Reinforcement Leaming. Ph.D. thesis, University of 
+Massachusetts, Amherst. 
+Precup, D., Sutton, R. S., Dasgupta, S. (2001). Off-policy temporal-d击erence learning with 
+function approximation. In Proceedings of the 18th International Conference on Machine 
+503 
+
+强化学习（第2 版）
+Learning (ICML 2001), pp. 417-424. 
+Precup, D., Sutton, R. S., Paduraru, C., Koop, A., Singh, S. (2006). Off-policy learning with 
+options and reco即zers. In Advances in Neural Information Processing Systems 18 (NIPS 
+2005), pp. 1097- 1104. MIT Press, Cambridge, MA. 
+Precup, D., Sutton, R. S., Singh, S. (2000). Eligibility traces for off-policy policy evaluation. In 
+Proceedings of the 17th International Conference on Machine Learning {ICML 2000), pp. 759-
+766. Morgan Kaufmann. 
+Puterman, M. L. (1994). Markov Decision Problems. Wiley, New York. 
+Puterman, M. L., Shin, M. C. (1978). Modified policy iteration algorithms for discounted Markov 
+decision problems. Management Science, 2从11): 1127- 1137 
+Quartz, S., Dayan, P., Montague, P. R. , Sejnowski, T. J. (1992). Expectation learning in the 
+brain using diffuse ascending co血ections. In Society for Neuroscience Abstracts, 18: 1210. 
+Randl111v, J., Alstrl1!m, P. (1998). Learning to drive a bicycle using reinforcement learning and 
+shaping. In Proceedings of the 15th International Conference on Machine Learning {ICML 
+1998), pp. 463-471. 
+Rangel, A. , Camerer, C., Montague, P.R. (2008). A framework for studying the neurobiology of 
+value-based decision making. Nature Reviews Neuroscience, 9(7): 545- 556. 
+Rangel, A., Hare, T. (2010). Neural computations associated with goal如ected choice. Cu汀ent
+Opinion in Neurobiology, 20(2): 262- 270. 
+Rao, R. P., Sejnowski, T. J. (2001). Spike-timing-dependent Hebbian plasticity as temporal 
+邮erence learning. Neural Computation, 13(10): 2221- 2237. 
+Ratcliff, R. (1990). Connectionist models of recognition memory: Constraints imposed by learning 
+and forgetting functions. Psychological Review, 97(2): 285- 308 
+Reddy, G., Celani, A., Sejnowski, T. J., Vergassola, M. (2016). Learning to soar in turbulent 
+environments. Proceedings of the National Academy of Sciences, 113(33): E4877- E4884. 
+Redish, D. A. (2004). Addiction as a computational process gone awry. Science, 306(5703): 1944-
+1947. 
+Reetz, D. (1977). Approximate solutions of a discounted Markovian decision process. Bonner 
+Mathematische Schriften, 98: 77-92. 
+Rescorla, R. A., Wagner, A. R. (1972). A theory of Pavlovian conditioning: Variations in the 
+effectiveness of reinforcement and nonreinforcement. In A.H. Black and W. F. Prokasy (Eds.), 
+Classical Conditioning II, pp. 64- 99. Appleton-Century-Crofts, New York 
+Revusky, S., Garcia, J. (1970). Learned 邸sociations over long delays. In G. Bower (Ed.), The 
+Psychology of Learn叩and Motivation, v. 4, pp. 1- 84. Academic Press, Inc., New York 
+Reynolds, J. N. J., Wickens, J. R. (2002). Dopamine-dependent plasticity of corticostriatal 
+synapses. Neural Networks, 15(4): 507- 521 
+沁ng, M. B. (in prep釭ation). Representing knowledge as forecasts (and state as knowledge) . 
+504 
+
+参考文献
+阳pley, 8. D. (2007). Pattern Recognition and Neural Networks. Cambridge University Press 
+Rixner, S. (2004). Memory controller optimizations for web servers. In Proceedings of the 37th an-
+nual IEEE/ A CM International Symposium on Microarchitecture, p. 355- 366. IEEE Computer 
+Society. 
+Robbins, H. (1952). Some aspects of the sequential design of experiments. Bulletin of the American 
+Mathematical Society, 58:527-535. 
+Robertie, B. (1992). Carbon versus silicon: Matching wits with TD-Gammon. Inside Backgam-
+mon, 2(2): 14-22. 
+Romo, R., Schultz, W. (1990). Dopamine neurons of the monkey midbrain: Contingencies of 
+responses to active touch during self-initiated arm movements. Journal of Neurophysiology, 
+63(3): 592- 624. 
+Rosenblatt, F. (1962). Principles of Neurodynamics: Perceptrons and the Theo为of Brain Mech-
+anisms. Spartan Books, Washington, DC 
+Ross, S. (1983). Introduction to Stochastic Dynamic Programming. Academic Press, New York 
+Ross, T. (1933). Machines that think. Scientific American, 148(4): 206- 20v 
+Rubinstein, R. Y. (1981). Simulation and the Monte Carlo Method. Wiley, New York. 
+Rumelhart, D. E., Hinton, G. E., Williams, R. J. (1986). Learning internal representations by 
+error propagation. In D. E. Rumelhart and J. L. McClelland (Eds.), Parallel Distributed 
+Processing: Explorations in the Microstructure of Cognition, vol. I, Foundations. Bradford/ 
+MIT Press, Cambridge, MA. 
+Rummery, G. A. (1995). Problem Solving with Reinforcement Learning. Ph.D. thesis, Ulllversity 
+of Cambridge. 
+Rummcry, G. A., N 江anjan, M. (1994). On-line Q-learning using connectionist systems. Technical 
+Report CUED/F-INFENG/TR 166. Engineering Department, Cambridge University 
+Ruppert, D. (1988). Efficient estimations from a slowly convergent Robbins-Monro process. Cor-
+nell University Operations Research and Industrial Engineering Technical Report No. 781. 
+Russell, S., Norvig, P. (2009). Artificial Intelligence: A Modern Approach, 3rd ed山on. Prentice-
+Hall, Englewood Cliffs, NJ. 
+Russo, D. J., Van Roy, B., Kazerouni, A., Osband, I., Wen, Z. (2018). A tutorial on Thompson 
+sampling, Foundations and Trends in Machine Learning. ArXiv: 1707.02038. 
+Rust, J. (1996). Numerical dynamic programming in economics. lrl H. A=an, D. Kendrick, and 
+J. Rust (Eds.), Handbook of Computational Economics, pp. 614- 722. Elsevier, Amsterdam 
+Saddoris, M. P., Cacciapaglia, F., Wightmman, R. M., Carelli. R. M. (2015). Differential dopamine 
+release dyna血cs in the nucleus accumbens core and shell reveal complementary signals for 
+error prediction and incentive motivation. The Journal of Neuroscience, 35(33): 11572- 11582. 
+Saksida, L. M., Raymond, S. M., Touretzky, D.S. (1997). Shaping robot behavior using principles 
+from instrumental conditiolllng. Robotics and Autonomous Systems, 22(3): 231- 249. 
+505 
+
+强化学习（第2 版）
+Samuel, A. L. (1959). Some studies in machine learning using the game of checkers. IBM Journal 
+on Research and Development, 3(3), 210-229. Reprinted in E. A. Feigenbaum and J. Feldman 
+(Eds.), Computers and Thought, pp. 71- 105. McGraw-Hill, New York, 1963 
+Samuel, A. L. (1967). Some stu山es in machine learning using the game of checkers. ll—Recent 
+progress. IBM Journal on Research and Development, 11(6): 601- 617. 
+Schaal, S., Atkeson, C. G. (1994). Robot juggling: Implementation of memory-based le釭ning
+IEEE Control Systems, 14(1): 57- 71. 
+Schmajuk, N. A. (2008). Computational models of classical conclitioning. Scholarpedia, 3(3): 1664. 
+Sclun.idhuber, J . (1991a). Curious model-building control systems. In Proceedings of the IEEE 
+International Joint Conference on Neural Networks, pp. 1458- 1463. IEEE. 
+Schmidhuber, J. (1991b). A poss心lity for implementing curiosity and boredom in model-building 
+neural controllers. In 丹om Animals to Animals: Proceedings of the First International Co兀
+如ence on Simulation of Adaptive Behavior, pp. 222- 227. MIT Press, Cambridge, MA. 
+Schmi心uber, J. (2015) . Deep learning in neural networks: An overview. Neural Networks, 6: 85-
+117. 
+Schmidlmber, J., Storck, J., Hochr·eiter, S. (1994). Reinforcement driven information acquisi-
+tion in nondeterrn.inistic environments. Technical report, Fakultat fur lnformatik, Technische 
+Universitat Miinchen, M加chen , Germany 
+Schraudolph, N. N. (1999) . Local gain adaptation in stochastic graclient descent. In Proceedings 
+of the International Conference on Artificial Neural Networks, pp. 569- 574. IEEE, London 
+Schraudolph, N. N. (2002). Fast curvature matrix-vector products for second-order gra山ent de-
+scent. Neural Computation, 14(7): 1723- 1738. 
+Schraudolph, N. N., Yu, J., Aberdeen, D. (2006). Fast online policy gradient learning with SMD 
+gain vector adaptation. In Advances in Neural Information Processing Systems, pp. 1185-
+1192. 
+Schultz, D. G., Melsa, J. L. (1967). State 压nctions and Linear Control Systems. McGraw-Hill, 
+New York 
+Schultz, W. (1998). Preclictive reward signal of dopamine neurons. Joumal of Neurophysiology, 
+80(1): 1- 27. 
+Schultz, W., Apicella, P. , 切ungberg , T. (1993). Responses of monkey dopamine neurons to reward 
+and conditioned stimuli dw·ing successive steps of learning a delayed response task. 
+The 
+Journal of Neuroscience, 13(3): 900- 913 
+Schultz, W., Dayan, P., Montague, P. R. (1997). A neural substrate of prediction and reward. 
+Science, 275(5306): 1593- 1598. 
+Schultz, W. , Romo, R. (1990). Dopamine neurons of the monkey midbrain: contingencies of 
+responses to stimuli eliciting immediate behavioral reactions. Journal of Neurophysiology, 
+63(3): 607- 624. 
+506 
+
+参考文献
+Schultz, W., Romo, R., Ljungberg, T., Mirenowicz, J., Hollerman, J. R., Dickinson, A. (1995) 
+Reward-related signals carried by dopamine neurons. In J. C. Houk, J. L. Davis, and D. G 
+Beiser (Eds.), Models of Infonnation Processing in the Basal Ganglia, pp. 233-248. MIT Press, 
+Cambridge, MA. 
+Schwartz, A. (1993). A reinforcement learning method for maximizing undiscounted rewards. In 
+肝oceed叨s of the 10th International Conference on Machine Learning {ICML 1993), pp. 298-
+305. Morgan Kaufmann. 
+Schweitzer, P. J., Seidma1m, A. (1985). Generalized polynomfal approximations in Markovian 
+decision processes. Journal of Mathematical Analysis and Applications, 110(2): 568- 582 
+Selfridge, 0. G. (1978). Tracking and trailing: Adaptation in movement strategies. Technical 
+report, Bolt Beranek and Newman, Inc. Unpublished report 
+Selfridge, 0. G. (1984). Some themes and primitives in ill-defined systems. In 0. G. Selfridge, 
+E. L．和ssland , and M. A. Arbib (Eds.), Adaptive Control of Ill-Defined Systems, pp. 21— 
+26. Plenum Press, NY. Proceedings of the NATO Advanced Research Institute on Adaptive 
+Control of Ill-defined Systems, NATO Conference Series II, Systems Science, Vol. 16. 
+Sel扣dge, 0. J. , Sutton, R. S., Barto, A. G. (1985). Training and tracking in robotics. In A. Joshi 
+(Ed.), Proceedings of the Ninth International Joint Conference on Artificial Intelligence, pp 
+670---672. Morgan Kaufmann. 
+Seo, H., Barraclough, D., Lee, D. (2007). Dynamic signals related to choices and outcomes in the 
+dorsolateral prefrontal cortex. Cerebral Cortex, 顶suppl 1): 110- 117. 
+Seung, H. S. (2003). Learning in spiking neural networks by reinforcement of stochastic synaptic 
+transmission. Neuron, 40(6): 1063- 1073. 
+Shah, A. (2012). Psychological and neuroscient币c connections with reinforcement learning. In M. 
+Wiering and M. van Otterlo (Eds.), Reinforcement Learning: State-of-the-Art, pp. 507- 537 
+Springer-Verlag Berlin Heidelberg. 
+Shannon, C. E. (1950). Programming a computer for playing chess. Philosophical Magazine and 
+Journal of Science, 41(314): 256- 275. 
+Shannon, C. E. (1951). Presentation of a maze-solving machine. In H. V. Forester (Ed.) , Cyber-
+netics. Transactions of the Eighth Conference, pp. 173- 180. Josiah Macy Jr. Foundation. 
+Shannon, C. E. (1952). "Theseus" maze-solving mouse. http://cyberneticzoo.com/mazesol- vers/ 
+1952-?-theseus-maze-solving-mouse-?-claude-shannon-american/. 
+Shelton, C. R. (2001). Importance Sampling for Reinforcement Learning with Multiple Objectives 
+Ph.D. thesis, Massachusetts Institute of Technology, Cambridge MA. 
+Shepard, D. (1968). A two-din1ensional interpolation function for irregularly-spaced data. In Pro-
+ceedings of the 23rd ACM National Conference, pp. 517- 524. ACM, New York 
+Sherman, J., Morrison, W. J. (1949). Adjustment of an inverse matrix corresponding to changes 
+in the elements of a given column or a given row of the original matrix (abstract). Annals of 
+507 
+
+强化学习（第2 版）
+Mathematical Statistics, 20(4): 621. 
+Shewchuk, J., Dean, T. (1990). Towards learning time-邓rying functions with high input dimen-
+sionality. In Proceedings of the F如IEEE International Symposium on Intelligent Control. 
+pp. 383- 388. IEEE Computer Society Press, Los Alamitos, CA 
+Shirnansky, Y. P. (2009) . Biologically plausible learning in neural networks: a lesson from bacterial 
+chemotaxis. Biological Cybernetics, 101(5-6): 379- 385 
+Si, J. , Barto, A. , Powell, W. , Wunsch, D. (Eds.) (2004). Handbook of Learning and Approximate 
+Dynamic Programming. John Wiley and Sons 
+Silver, D. (2009). Reinforcement Leaming and Simulation Based Search in the Game of Go. Ph 
+D. thesis, University of Alberta, Edmonton. 
+Silver, D., Huang, A., Maddison, C. J. , Guez. A., Sifre, L., van den Driessche, G., Schrittwieser. 
+J., Antonoglou, I., Panncershclvarn, V., Lanctot, M., Dieleman, S., Grewe, D., Nham, J. , 
+Kalchbrenner, N. , Sutskever, T., Lillicrap, T. , Leach, M., Kavukcuoglu, K., Graepel, T. , Hass-
+abis, D. (2016). Mastering the game of Go with deep neural networks and tree search. Nature, 
+529(7587): 484- 489. 
+Silver, D. , Lever, G. , Heess, N., Degris, T ., Wierstra, D. ，和edmiller , M. (2014). Deterministic 
+policy gradient algorittuns. In Proceedings of the 31st International Conference on Machine 
+Learning {ICML 2014), pp. 387- 395. 
+Silver, D., Schrittwieser, J ., Simonyan, K. , Antonoglou, l. , Huang, A., Guez, A., Hubert, T ., 
+Baker, L., Lai, M., Bolton, A. , Chen, Y., Lillicrap, L., Hui, F., Sifre, L., van den Driesschc, 
+G., Graepel, T. , Hassibis, D. (2017a). Mastering the game of Go without human knowledge 
+Nature, 550(7676): 354- 359. 
+Silver, D., Hubert, T., Sc加ttwieser , J ., Antonoglou, I., L扣，M. , Guez, A., Lanctot, M., Sifre, L. , 
+Kumaran, D. , Graepel, T. , Lillicrap, T., Simoyan, K., Hass心s , D. (2017b). Mastering chess 
+and shogi by self-play wi.th a general reinforcement learning algorithm. ArXiv: 1712.01815 
+$im§ek, 0., Alg6rta, S. , Ko伽yal , A. (2016). Why most decisions are easy in tetris—And per-
+haps in other sequential decision problems, as well. In Proceedings of the 33rd International 
+Conference on Machine Leaming (ICM£ 2016), pp. 1757-1765 
+Simon, H. (2000). Lecture at the Earthware Symposium, Carnegie Mellon University. https:/ / 
+www.youtube.com/ watch ?v=EZhyi-8DBjc 
+Singh, S. P. (1992a). Reinforcement learning with a hierarchy of abstract models. In Proceedings 
+of the Tenth National Conference on Artificial intelligence {AAAI-92), pp. 202- 207. AAAI/ 
+MIT Press, Menlo Park, CA. 
+Singh, S. P. (1992b). Scaling reinforcement learning algorithms by learning variable temporal 
+resolution models. In Proceedings of the 9th International Workshop on Machine Learning, 
+pp. 406- 415. Morgan Kaufo1ann. 
+Singh, S. P. (1993). Learning to Solve Ma?、kovian Decision Processes. Ph.D. thesis, University of 
+508 
+
+参考文献
+Massachusetts, Amh釭st.
+Singh, S. P. (Ed.) (2002). Special double issue on reinforcement learning, Machine Learning, 
+49(2-3) 
+Singh, S., Barto, A. G., Chentanez, N. (2005). IntrinsicaUy motivated reinforcement learning. In 
+Advances in Neurol lnforrriation Processing Systems 17 (NIPS 2004), pp. 1281- 1288. MIT 
+Press, Cambridge, MA. 
+Singh, S. P. , Bertsekas, D. (1997). Reinforcement learning for dynamic channel allocation in 
+cellular telephone systems. In Advances 切Neurol Information Processing Systems 9 (NIPS 
+1996}, pp. 974- 980. MIT Press. Cambridge, MA. 
+Singh, S. P., Jaakkola, T., Jordan, M. I. (1994). Learning without state-estimation in partially 
+observable Markovian decision problems. In Proceedings of the 11th International Conference 
+on Machine Learning (ICML 1994), pp. 284- 292. Morgan Kau(rnann 
+Singh, S., Jaakkola, T., Littm印，M. L. , Szepesv ri, C. (2000). Convergence resulLs for single-step 
+on-policy reinforcement-learning algorithms. Machine Learning, 38(3): 287- 308 
+Singh, S. P. , Jaakkola, T., Jordan, M. I. (1995). Reinforcement learning with soft state aggre-
+gation. In Advances in Neural Information Processing Systems 7 (NIPS 1994}, pp. 359-368. 
+MIT Press, Cambridge, MA. 
+Singh, S., Lewis, R. L., Barto, A. G. (2009). Where do rew缸<ls come from? In N. Taatgen and H 
+van 比jn (Eds.) , Proceedings of the 31st Annual Conference of the Cognitive Science Society, 
+pp. 2601- 2606. Cognitive Science Society. 
+Singh, S., Lewis, R. L., Barto, A.G., Sorg, J. (2010). Intrinsically motivated reinforcement learn-
+ing: An evolutionary perspective. IEEE Transactions on Autonomous Mental Development, 
+2(2): 70- 82. Special issue on Active Learning and Intrinsically Motivated Exploration in 
+Robots: Advances and Challenges. 
+Singh, S. P., Sutton, R. S. (1996) . Reinforcement learning with replacing elig心l ity traces. Machine 
+Learning, 22(1-3): 123- 158. 
+Skinner, B. F. (1938). The Behavior of Organisms: An Experimental Analysis. Appleton-Century, 
+ew York. 
+Skinner, B. F. (1958). Reinforcement today. American Psychologist, 13(3): 94- 99 
+Skinner, B. F. (1963). Operant behavior. Ame讨can Psychologist, 18(8): 503- 515. 
+Sofge, D. A., White, D. A. (1992). Applied learning: OpLimal control for manufacturing. In D. A. 
+White and D. A. Sofge (Eds.), Handbook of Intelligent Control: Neural, 几zzy, and Adaptive 
+Approaches, pp. 259- 281. Van Nostrand Reinhold, New York. 
+Sorg, J. D. (2011). The Optimal Reward Problem:Designing Effective Reward for Bounded Agents 
+Ph.D. thesis, University of Michigan, Ann Arbor 
+Sorg, J., Lewis, R. L., Singh, S. P. (2010). Reward design via online gra小ent ascent. In Advances 
+切Nev.ml Information Processing Systems 23 (NIPS 2010}, pp. 2190- 2198. Curran Associates, 
+509 
+
+强化学习（第2 版）
+Inc. 
+Sorg, J., Singh, S., Lewis, R. (2010). Internal rewards m山gate agent boundedness. In P.,.oceedings 
+of the 27th International Confe.,.ence on Machine Learning (ICML 2010}, pp. 1007- 1014. 
+Spence, K. W. (1947). The role of secondary reinforcement in delayed reward learning. Psycho-
+logical Review, 54(1): 1- 8 
+Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., Salakhutdinov, R. (2014) . Dropout: A 
+simple way to prevent neural networks from overfitting. Journal of Machine Learn叩Resea.,.ch ,
+15(1): 1929-1958. 
+Staddon, J.E. R. (1983). Adaptive Behavio.,.and Learning. Cambridge University Press 
+Stanfill, C., Waltz, D. (1986). Toward memory-based reasoning. Communications of the ACM. 
+29(12): 1213-1228. 
+Steinberg, E. E., Keillin, R., Boivin, J. R., Witten, I. B., Deisseroth, K., Janak, P.H. (2013). A 
+causal link between prediction errors, dopamine neurons and learning. Nature Neu.,.oscience, 
+16(7): 966-973. 
+Sterling, P., Laughlin, S. (2015). P讨nciples of Neural Design. MIT Press, Cambridge, MA 
+Sugiyama, M., Hachiya, H., Morimura, T. (2013). Statistical Reinforcement Learning: Modern 
+Machine Learning Approaches. Chapman & Hall/CRC 
+Suri, R. E., Bargas, J., Arbib, M.A. (2001). Modeling functions ofstriatal dopamine modulation 
+in learning and planning. Neuroscience, 103(1): 65- 85. 
+Suri, R. E., Schultz, W. (1998). Learning of sequential movements by neural network model with 
+dopamine-like reinforcement signal. Experimental Brain Research, 121(3): 350- 354 
+Suri, R. E., Schultz, W. (1999). A neural network model with dopamine-like reinforcement signal 
+that learns a spatial delayed response task. Neuroscience, 91(3): 871- 890. 
+Sutton, R. S. (1978a). Learning theory support for a single channel theory of the brain. Unpub-
+lished report. 
+Sutton, R. S. (1978b). Single channel theory: A neuronal theory of learning. Brain Theory 
+Newsletter, 4:72- 75. Center for Systems Neuroscience, University of Massachusetts. Amherst, 
+MA. 
+Sutton, R. S. (1978c). A unified theory of expectation in classical and instrumental conditioning 
+Bachelors thesis, Stanford University. 
+Sutton, R. S. (1984). Temporal Credit Assignment in Reinforcement Learning. Ph.D. thesis, Uni-
+versity of Massachusetts, Amherst. 
+Sutton, R. S. (1988). Learning to predict by the method of temporal differences. Machine Learn-
+吨氓1): 9- 44 (important erratum p. 377) 
+Sutton, R. S. (1990). Integrated arc比tectures for learning, planning, and reacting based on ap-
+proximating dynamic programming. In Proceedings of the 7th International Workshop on 
+Machine Learning, pp. 216- 224. Morgan Kaufmann 
+510 
+
+参考文献
+Sutton, R. S. (1991a) . Dyna, an integrated architecture for learning, planning, and reacting 
+SIGART Bulletin, 2(4): 160- 163. ACM, New York. 
+Sutton, R. S. (1991b). Planning by incremental dynamic programming. In Proceedings of the 8th 
+International Workshop on Machine Leaming, pp. 353- 357. Morgan Kaufmann. 
+Sutton, R. S. (Ed.) (1992a). Reinforcement Learning. Kluwer Academic Press. Reprinting of a 
+special double issue on reinforcement learning, Machine Learning, 8(3-4) 
+Sutton, R.S. (1992b). Adapting bias by gi.·adient descent: An incremental version of delta-bar-
+delta. Proceedings of the Tenth National Conference on Artificial Intelligence, pp. 171- 176, 
+MIT Press. 
+Sutton, R.S. (1992c). Gain adaptation beats least squares? Proceedings of the Seventh Yale 
+Workshop on Adaptive and Learning Systems, pp. 161- 166, Yale University, New Haven, CT 
+Sutton, R. S. (1995a). TD models: Modeling the world at a mixture of time scales. In Proceedin弈
+of the 12th International Conference on Machine Learning {ICML 1995), pp. 531- 539. Morgan 
+Kaufmann. 
+Sutton, R. S. (1995b). On the virtues of linear learning and trajectory distributions. In Proceedings 
+of the Workshop on Valu e 压nction Approximation at The 12th International Confe冗nee on 
+Machine Leaming (ICML 1995). 
+Sutton, R. S. (1996). Generalization in reinforcement learning: Successful examples using sparse 
+coarse coding. In Advances in Neural Information Processing Systems 8 (NIPS 1995), pp. 
+1038- 1044. MIT Press, Cambridge, MA. 
+Sutton, R. S. (2009). The grand challenge of pred心ve empirical abstract knowledge. Working 
+Notes of the IJCAI-09 Workshop on Grand Challenges for Reasoning from Experiences 
+Sutton, R. S. (2015a) Introduction to re而orcement learning with function approximation. Toto-
+rial at the Conference on Neural Information Processing Systems (NIPS) , Montreal, December 
+7, 2015. 
+Sutton, R. S. (2015b) 飞ue online Emphatic TD （入）．
+Quick reference and implementation guide 
+ArXiv:1507.07147. Code is available in Python and c++ by downloading the source files of 
+this arXiv paper as a zip archive. 
+Sutton, R. S., Barto, A. G. (1981a). Toward a modern theory of adaptive networks: Expectation 
+and prediction. Psychological Review, 88(2): 135- 170. 
+Sutton, R. S., Barto, A. G. (1981b). An adaptive network that constructs and uses an internal 
+model of its world. Cogni材on and Brain Theory, 3:217- 246. 
+Sutton, R. S., Barto, A. G. (1987). A temporal-difference model of classical conditioning. In 
+Proceedings of the Ninth Annual Conference of the Cognitive Science Society, pp. 355-378. 
+Erlbaum, Hillsdale, NJ. 
+Sutton, R. S., Barto, A. G. (1990) . Time-derivative models of Pavlovian reinforcement. In M. 
+Gabriel and J . Moore (Eds.) , Learning and Computational Neuroscience: Foundations of 
+511 
+
+强化学习（第
+2 版）
+Adaptive Networks, pp. 497- 537. MIT Press, Cambridge, MA. 
+Sutton, R. S., Maei, H. R., Precup, D., Bhatnagar, S., Silver, D., Szepesv知，
+Cs., Wiewiora, E. 
+(2009a). Fast gradient-descent methods for temporal-difference learning with linear function 
+approximation. 1n Proceedings of the 26th International Conference on Machine Learning 
+(ICML 2009}, pp. 993- 1000. ACM, New York 
+Sutton, R. S., Szepesv知，
+Cs. , Maei, H. R. (2009b). A convergent O(d2)temporal-difference al-
+gorithm for off-policy learning with linear function approximation. In Advances in Neural 
+Information Processing Systems 21 (NIPS 2008), pp. 1609- 1616. Curran Associates, Inc. 
+Sutton, R. S., Mahmood, A. R., Precup, 0., van Hasselt, H. (2014). A new Q （入）
+with interim 
+forward view and Monte Carlo equivalence. In Proceedings of the International Conference on 
+Machine Learning, 31. JMLR Wf.1CP 32(2). 
+Sutton, R. S., Mahmood, A. R., White, M. (2016). An emphatic approach to the problem of 
+off-policy temporal-difference learning. Journal of Machine Learning Research, 17(73): 1- 29 
+Sutton, R. S., McAllester, D. A., Singh, S. P., Mansour, Y. (2000). Policy gradient methods 
+for reinforcement learning with function approximation. In Advances in Neural Information 
+Processing Systems 12 (NIPS 1999}, pp. 1057- 1063. MIT Press, Cambridge, MA. 
+Sutton, R. S., Modayil, J., Delp, M., Degris, T. , Pilarski, P. M., White, A., Precup, D. (2011). 
+Horde: A scalable real-time architecture for learning knowledge from unsupervised sensorimo-
+tor interaction. In Proceedings of the Tenth International Conference on Autonomous Agents 
+and Multiagent Systems, pp. 761- 768, Taipei, Taiwan 
+Sutton, R. S., Pinette, B. (1985). The learning of world models by connectionist networks. In 
+Proceedings of the Seventh Annual Conj,盯ence of the Cog成tive Science Society, pp. 54- 64 
+Sutton, R. S., Precup, D., Singh, S. (1999). Between MDPs and semi-MDPs: A framework for 
+temporal abstraction in reinforcement learning. A忧ificial InteUigence, 112(1-2): 181- 211 
+Sutton, R. S., Singh, S. P., McAllester, D. A. (2000). Comparing policy-gradient algorithms 
+Unpublished manuscript. 
+Sutton, R. S. , Szepesvari, Cs., Geramifard, A., Bowling, M., (2008). Dyna-style planning with 
+linear function approximation and prioritized sweeping. In Proceedings of the 24th Conference 
+on Uncertainty in A计ificial Intelligence, pp. 528- 536 
+Szepesv知，Cs . (2010). Algorithms for reinforcement learning. In Synthes巧Lectures on Artificial 
+Intelligence and Machine Learning, 4(1): 1- 103. Morgan and Claypool 
+Szita, I. (2012). Reinforcement learning in games. In M. Wiering and M. van Otterlo (Eds.) , 
+Reinforcement Learning: State - of-the-A九，pp. 539- 577. Springer-Verlag Berlin Heidelberg 
+Tadepalli, P., Ok, D. (1994). H-learning: A reinforcement le釭ning method to optimize undis-
+counted average reward. Technical Report 94-30-01. Oregon State University, Computer Sci-
+ence Department, Corvallis. 
+Tadepalli, P., Ok, D. (1996). Sca血g up average reward reinforcement learning by approximating 
+512 
+
+参考文献
+the domain models and the 邓lue function. In Proceedings of the 13th International Conference 
+on Machine Learning (ICM£ 1996), pp. 471-479. 
+Takahashi, Y., Schoenbaum, G., and Niv, Y. (2008). Silencing the critics: Understanding the 
+effects of cocaine sensitization on dorsolateral and ventral striatum in the context of an actor/ 
+critic model. Frontiers in Neuroscience, 2(1): 86-99. 
+Tambe, M., Newell, A., Rosenbloom, P. S. (1990). The problem of expensive chunks and its 
+solution by restricting expressiveness. Machine Learning, 5(3): 299- 348. 
+Tan, M. (1991). Learning a cost-sensitive internal representation for reinforcement learning. In 
+L. A. Birnbaum and G. C. Collins (Eds.), Proceedings of the 8th International Workshop on 
+Machine Learning, pp. 358- 362. Morgan Kaufmann 
+Taylor, G., Parr, R. (2009). Kernelized value function approximation for reinforcement learning. 
+In Proceedings of the 26th International Conference on Machine Learn叩(ICM£ 2009}, pp 
+1017- 1024. ACM, New York. 
+Taylor, M. E., Stone, P. (2009). Transfer learning for reinforcement learning domains: A survey. 
+Journal of Machine Learning Research, 10:1633- 1685 
+Tesauro, G. (1986). Simple neural models of classical conditioning. Biological Cybernetics, 55(2-3) 
+187- 200. 
+Tesauro, G. (1992). Practical issues in temporal 画erence learning. Machine Learning, 8(3-4): 
+257- 277. 
+Tesauro, G. (1994). TD-Gammon, a self-teaching backgammon program, achieves master-level 
+play. Neural Computation, 6(2): 215- 219 
+Tesauro, G. (1995). Temporal difference learning and TD-Gammon. Communications of the ACM, 
+38(3): 58--68. 
+Tesauro, G. (2002). Programming backgammon using self-teaching neural nets. Artificial Intelli-
+gence, 134(1-2): 181- 199. 
+Tesauro, G., Galperin, G. R. (1997). On-line policy improvement using Monte-Carlo search. In 
+Advances in Neural Information Processing Systems 9 (NIPS 1996), pp. 1068- 1074. MIT 
+Press, Cambridge, MA. 
+Tesauro, G., Gondek, D. C., Lechner, J., Fan, J., Prager, J.M. (2012). Simulation, learning, and 
+optimization techniques in Watson's game strategies. IBM Journal of Research and Develop-
+ment, 56(3-4): 16- 1- 16- 11. 
+Tesauro, G. , Gondek, D. C., Lenchner, J., Fan, J., Prager, J.M. (2013). Analysis of WATSON's 
+strategies for playing Jeopardy! Journal of Artificial Intelligence Research, 47:205- 251. 
+Tham, C. K. (1994). Modular On-Line Function Appro说mation f01、
+Scaling up Reinforcement 
+Learning. Ph.D. thesis, University of Cambridge. 
+Thathachar, M.A. L., Sastry, P. S. (1985). A new approach to the design of reinforcement scheme 
+for learning automata. IEEE Transactions on Systems, Man, and Cybernetics, 15(1): 168-
+513 
+
+强化学习（第
+2 版）
+175. 
+Thathachar, M., Sastry, P. S. (2002). Varieties of learning automata: an overview. IEEE Trans-
+actions on Systems, Man, and Cybernetics, Part B: Cybernetics, 36(6): 711- 722 
+Thathachar, M., Sastry, P. S. (2011). Networks of Learning Automata: Techniques for Online 
+Stochastic Optimization. Springer Science & Business Media. 
+Theocharous, G., Thomas, P. S., Ghavamzadeh, M. (2015). Personalized ad recommendation for 
+life-time value optimization guarantees. In Proceedings of the Twenty-Pou九h International 
+Joint Conference on Artificial Intelligence (IJCAI-15). AAAI Press, Palo Alto, CA 
+Thistlethwaite, D. (1951). A critical review of latent learning and related experiments. Psycho-
+logical Bullet切，
+48(2): 97- 129 
+Thomas, P. S. (2014). Bias in natural actor- critic algorithms. In Proceedings of the 31st In-
+ternational Conference on Machine Learning {ICML 2014), JMLR W&CP 32(1), pp. 441-
+448. 
+Thomas, P. S. (2015). Safe Reinforcement Learning. Ph.D. thesis, University of Massachusetts, 
+Amherst. 
+Thomas, P. S., Theocharous, G., Ghavamzadeh, M. (2015). High-confidence off-policy evaluation 
+In Proceedings of the Twenty-Ninth AAA! Conference on Artificial Intelligence (AAAI-15), 
+pp. 3000-3006. AAAJ. Press, Menlo Park, CA 
+Thompson, W. R. (1933). On the likelihood that one unknown probability exceeds another in 
+view of the evidence of two samples. Biomet讨ka , 25(3-4): 285- 294. 
+Thompson, W. R. (1934). On the theory of apportionment. American Journal of Mathematics, 
+57: 450- 457. 
+Thon, M. (2017). Spectral Learning of Sequential Systems. Ph.D. thesis, Jacobs University Bre-
+men. 
+Thon, M., Jaeger, H. (2015). Links between multiplicity automata, observable operator model 
+and predictive state representations: a unified learning framework. The Journal of Machine 
+Learning Research, 16(1): 103- 147. 
+Thorndike, E. L. (1898). Animal intelJigence: An experimental study of the associative processes 
+in animals. The Psychological Review, Series of Monograph Supplements, II(4) 
+Thorndike, E. L. (1911). Animal Intelligence. Hafner, Darien, CT 
+Thorp, E. 0. (1966). Beat the Dealer: A Winning Strategy for the Game of Twenty-One. Random 
+House, New York. 
+Tian, T. (in preparation) An Empi妀．cal Study of Sliding-Step Methods in Temporal Difference 
+Learning. M.Sc thesis, University of Alberta, Edmonton 
+Tieleman, T. , Hinton, G. (2012). Lecture 6.5- RMSProp. COURSERA: Neural networks for ma-
+chine learning 4.2:26- 31. 
+Tolman, E. C. (1932). Pu叩osive Behavior in Animals and Men. Century, New York. 
+514 
+
+参考文献
+Tolman, E. C. (1948). Cognitive maps in rats and men. Psychological Review, 55(4): 189- 208 
+Tsai, H.-S., Zhang, F., Adamantidis, A., Stuber, G. D., Bonci, A., de Lecea, L., Deisseroth, K 
+(2009). Phasic firing in dopaminergic neurons is sufficient for behavioral conditioning. Science, 
+324(5930): 1080- 1084. 
+Tsetlin, M. L. (1973). Automaton Theory and Modeling of Biological Systems. Academic Press, 
+New York. 
+Tsitsiklis, J. N. (1994). Asynchronous stochastic approximation and Q-learning. Machine Learn-
+ing, 16(3): 185- 202. 
+Tsitsiklis, J. N. (2002). On the convergence of optimistic policy iteration. Journal of Machine 
+Learning Research, 3:59-72 
+Tsitsiklis, J. N., Van Roy, B. (1996). Feature-based methods for large scale dynamic prograill!Tiing. 
+Machine Learning, 22(1-3): 59- 94. 
+Tsitsiklis, J. N., Van Roy, B. (1997). An analysis of temporal-difference learning with function 
+appro劝mation. IEEE Transactions on Automatic Control, 42(5): 674- 690 
+Ts比siklis, J. N., Van Roy, B. (1999). Average cost temporal-difference learning. Automatica, 
+35(11): 1799- 1808. 
+Turing, A. M. (1948). Intelligent machinery. In B. Jack Copeland (Ed.) (2004), The Essential 
+Turing, pp. 410-432. Oxford University Press, Oxford. 
+Ungar, L. H. (1990). A bioreactor benchmark for adaptive network-based process control. In W. 
+T. Miller, R. S. Sutton, and P. J. Werbos (Eds.), Neuml Networks for Control, pp. 387- 402. 
+MIT Press, Cambridge, MA. 
+Unnikrishnan, K. P., Venugopal, K. P. (1994). Alopex: A correlation-based learning algorithm 
+for feedforward and recurrent neural networks. Neural Computation, 6(3): 469- 490. 
+Urbanczik, R., Senn, W. (2009). Reinforcement learning in populations of spiking neurons. Nature 
+neuroscience, 12(3): 250- 252. 
+Urbanowicz, R. J., Moore, J. H. (2009). Learning classifier systems: A complete introduction, 
+review, and roadmap. Journal of Artificial Evolution and Applications. 10.1155/2009/ 736398 
+Valentin, V. V., Dickinson, A., O'Doherty, J. P. (2007). Determining the neural substrates of 
+goal-directed learning in the human brain. The Journal of Neuroscience, 27(15): 4019- 4026. 
+van Hasselt, H. (2010). Double Q-learning. In Advances in Neural Information Processing Systems 
+23 (NIPS 2010), pp. 2613- 2621. Curran Associates, Inc. 
+van Hasselt, H. (2011). Insights in Reinforcement Learning: Formal Analysis and Emp们cal
+Evaluation of Temporal-difference Learning. SIKS dissertation series number 2011-04. 
+van Hasselt, H. (2012). Reinforcement learning in continuous state and action spaces. In M 
+Wiering and M. van Otterlo (Eds.), Reinforcement Learning: State-of-the-Art, pp. 207- 251 
+Springer-Verlag Berlin Heidelberg 
+van Hasselt, H., Sutton, R. S. (2015). Learning to predict independent of span. Ar Xiv 1508.04582. 
+515 
+
+强化学习（第
+2 版）
+Van Roy. B. , Bertsekas, D. P., Lee, Y., Tsitsiklis, J. N. (1997). A neuro-dyna[Il]c programming 
+approach to retailer inventory management. In Proceedings of the 36th IEEE Conference on 
+Dec函on and Control, Vol. 4, pp. 4052- 4057. 
+van Seijen, H. (2016). Effective multi-step temporal-difference learning for non恤ear function 
+approximation. arXiv preprint arXiv:1608.05151. 
+van Seijen, H., Sutton, R. S. (2013). Efficient planning in MDPs by small backups. In: Proceeding 
+of the 30th International Conference on Machine Learning (JCML 2013}, pp. 361- 369. 
+van Seijen, H., Sutton, R. S. (2014). True online TD （入）．In Proceedings of the 31st International 
+Conference on Machine Learning (ICML 2014), pp. 692- 700. JMLR W&CP 32(1), 
+van Seijen, H. , Mahmood, A. R., Pilarski , P. M., Machado, M. C., Sutton, R. S. (2016) ．飞ue
+online temporal-difference learning. Joitrnal of Machine Learning Research, 17(145): 1- 40 
+van Seijen, H., Van Hasselt, H., Whiteson, S. , Wiering, M. (2009). A theoretical and empirical 
+analysis of Expected Sarsa. In IEEE Symposium on Adaptive Dynamic Programming and 
+Reinforcement Leaming, pp. 177- 184. 
+Varga, R. S. (1962). Matrix Iterative Analysis. Englewood Cliffs, NJ: Prentice-Hall. 
+Vasilaki, E ，阳mau.x, N., Urbanczik, R., Senn, W., Gerstner, W. (2009). Spike-based reinforce-
+rnent learning in continuous state and action space: when policy gradient methods fail. PLoS 
+Computational Biology, 5(12). 
+Viswanathan, R., Narendra, K. S. (1974). Games of stochastic automata. IEEE Transactions on 
+Systems, Man, and Cybernetics, 4(1): 131- 135 
+Walter, W. G. (1950). An imitation of life. Scientific American, 182(5): 42- 45 
+Walter, W. G. (1951). A machine that learns. Scientific Ame讨can, 185(2): 60- 63 
+Waltz, M. D., Fu, K. S. (1965). A heuristic approach to re画orcement learning control systems. 
+IEEE Transactions on Automatic Control, 10(4): 390-398 
+Watkins, C. J. C. H. (1989). Learning from Delayed Rewards. Ph.D. thesis, University of Cam-
+bridge. 
+Watkins, C. J . C. H., Dayan, P. (1992). Q-learning. Machine Leaming, 8(3-4): 279- 292. 
+Werbos, P. J. (1977). Advanced forecasting methods for global crisis warning and models of 
+intelligence. Gener-al Systems Yearbook, 22(12): 25- 3u 
+Werbos, P. J. (1982). Applications of advances in nonlinear sensitivity analysis. In R. F. Drenick 
+and F. Kozin (Eds.), System Modeling and Optimization, pp. 762- 770. Springer-Verlag, Berlin. 
+Werbos, P. J. (1987). Building and understanding adaptive systems: A statistical/ numerical 
+approach to factory automation and brain research. IEEE Transactions on Systems, Man, 
+and Cybernetics, 17(1): 7- 20 
+Werbos, P. J. (1988). Generalization of back propagation with applications to a recurrent gas 
+market model. Neural Networks, 1(4): 339-356 
+Werbos, P. J. (1989). Neural networks for control and system identification. In Proceedings of the 
+516 
+
+参考文献
+28th Conference on Decis-ion and Control, pp. 260- 265. IEEE Control Systems Society 
+Werbos, P. J. (1992). Approximate dynamic programming for real-time control and new·al mod-
+eling. In D. A. White and D. A. Sofge (Eds.), Handbook of Intelligent Control: Neural, 压zzy,
+and Adaptive Approaches, pp. 493- 525. Van Nostrand Reinhold, New York 
+Werbos, P. J. (1994). The Roots of Backpropagation: 肝om Ordered De忧vatives to Neiiral Netwo咕s
+and Political Forecasting (Vol. 1). John Wiley and Sons. 
+Wiering, M., Van Otterlo, M. (2012). Reinforcement Leaming: State-of-the-Art. Springer-Verlag 
+Berlin Heidelberg. 
+White, A. (2015). Developing a Pr'edictive Approach to Knowledge. Ph.D. thesis, University of 
+Alberta, Edmonton. 
+White, D. J. (1969). Dynamic Programming. Holden-Day, San Francisco 
+White, D. J. (1985). Real applications of Markov decision processes. Interfaces, 15(6): 73-83 
+White, D. J. (1988). Further real applications of Markov decision processes. Interfaces, 18(5): 
+55-61. 
+White, D. J. (1993). A survey of applications of Markov decision processes. Journal of the Oper-
+ational Research Society, 44(11): 1073- 1096. 
+White, A., W记te, M. (2016). Investigating practical linear temporal difference le釭ning. In Pro-
+ceedings of the 2016 International Conference on Autonomous Agents and M1tltiagent Systems, 
+pp. 494- 502. 
+Whitehead, S. D., Ballard, D. H. (1991). Learning to perceive and act by trial and error. Machine 
+Leaming, 7(1): 45- 83. 
+Whitt, W. (1978). Approxim的ons of dynamic programs I. Mathematics of Operations Research, 
+3(3): 231- 243 
+Whittle, P. (1982). Optimization over Time, vol. 1. Wiley, New York 
+Whittle, P. (1983). Optimization over Time, vol. 2. Wiley, New York. 
+Wickens, J., Kotter, R. (1995). Cellular models of reinforcement. In J. C. Houk, J. L. Davis and 
+D. G. Beiser (Eds.) , Models of Informal,ion Processing in the Basal Ganglia, pp. 187- 214 
+MIT Press, Cambridge, MA. 
+Widrow, B. , Gupta, N. K. , Maitra, S. (1973). Punish/reward: Learning with a critic in adaptive 
+threshold systems. IEEE 乃ansactions on Systems, Man, and Cybernetics, 3(5): 455- 465 
+Widrow, B., Hoff, M. E. (1960). Adaptive switching circuits. In 1960 WESCON Convention 
+Record Part IV, pp. 96- 104. Institute of Radio Engineers, New York. Reprinted in J . A 
+Anderson and E. Rosenfeld, Neurocomputing: Foundations of Research, pp. 126- 134. MIT 
+Press, Cambridge, MA, 1988 
+Widrow, B., Smith, F. W. (1964). Pattern-recognizing control systems. In J. T. Tou and R. H 
+Wilcox (Eds.), Computer and Information Sciences, pp. 288- 317. Spart.an, Washington, DC. 
+Widrow, B., Stearns, S. D. (1985). Adaptive Signal Processing. Prentice-Hall, Englewood Cliffs, 
+517 
+
+强化学习（第2 版）
+NJ . 
+Wiener, N. {1964). God and Golem, Inc: A Comment on Certain Points where Cybernetics 
+Impinges on Religion. MIT Press, Cambridge, MA 
+Wiewiora, E. {2003). Potential-based shaping and Q-value initialization are equivalent. Journal 
+of A九ificial Intelligence Research, 19:205- 208 
+Williams, R. J. {1986). Reinforcement learning in connectionist networks: A mathematical anal-
+ysis. Technical Report ICS 8605. Institute for Cognitive Science, University of California at 
+San Diego, La Jolla. 
+Williams, R. J. (1987). Reinforcement-learning connectionist systems. Technical Report NU-CCS-
+87-3. College of Computer Science, Northea.5tern University, Boston 
+Williams, R. J. (1988). On the use of backpropagation in associative reinforcement learning. In 
+Proceedings of the IEEE International Conference on Neural Networks, pp. 1263- 1270. IEEE 
+San Diego section and IEEE TAB Neural Network Co皿nittee.
+Williams, R. J. (1992). Simple statistical gradient-following algorithms for connectionist rein-
+forcement learning. Machine Learning, 8(3-4): 229- 256 
+Williams, R. J., Baird, L. C. {1990). A mathematical analysis of actor- critic architectures for 
+learning optimal controls through incremental dynamic programming. In Proceedings of the 
+Sixth Yale Workshop on Adaptive and Leaming Systems, pp. 96- 101. Center for Systems 
+Science, Dunham Laboratory, Yale University, New Haven. 
+Wilson, R. C., Takahashi, Y. K., Schoenbaum, G., Niv, Y. {2014). Orb畴ontal cortex as a 
+cognitive map of task space. Neuron, 81(2): 267- 279 
+Wilson, S. W. (1994). ZCS, A zeroth order classifier system. Evolutionary Computation, 2(1): 1-
+18. 
+Wise, R. A. (2004). Dopamine, learning, and motivation. Nature Reviews Neuroscience, 5(6): 1-
+12. 
+Witten, I. H. {1976). The apparent conflict between estimation and control—A survey of the 
+two-armed problem. Journal of the Pr-anklin Institute, 301(1-2): 161- 189 
+Witten, I. H. {1977). An adaptive optimal controller for discrete-time Markov environments. 
+Information and Control, 34(4): 286- 295 
+Witten, I. H. , Corbin, M. J. (1973). Human operators and automatic adaptive controllers: A com-
+parative study on a particular control task. International Journal of Man- Machine Studies, 
+5(1): 75- 104. 
+Woodbury, T., Dunn, C., and Valasek, J. {2014). Autonomous soaring using reinforcement learn-
+ing for trajectory generation. In 52nd Aerospace Sciences Meeting, p. 0990 
+Woodworth, R. S. (1938). Experimental Psychology. New York: Henry Holt and Company 
+Xie, X., Seung, H. S. (2004). Learning in neural networks by reinforcement of irregular spiking 
+Physical Review E, 69(4): 041909 
+518 
+
+参考文献
+Xu, X., Xie, T., Hu, D., Lu, X. (2005). Kernel least-squares temporal difference learning. Inter-
+national Journal of Information Technology, 11(9): 54--63 
+Yag!Shita, S., Hayas比－Takagi, A., Ellis-Davies, G. C. R., Urakubo, H., Ishii, S., Kasai, H. (2014) 
+A critical time window for dopamine actions on the structural plasticity of dendritic spines. 
+Science, 3拉(6204): 1616-1619. 
+Yee, R. C., Saxena, S., Utgoff, P. E., Barto, A. G. (1990). Explaining temporal differences to 
+create useful concepts for evaluating states. In Proceedings of the Eighth National Conference 
+on Artificial Intelligence {AAAI-90), pp. 882-888. AAA! Press, Menlo Park, CA. 
+Yin, H. H., Knowlton, B. J. (2006). The role of the basal ganglia in habit formation. Natu代
+Reviews Neuroscience, 7(6): 464-476. 
+Young, P. (1984). Recursive Estimation and Time-Se讨es Analysis. Springer-Verlag, Berlin. 
+Yu, H. (2010). Convergence of least squares temporal difference methods under general cond山ons.
+International Conference on Machine Learning 27, pp. 1207- 1214 
+Yu, H. (2012). Least squares temporal difference methods: An analysis under general cond山ons.
+SIAM Journal on Control and Optimization, 50(6): 3310-3343. 
+Yu, H. (2015). On convergence of emphatic temporal-difference learning. In Proceedings of the 
+28th Annual Conference on Learning Theory, JMLR W&CP 40. Also ArXiv:1506.02582 
+Yu, H. (2016) . Weak convergence properties of constrained emphatic temporal-difference learn-
+ing with constant and slowly di皿nishing stepsize. Journal of Machine Learning Research, 
+17(220): 1- 58. 
+Yu, H. (2017). On convergence of some gradient-based temporal-differences algorithms for off-
+policy learning. Arxiv:1712.09652 
+Yu, H., Mahmood, A. R., Sutton, R. S. (2017). On generalized bellman equations and temporal-
+difference learning. ArXiv:17041.04463. A summary appeared in Proceedings of the Canadian 
+Conference on Artificial Intelligence, pp. 3- 14. Springer 
+Zhang, M., Yum, T. P. (1989). Comparisons of channel-assignment strategies in cellular mobile 
+telephone systems. IEEE 厮nsactions on Vehicular Technology, 38:211-215. 
+Zhang, W. (1996). Reinforcement Learning for Job-shop Scheduling. Ph.D. thesis, Oregon State 
+University, Corvallis. Technical Report CS-96-30-1 
+Zhang, W., Dietterich, T. G. {1995). A reinforcement learning approach to job-shop scheduling 
+In Proceedings of the Fourteenth International Joint Conference on Artificial Intelligence 
+(IJCAI-95}, pp. 1114- 1120. Morgan Kaufmann. 
+Zhang, W., Dietterich, T. G. (1996). High-performance job-shop scheduling with a time-delay 
+TD （入）network. In Advances in Neural Information Processing Systems 8 {NIPS 1995}, pp 
+1024- 1030. MIT Press, Cambridge, MA. 
+Zweben, M., Daun, B., Deale, M. (1994). Scheduling and rescheduling with iterative repair. In 
+M. Zweben and M. S. Fox (Eds.), Intelligent Scheduling, pp. 241- 255. Morgan Kaufmann 
+519 
+
+~ii~;;; 
+．之电-竺，百文视点
+．lT出版旗舰品牌
+技术凝聚实力·专业创新出版
+作者寄语
+希望这本教材能够帮助更多的中国学生自学强化学习，并且促进更多的新思想在中国产生，为世界范围的强化
+学习研究的多样性和生机活力做出贡献。
+—理查德·萨顿安德鲁·巴图
+名家热评
+强化学习是极具发展前景的重要机器学习范式。本书是深入理解强化学习基本概念和算法的经典之作，也是迄
+今最系统最完整描述强化学习领域的教材。
+—邓力
+美国城堡基金首席人工智能官
+(Chief Al Officer) 
+美国微软公司原首席人工智能科学家
+强化学习是AlphaGo的主要技术，也是人工智能的主流领域之一。本书是广大想要深入了解强化学习的有志之
+士必读的经典.. ..我衷心推荐这本好书给大家。
+—黄士傑
+(Aja Huang) 
+AlphaGo首席工程师(Lead Programmer of AlphaGo) 
+在人工智能界，
+Richard Sutton (Barto的学生）和Andrew Barto 是公认的强化学习的鼻祖，是他们师徒把强
+化学习作为一个机器学习的重要分支，搬上大雅之堂。这部《强化学习》（第2版）也凝聚了他们的心血。
+—杨强
+前海微众银行首席人工智能官，香港科技大学讲座教授，国际人工智能联合会理事会主席(2017-2019)
+第2版包括了许多深度强化学习的新进展，同时也将该领域的学术历史延伸到了当前。我肯定会把它推荐给我所
+有的学生，以及其他想了解当前强化学习热潮的来龙去脉的研究生和科研人员。
+—约舒亚·本吉奥(Yoshua Bengio) 
+蒙特利尔大学计算机科学与运筹学教授
+本书旨在提供强化学习的核心概念与算法，以供所有相关学科的读者学习，这部译著达到了
+准确、通顺与
+自然，我愿推荐此译著给广大对人工智能感兴趣的中国读者。
+—张袚
+中国科学院院士，清华大学人工智能研究院院长
+第1 版出版20 年后，
+Sutton 和Barto 的这本经典教科书终于出了第2版，篇幅约为第1 版的两倍，增加了
+AlphaGo围棋等许多新内容，值得所有关心强化学习的读者阅读收藏。
+—周志华
+南京大学计算机系主任／人工智能学院院长，欧洲科学院外籍院士
+注册成为博文视点社区(www.broadview.com.cn) 用户，即享受以下服务。
+· 提勘误赚积分可在［提交勘误］处提交对内容的修改意见，若被采纳将获赡博文视点
+社区积分（可用来抵扣购买电子书的相应金额）
+。
+· 交流学习在页面下方［读者评论］处留下您的疑问或观点
+，与大家共同交流。
+_ 
+回
+匹，王退逻
+巳责
+• 
+策划编辑：刘皎
+任编辑：梁卫红
+封面设计：吴海燕
+欢迎投稿
+邮箱
+Ljiao@phe1.com .cn
+电话010-88254395 
+新浪微博
+＠皎丫子
+> 
+4 
+—
+4 
+6 
+1 56 
+91 
+—
+5 
+2 
+o, 
+,I 22 
+1 71 
+-2 
+1 
+8 
+7 97 
+8 
+|
+7 
+N 
+B 
+s 19 
+定价：
+168.00元

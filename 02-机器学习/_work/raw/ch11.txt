@@ -1,0 +1,339 @@
+第11章 特征选择与稀疏学习
+以解决！这是因为稀疏性使得未知因素的影响大为减少.此时式(11.20)中的亚
+称为稀疏基，而A 的作用则类似于字典，能将信号转换为稀疏表示.
+事实上,在很多应用中均可获得具有稀疏性的s ,例如图像或声音的数字信
+号通常在时域上不具有稀疏性,但经过傅里叶变换、余弦变换、小波变换等处
+理后却会转化为频域上的稀疏信号.
+显然，与特征选择、稀疏表示不同，压缩感知关注的是如何利用信号本身
+所具有的稀疏性,从部分观测样本中恢复原信号.通常认为，压缩感知分为“感
+知测量”和“重构恢复”这两个阶段.“感知测量”关注如何对原始信号进行
+处理以获得稀疏样本表示，这方面的内容涉及傅里叶变换、小波变换以及11.5
+节介绍的字典学习、稀疏编码等，不少技术在压缩感知提出之前就已在信号处
+理等领域有很多研究；“重构恢复”关注的是如何基于稀疏性从少量观测中恢
+复原信号，这是压缩感知的精髓，当我们谈到压缩感知时,通常是指该部分.
+压缩感知的相关理论比较复杂，下面仅简要介绍一下“限定等距性”
+(Restricted Isometry Property,简称 RIP) [Candes, 2008].
+对大小为n x m (n < m ) 的矩阵A , 若存在常数6k € (0 J ) 使得对于任意
+向量s 和A 的所有子矩阵A k e 即涂有
+(l-4)|| S | | U | | A ^ | | U ( l + 4)|>||t 
+(11.21)
+则称A 满足A;限定等距性(k-RIP).此时可通过下面的优化问题近乎完美地从
+y 中恢复出稀疏信号s,进而恢复出x ：
+min ||s||o 
+(11.22)
+s.t. y = A s .
+然而,式(11.22)涉及L o 范数最小化,这是个N P 难问题.值得庆幸的是,Li
+范数最小化在一定条件下与L o 范数最小化问题共解[Candes et al., 2006],于
+是实际上只需关注
+min ||s||i 
+(11.23)
+8
+s.t. y = A s .
+这样，压缩感知问题就可通过L i 范数最小化问题求解，例如式(11.23)可转化为
+
+1 1 .6 压缩感知
+259
+LASSO的等价形式再通过近端梯度下降法求解，即使用“基寻踪去噪”(Basis
+Pursuit De-Noising) [Chen et al., 1998].
+基于部分信息来恢复全部信息的技术在许多现实任务中有重要应用.例
+如网上书店通过收集读者在网上对书的评价，可根据读者的读书偏好来进行新
+普本「厅型的同 
+书推荐，从而达到定向广告投放的效果・显然，没有哪位读者读过所有的书，也
+过滤” (collaborative filter-
+选)任条 
+没有哪本书被所有读者读过，因此，网上书店所搜集到的仅有部分信息.例如
+表11.1给出了四位读者的网上评价信息，这里评价信息经过处理，形成了 “喜
+好程度”评分(5 分最高).由于读者仅对读过的书给出评价，因此表中出现了
+很多未知项.
+表1 L 1 客户对书的喜好程度评分
+《笑傲江湖》
+《万历十五年》
+《人间词话》
+《云海玉弓缘》
+《人类的故事》
+赵大
+5
+?
+?
+3
+2
+钱二
+?
+5
+3
+?
+5
+孙三
+5
+3
+?
+?
+?
+李四
+3
+?
+5
+4
+?
+那么，能否将表11.1中通过读者评价得到的数据当作部分信号，基于压缩
+感知的思想恢复出完整信号呢？
+我们知道，能通过压缩感知技术恢复欠采样信号的前提条件之一是信号
+有稀疏表示.读书喜好数据是否存在稀疏表示呢？答案是肯定的.一般情形
+下，读者对书籍的评价取决于题材、作者、装帧等多种因素，为简化讨论,假定
+表11.1中的读者喜好评分仅与题和有关.《笑傲江湖》和《云海玉弓缘》是武
+侠小说，《万历十五年》和《人法的故事》是历史读物，《人间词话》属于诗
+词文学.一般来说，相似题材的书籍会有相似的读者，若能将书籍按题材归类,
+则题材总数必然远远少于书籍总数，因此从题材的角度来看，表11.1中反映出
+的信号应该是稀疏的.于是,应能通过类似压缩感知的思想加以处理.
+亦称"低秩矩阵恢复”. 
+矩阵补全(matrix completion)技术[Candes and Recht, 2009]可用于解决
+这个问题,其形式为
+min rank(X) 
+(11.24)
+s.t. (X)u = (A)%/, (i, j) W Q,
+其中，X 表示需恢复的稀疏信号;rank(X)表示矩阵X 的秩;A 是如表11.1的
+
+260
+第1 1 章 特征选择与稀疏学习
+核范数亦称“迹范数”
+(trace norm).
+SDP参见附录B.3.
+读者评分矩阵这样的已观测信号；。是A 中非“？”元素(A%・的下标( i,j) 的
+集合.式(11.24)的约束项明确指出，恢复出的矩阵中(X)可应当与已观测到的
+对应元素相同.
+与式(11.22)相似，式(11.24)也是二个NP•难问题.注意到rank(X)在集合
+{X e Rm x n : ||X|除 W 1}上的凸包是 X 的“核范数”(nuclear norm):
+m in{m ,n}
+||X ||*= 
+£
+ 
+叼(X ), 
+(11.25)
+其中5 (X )表示X 的奇异值，即矩阵的核范数为矩阵的奇异值之和，于是可通
+过最小化矩阵核范数来近似求解式(11.24),即
+niin ||X||* 
+(11.26)
+s.t. (X)可= (A)可，(匕)j) w Q
+式(11.26)是一个凸优化问题，可通过半正定规划(Semi-Definite Programming,
+简称SDP)求解.理论研究表明，在满足一定条件时,若A 的秩为r , n 《m , 则
+只需观察到O(mrlog2 m )个元素就能完美恢复出A [Recht, 2011].
+1 1 .7 阅读材料
+特征选择是机器学习中研究最早的分支领域之一，早期研究主要是按特
+征子集“生成与搜索-评价”过程进行.在子集生成与搜索方面引入了很多
+人工智能搜索技术，如分支限界法[Narendra and Fukunaga, 1977] ＞浮动搜索
+法[Pudil et al, 1994]等；在子集评价方面则采用了很多源于信息论的准则,
+如信息嫡、AIC (Akaike Information Criterion) [Akaike, 1974]等.[Blum and
+Langley, 1997]对子集评价准则进行了讨论，[Forman, 2003]则进行了很多实验
+比较. .
+早期特征选择方法主要是过滤式的，包裹式方法出现稍晚[Kohavi and
+John, 1997],嵌入式方法事实上更晚[Weston et al., 2003],但由于决策树算法
+在构建树的同时也可看作进行了特征选择，因此嵌入式方法也可追溯到ID3
+[Quinlan, 1986].有很多文献对特征选择方法的性能进行了实验比较[Yang
+and Pederson, 1997; Jain and Zongker, 1997].更多关于特征选择的内容可参
+阅[Guyon and Elisseeff, 2003; Liu et al., 2010],以及专门关于特征选择的书籍
+
+1 1 . 7 阅读材料
+261
+[Liu and Motoda, 1998, 2007].
+直译为“最小角回归”，
+通常直接称LARS .
+仍以汉语文档为例，一
+个概念可能由多个字词来
+表达，这些字词就构成了
+一个分组；若这个概念在
+文档中没有出现，则这整
+个分组所对应的变量都将
+为零.
+LARS (Least Angle Regression) [Efron et al., 2004]是一种嵌入式特征
+选择方法，它基于线性回归平方误差最小化，每次选择一个与残差相关性最
+大的特征.LASSO [Tibshirani, 1996]可通过对LARS稍加修改而实现.在
+LASSO基础上进一步发展出考虑特征分组结构的Group LASSO [Yuan and
+Lin, 2006]> 考虑特征序结构的 Fused LASSO [Tibshirani et al., 2005]等变体
+由于凸性不严格，LASSO类方法可能产生多个解，该问题通过弹性网(Elastic
+N et)得以解决[Zou and Hastie, 2005].
+对字典学习与稀疏编码[Aharon et al, 2006],除了通过控制字典规模从
+而影响稀疏性，有时还希望控制字典的“结构”，例如假设字典具有“分组
+结构”，即同一个分组内的变量或同为非零，或同为零.这样的性质称为“分
+组稀疏性"(group sparsity),相应的稀疏编码方法则称为分组稀疏编码(group
+sparse coding) [Bengio et al., 2009].稀疏编码和分组稀疏编码在图像特征抽取
+方面有很多应用，可参阅[Mairal et al., 2008; Wang et al., 2010].
+压缩感知jDonoho, 2006; Candes et al., 2006]直接催生了人脸识别的
+鲁棒主成分分析[Candes et al., 2011]和基于矩阵补全的协同过滤[Recht
+et al., 2010]. [Baraniuk, 2007]是关于压缩感知的一个简短介绍.将LQ 范
+数最小化转化为L i 范数最小化后，常用求解方法除了转化为LASSO的
+基寻踪去噪，还可使用基寻踪(Basis Pursuit) [Chen et al., 1998]>匹配寻
+踪(Matching Pursuit ) [Mallat and Zhang, 1993]等. [Liu and Ye, 2009]使
+用投影法快速求解稀疏学习问题，并提供了一个稀疏学习程序包SLEP
+(http: / / www.yelab.net / software / SLEP/) .
+
+262
+第11章特征选择与稀疏学习
+习题
+西瓜数据集3.0见p.84 
+I I 1
+表 4.3.
+11.2
+试编程实现Relief算法，并考察其在西瓜数据集3.0上的运行结果.
+试写出Relief-F的算法描述.
+11.3
+Relief算法是分别考察每个属性的重要性.试设计一个能考虑每一对
+属性重要性的改进算法.
+11.4
+试为LVW设计一个改进算法，即便有运行时间限制，该算法也一定能
+给出解.
+11.5
+结合图11.2,试举例说明L i 正则化在何种情形下不能产生稀疏解.
+11.6
+试析岭回归与支持向量机的联系.
+11.7
+试述直接求解Lo 范数正则化会遇到的困难.
+11.8
+试给出求解L i 范数最小化问题中的闭式解(U.14)的详细推导过程.
+11.9
+试述字典学习与压缩感知对稀疏性利用的异同.
+11.10*
+试改进式(11.15),以学习出具有分组稀疏性的字典.
+
+参考文献
+263
+参考文献
+Aharon, M., M. Elad, and A. Bruckstein. (2006). UK-SVD: An algorithm for
+designing overcomplete dictionaries for sparse representation.55 IEEE Trans­
+actions on Image Processing1 54(11):4311-4322.
+Akaike, H. (1974). “A new look at the statistical model identification.55 IEEE
+Transactions on Automatic Control, 19(6):716-723.
+Baraniuk, R. G. (2007). “Compressive sensing75 IEEE Signal Processing Mag­
+azine, 24(4):118-121.
+Bengio, S., F. Pereira, Y. Singer, and D. Strelow. (2009). “Group sparse cod­
+ing.5, In Advances in Neural Information Processing Systems 22 (NIPS) (Y.
+Bengio, D. Schuurmans, J. D. Lafferty, C. K. I. Williams, and A. Culotta,
+eds.), 82-89, MIT Press, Cambridge, MA.
+Blum, A. and P. Langley. (1997), “Selection of relevant features and examples
+in machine learning.55 Artificial Intelligence1 97(1-2):245-271.
+Boyd, S. and L. Vandenberghe. (2004). Convex Optimization. Cambridge Uni­
+versity Press, Cambridge, UK.
+Candes, E. J. (2008). “The restricted isometry property and its implications for
+compressed sensing?5 Comptes Rendus Mathematique, 346(9-10) :589-592.
+Candes, E. J., X. Li, Y. Ma, and J. Wright. (2011). “Robust principal compo­
+nent analysis?^^ Journal of the ACMy 58(3):Article 11.
+Candes, E. J. and B. Recht. (2009). “Exact matrix completion via convex op­
+tim ization.Foundations of Computational Mathematics^ 9(6):717-772.
+Candes, E. J., J. Romberg, and T. Tao. (2006), “Robust uncertainty principles:
+Exact signal reconstruction from highly incomplete frequency information.”
+IEEE Transactions on Information Theory152(2):489-509.
+Chen, S. S., D. L. Donoho, and M. A. Saunders. (1998). uAtomic decomposition
+by basis p u rsu it.SIAM Journal on Scientific Computing, 20(1):33-61.
+Donoho, D. L. (2006). “Compressed sensing.55 IEEE Transactions on Informa­
+tion Theory, 52(4):1289-1306.
+Efron, B., T. Hastie, I. Johnstone, and R. Tibshirani. (2004). “Least angle
+regression.^^ Annals of Statistics1 32(2):407-499.
+
+264
+第口章特征选择与稀疏学习
+Forman, G. (2003). uAn extensive empirical study of feature selection metrics
+for text classification.55 Journal of Machine Learning Research, 3:1289-1305.
+Guyon, I. and A. Elisseeff. (2003). “An introduction to variable and feature
+selection.5, Journal of Machine Learning Research1 3:1157-1182.
+Jain, A. and D. Zongker. (1997), “Feature selection: Evaluation, application,
+and small sample performance.5, IEEE Transactions on Pattern Analysis
+and Machine Intelligence^ 19(2):153-158.
+Kira, K. and L. A. Rendell. (1992). “The feature selection problem: Tradi­
+tional methods and a new algorithm.55 In Proceedings of the 10th National
+Conference on Artificial Intelligence (AAAI)1 129-134, San Jose, CA.
+Kohavi, R. and G. H. John. (1997). uWrappers for feature subset selection.^^
+Artificial Intelligence1 97(1-2):273-324.
+Kononenko, I. (1994). “Estimating attributes: Analysis and extensions of RE­
+LIEF.,, In Proceedings of the 7th European Conference on Machine Learning
+(ECML), 171-182, Catania, Italy.
+Liu, H. and H. Motoda. (1998). Feature Selection for Knowledge Discovery and
+Data Mining. Kluwer, Boston, MA.
+Liu, H. and H. Motoda. (2007). Computational Methods of Feature Selection.
+Chapman & Hall/CRC, Boca Raton, FL.
+Liu, H., H. Motoda, R. Setiono, and Z. Zhao. (2010). “Feature selection: An
+ever evolving frontier in data mining.^^ In Proceedings of the 4th Workshop
+on Feature Selection in Data Mining (FSDM)^ 4-13, Hyderabad, India.
+Liu, H. and R. Setiono. (1996). “Feature selection and classification - a prob­
+abilistic wrapper approach.5, In Proceedings of the 9th International Con­
+ference on Industrial and Engineering Applications of Artificial Intelligence
+and Expert Systems (IEA/AIE), 419-424, Fukuoka, Japan.
+Liu, J. and J. Ye. (2009). “Efficient Euclidean projections in linear
+In Proceedings of the 26th International Conference on Machine Learning
+(ICML), 657-664, Montreal, Canada. 
+-
+Mair al, J., M. Elad, and G. Sapiro. (2008). “Sparse representation for color
+image restoration." IEEE Transactions on Image Processing1 17(1):53-69.
+Mallat, S. G. and Z. F. Zhang. (1993). “Matching pursuits with time-frequency
+
+参考文献
+265
+dictionaries?5 IEEE Transactions on Signal Processing1 41(12):3397-3415.
+Narendra, P. M, and K. Fukunaga. (1977). “A branch and bound algorithm
+for feature subset selection.5, IEEE Transactions on Computers, C-26(9):
+917-922.
+Pudil, P., J. Novovicova, and J. Kittier. (1994). “Floating search methods in
+feature selection? Pattern Recognition Letters1 15(11):1119-1125.
+Quinlan, J. R. (1986). “Induction of decision trees." Machine Learning1 1(1):
+81-106.
+Recht, B. (2011). “A simpler approach to matrix completion.55 Journal of
+Machine Learning Research^ 12:3413-3430.
+Recht, B., M. Fazel, and P. Parrilo. (2010). ^Guaranteed minimum-rank so­
+lutions of linear matrix equations via nuclear norm minimization.5, SIAM
+Review, 52(3):471-501.
+Tibshirani, R. (1996). ^Regression shrinkage and selection via the LASSO.”
+Journal of the Royal Statistical Society - Series B, 58(1):267-288.
+Tibshirani, R., M. Saunders, S. Rosset, J. Zhu, and K. Knight. (2005). uSpar-
+sity and smoothness via the fused LASSO." Journal of the Royal Statistical
+Society - Series B, 67(1):91-108.
+Tikhonov, A. N. and V. Y. Arsenin, eds. (1977). Solution of Ill-Posed Problems.
+Winston, Washington, DC.
+Wang, J., J. Yang, K. Yu, F. Lv, T. Huang, and Y. Gong. (2010). uLocality-
+constrained linear coding for image classification." In Proceedings of the
+IEEE Computer Society Conference on Computer Vision and Pattern Recog­
+nition (CVPR)13360-3367, San Francisco, CA.
+Weston, J., A. Elisseff, B. Scholkopf, and M. Tipping. (2003). “Use of the zero
+norm with linear models and kernel methods." Journal of Machine Learning
+Research1 3:1439-1461.
+Yang, Y. and J. O. Pederson. (1997). “A comparative study on feature selection
+in text categorization." In Proceedings of the l4th International Conference
+on Machine Learning (ICML), 412-420, Nashville, TN.
+Yuan, M. and Y. Lin. (2006). “Model selection and estimation in regression
+with grouped variables.,5 Journal of the Royal Statistical Society - Series B,
+
+266
+第11章特征选择与稀疏学习
+68(1):49-67.
+Zou, H. and T. Hastie. (2005). “Regularization and variable selection v运 the
+elastic net.” Journal of the Royal Statistical Society - Series 
+67(2):301-
+320.
+休息一会儿
+利沃夫(Lviv)在历史上
+先属于波兰，1867— 1918
+年属于奥匈帝国，第一
+次世界大战后回归波兰,
+1939年划入前苏联的乌克
+兰，现为乌克兰利沃夫州
+首府.
+冯• 诺伊曼和爱德
+华・泰勒都出生在匈牙
+利.
+小故事：蒙特卡罗方法与斯坦尼斯拉夫•乌拉姆
+斯坦尼斯拉夫•乌拉姆(Stanislaw Ulam, 1909-1984)
+是著名的波兰犹太裔数学家，在遍历论、数论、集合论等方
+面都有重要贡献，“乌拉姆数列”就是以他的名字命名的.
+乌拉姆出生于奥匈帝国利沃夫，1933年在波兰利沃夫
+理工学院获得数学博士学位，然后于1935年应冯•诺伊曼
+蒙特卡罗方法的著名代
+表 Metropol is-Hasting 算法
+是以他的名字命名的.
+的邀请到普林斯顿高等研究院访问，1940年他在威斯康星大学麦迪逊分校获得
+教职，翌年加入美国籍. 1943年起他参与“曼哈顿计划”并做出重大贡献；当
+前世界上绝大部分核武器所使用的设计方案“泰勒-乌拉姆方案”就是以他和
+“氢弹之父”爱德华・泰勒的名字命名的.
+世界上最早的通用电子计算机之一—
+ENIAC在发明后即被用于曼哈
+顿计划，乌拉姆敏锐地意识到在计算机的帮助下，可通过重复数百次模拟过程
+的方式来对概率变量进行统计估计.冯・诺伊曼立即认识到这个想法的重要
+性并给予支持.1947年乌拉姆提出这种统计方法并用于计算核裂变的连锁反
+应.由于乌拉姆常说他的叔叔又在蒙特卡罗赌场输钱了，因此他的同事Nicolas
+Metropolis戏称该方法为“蒙特卡罗”，不料却流传开去.

@@ -1,0 +1,1381 @@
+第23 章
+自然语言处理
+在本章中，我们将看到计算机如何使用自然语言与人类进行交流，并从人类所书写的内
+容中学习。
+大约10 万年前，人类学会了如何说话，大约5 千年前，人类又学会了如何写字。人类语
+言的复杂性和多样性使得智人区别于其他所有物种。当然，人类还有一些其他的特有属性：没
+有任何其他物种像人类那样穿衣服，进行艺术创作，或者每天花两小时在社交媒体上交流。但是，
+艾伦·图灵所提出的智能测试是基于语言，而非艺术或服饰，也许是因为语言具有普适性，并且
+捕捉到了如此多的智能行为：一个演讲者演讲（或作家写作）的目标是交流知识，他组织语言来
+表示这些知识，然后采取行动以实现这一目标。听众（或读者）感知他们的语言并推断其中的含
+义。这种通过语言的交流促进了文明的发展，是我们传播文化、法律、科学和技术知识的主要方
+式。计算机进行自然语言处理（natural language processing，NLP）有以下3 个主要原因。
+ 与人类交流。在很多情况下，人类使用语音与计算机进行交互是很方便的，而且在大多
+数情况下，使用自然语言要比使用一阶谓词演算等形式语言更加方便。
+ 学习。人类已经用自然语言记录了很多知识。仅维基百科就有3000 万页事实知识，例如
+“婴猴是一种夜间活动的小型灵长类动物”，然而几乎没有任何一个这样的知识来源是用
+形式逻辑写成的。如果我们想让计算机系统知道很多知识，它最好能理解自然语言。
+ 使用人工智能工具结合语言学、认知心理学和神经科学，促进对语言和语言使用的科学
+理解。
+在本章中，我们将探讨语言的各种数学模型，并讨论使用这些模型可以完成的任务。
+23.1  语言模型
+正如我们在第8 章中所看到的，形式语言（如一阶逻辑）是精确定义的。文法（grammar）
+定义合法句的句法（syntax）
+①，语义规则（semantic rule）定义其含义。
+然而，自然语言（如英语或汉语）无法如此清晰地表示。
+ 不同的人在不同的时间对于语言的判断会有所差别。所有人都会认为“Not to be invited is sad.”
+是一个合乎文法的英语语句，但是对于“To be not invited is sad.”的合乎文法性则存在分歧。
+ 自然语言是存在歧义的（“He saw her duck”可以理解为“他看到了她的鸭子”，也可以理
+解为“他看到她躲避某物”），也是模糊不清的 （“That’s great!”没有准确说明它有多么好，
+也没有说明它是什么）。
+①　在形式语言学和计算机学科中，
+“grammar”的标准翻译是“文法”，而在计算语言学中则多译作“语法”（摘自《中
+国计算机学会通讯》第5 卷，第4 期，2009，4），而“syntax”有时也译作“语法”，在本书中为了区分两个概念，
+我们将“grammar”译作“文法”，将“syntax”译作“句法”。——译者注
+
+23.1  语言模型　　699
+ 自然语言没有正式定义从符号到对象的映射。在一阶逻辑中，“Richard”符号的两次使用必
+须指同一个人，但在自然语言中，同一单词或短语的两次出现可能指代世界上不同的事物。
+如果我们不能在合乎文法字符串和不合文法字符串之间做出明确的布尔判别，我们至少可
+以知道每个字符串的可能性或不可能性有多大。
+我们将语言模型（language model）定义为描述任意字符串可能性的概率分布。这样一
+个模型应该认为“Do I dare disturb the universe?”作为一个英语字符串具有合理的概率，而
+“Universe dare the I disturb do?”是英语字符串的可能性极低。
+通过语言模型，我们可以预测文本中接下来可能出现的单词，从而为电子邮件或短信息提
+供补全建议。我们可以计算出对文本进行哪些更改会使其具有更高的概率，从而提供拼写或文
+法更正建议。通过一对语言模型，我们可以计算出一个句子最可能的翻译。用一些示例“问
+题-答案”对作为训练数据，我们可以计算出针对某一问题的最可能的答案。因此，语言模型
+是各种自然语言任务的核心。语言建模任务本身也可以作为衡量语言理解进度的通用基准。
+自然语言是复杂的，因此任何语言模型充其量只能是自然语言的一个近似。语言学家爱德
+华·萨丕尔（Edward Sapir）曾说“没有一种语言是绝对一成不变的，任何文法都会有所遗漏”
+（Sapir, 1921）。哲学家唐纳德·戴维森（Donald Davidson）说过“如果语言是……一个明确定
+义的共享结构的话, 就不存在语言这种东西”（Davidson, 1986），他的意思是说，没有一种像
+Python 3.8 那样的确定性的英语语言模型，我们都有不同的模型，但我们仍然设法应对过去了，
+并进行交流。在本节中，我们将介绍一些简单的语言模型，这些模型显然是错误的，但是对某
+些任务来说仍然有用。
+23.1.1　词袋模型
+12.6.1 节介绍了基于特定单词的朴素贝叶斯模型如何可靠地将句子分类。例如，下面的句
+子1 被分类为business，句子2 被分类为weather。
+（1）Stocks rallied on Monday, with major indexes gaining 1% as optimism persisted over the 
+ﬁrst quarter earnings season.
+（2）Heavy rain continued to pound much of the east coast on Monday, with flood warnings 
+issued in New York City and other locations.
+在这一节，我们将回顾朴素贝叶斯模型，并将其转换为完整的语言模型。这意味着我们不
+仅想知道每个句子最可能属于哪一类别，我们还想知道所有句子和类别的联合概率分布。这意
+味着我们应该考虑句子中的所有单词。给定一个由单词w1, w2, …, wN 组成的句子（参考第14
+章，我们将其记为w1:N），根据朴素贝叶斯公式［式 （12.21）］，我们有
+ 
+朴素贝叶斯方法在字符串上的应用称为词袋模型（bag-of-words model）。它是一种生成模型，
+描述了句子生成的过程：想象一下，对于每个类别（business、weather 等），我们都有一个装
+满单词的袋子（你可以想象每个单词都写在袋子内的纸条上，一个单词越常见，重复的纸条就
+越多）。要生成一段文本，首先选择其中一个袋子并丢掉其他袋子。从那个袋子中随机抽出一
+个单词，这将是句子的第一个单词。然后将这个单词放回并抽取第二个单词。重复上述操作直
+到出现句末指示符（如句号）。
+这一模型显然是错误的：它错误地假设每个单词都与其他单词无关，因此无法生成连
+贯的英语语句。但它确实使得我们可以使用朴素贝叶斯公式来进行准确分类：“stocks”和
+
+700　　第23 章　自然语言处理
+“earnings”这两个词明显指向business 类，而“rain”和“cloudy”两个词则指向weather 类。
+我们可以通过在文本正文或语料库（corpus）上进行监督训练来学习该模型所需的先验概
+率，文本的每个部分都标有它的类别。一个语料库通常由至少一百万字的文本和上万个不同词
+汇组成。最近，我们正在使用更大的语料库，例如，拥有25 亿词的维基百科和拥有140 亿词
+的iWeb 语料库（来自2200 万个网页）。
+使用语料库，我们可以通过计算每一类别的常见程度来估计它们的先验概率P(Class)。我们还
+可以使用计数来估算给定类别的每个单词的条件概率P(wj | Class)。例如，如果总共有3 000 条文
+本，其中300 条被分类为business，那么我们可以估计P(Class = business) ≈ 300/3000 = 0.1。如果
+在business 类中，总共有100 000 个单词，而“stocks”一词出现了700 次，那么我们可以估计
+P(stocks | Class = business) ≈ 700/100 000 = 0.007。当单词数目很大（且方差较小）时，通过计数进行
+估计的效果很好，但是在23.1.4 节中，我们将看到一种在单词数目较小时估计概率的更好的方法。
+有时，选择另一种机器学习方法（如逻辑斯谛回归、神经网络或支持向量机）可能比朴素
+贝叶斯方法效果更好。机器学习模型的特征是词汇表中的单词：“a”
+“aardvark”……“zyzzyva”，
+值是每个单词在文本中出现的次数（或者是一个布尔值，表示该单词是否在文本中出现）。这
+导致特征向量是高维且稀疏的——在语言模型中，可能有100 000 个单词，因此特征向量的维
+数为100 000。但是对短文本来说，特征向量的绝大部分特征都是0。
+正如我们所看到的，当我们进行特征选择（feature selection），限制特征为单词中的一个子集
+时，某些机器学习模型效果会更好。我们可以删除非常罕见的单词（因为这些词的预测能力差异
+很大）和所有类别共有但对分类不起作用的单词（如“the”）。我们还可以将其他特征与基于单词
+的特征混合使用；例如，如果我们要对电子邮件进行分类，则可以为发件人添加以下特征：发送
+消息的时间、主题标题中的单词、是否存在非标准标点符号、大写字母的百分比、是否有附件等。
+注意，判断单词是什么并不容易。“aren’t”是一个单词，还是应该将它分解为“aren/’/t”
+或“are/n’t”或其他形式？将文本划分为单词序列的过程称为分词（tokenization）。
+23.1.2  n 元单词模型
+词袋模型具有一定局限性。例如，
+“quarter”一词在business 和sports 类中都很常见。但是“ﬁrst 
+quarter earnings report”这一由4 个单词组成的序列只在business 类中常见，“fourth quarter touchdown 
+passes”则只在sports 类中常见。我们希望模型可以做出区分。我们可以调整词袋模型，将“ﬁrst-
+quarter earnings report”这样的特殊短语视为单个单词，但更具原则性的方法是引入一种新模型，
+其中每个单词都依赖于之前的单词。我们可以先让单词依赖于它所在句子中之前的所有单词：
+ 
+这个模型在某种意义上是完全“正确”的，因为它捕捉了单词间所有可能的交互，但它并不实
+用：当词汇表中有100 000 个单词，句子长度为40 时，模型需要估计10
+200 个参数。我们可以使
+用马尔可夫链模型折中，它只考虑n 个相邻单词之间的依赖关系，我们称之为n 元模型（n-gram 
+model）（gram 源自希腊语词根gramma，意为“写下的东西”）：长度为n 的书面符号序列称为
+n 元。
+①当n 分别为1、2 和3 时，我们将其分别称作一元（unigram，即1-gram）、二元（bigram，
+即2-gram）和三元（trigram，即3-gram）。在n 元模型中，每个单词出现的概率仅依赖于前面的
+n-1 个单词，也就是说：
+①　注意，n 元的书面符号序列的元素可以是单词、字符、音节或其他元素。——编者注
+
+23.1  语言模型　　701
+ 
+n 元模型适用于对报纸版面进行分类，它在其他分类任务上表现得也很好，如垃圾邮件检
+测（spam detection）（区分垃圾邮件和非垃圾邮件）、情感分析（sentiment analysis）（将电影或
+商品评论分类为正面评价或负面评价）以及作者归属（author attribution）（海明威与福克纳或
+莎士比亚的写作风格和使用词汇不同）。
+23.1.3　其他n 元模型
+n 元单词模型的一种替代方法是字符级模型（character-level model），其中每个字符的概率
+由之前的n-1 个字符决定。这种方法有助于处理未知单词，也有助于处理倾向于将单词放在一
+起的语言，如丹麦语单词“Speciallægepraksisplanlægningsstabiliseringsperiode”。
+字符级模型适用于语言识别（language identiﬁcation）任务，即给定一个文本，确定它是
+用哪种语言写的。即使是非常短的文本，如“Hello, world”或“Wie geht’s dir”，n 元字母模型
+也可以将第一个文本识别为英语，第二个文本识别为德语，通常可以达到99% 以上的准确率。
+（像瑞典语和挪威语这样紧密相关的语言则比较难区分，通常需要更长的样本。对于这类语言，
+准确率在95% 以内。）字符模型非常擅长某些特定的分类任务，例如，将“dextroamphetamine”
+识别为药品名称，“Kallenberger”识别为人名，“Plattsburg”识别为城市名，即使模型从未见
+过这些单词。
+另一种可能的模型是跳字（skip-gram）模型，我们收集那些距离相近的单词，但是跳过它
+们之间的一个（或多个）单词。例如，给定法语文本“je ne comprends pas”，一跳二元（1-skip-
+bigram）应为“je comprends”和“ne pas”。收集这些内容有助于创建更好的法语模型，因为它
+告诉我们关于动词的词形变化（“je”之后应该用“comprends”，而不是“comprend”）和否
+定形式（“ne”应该与“pas”搭配）的信息。仅仅使用常规的二元模型，我们无法学到这些 
+内容。
+23.1.4　n 元模型的平滑
+像“of the”之类的高频n 元在训练语料库中的计数值很高，因此它们的概率估计很可能是
+准确的：即使使用不同的训练语料库，我们也会获得相似的估计值。而低频n 元由于计数值很
+低，容易受到随机噪声的干扰，方差较大。如果可以减小这种方差，我们的模型将表现得更好。
+此外，我们可能需要处理包含未知单词或未登录词（out-of-vocabulary）的文本。虽然未
+知单词或未登录词从未在训练语料库中出现过，但将这类单词的概率设为0 是错误的，因为整
+个句子的概率P(w1:N) 也将变为0。
+对未知单词进行建模的一种方法是修改训练语料库，用特殊符号替换不常见单词，一般
+替换为<UNK>。我们可以提前决定只保留部分单词。例如，50 000 个最常见的单词，或者频
+率超过0.0001% 的所有单词，并将剩下的单词替换为<UNK>。然后，我们照常对语料库中
+的n 元计数，把<UNK> 符号看作同其他任意单词一样。当测试集中出现未知单词时，我们查
+找<UNK> 的概率。有时，对于不同的类型，我们会使用不同的未知词符号。例如，可以用
+<NUM>替换一串数字，或者用<EMAIL>替换电子邮件地址。
+［我们注意到，使用一个特殊符号，
+如<S>，来标记文本的开始（和结束）也是可取的。这样，当二元概率公式需要使用文本第一
+
+702　　第23 章　自然语言处理
+个单词前面的单词时，可以取到<S>，而不是错误。］
+即使处理了未知单词，我们也会遇到未知n 元的问题。例如，测试文本可能包含短语
+“colorless aquamarine ideas”，这3 个单词可能在训练语料库中分别单独出现过，但从未以短语
+中的顺序出现。问题在于，一些低概率的n 元出现在训练语料库中，而其他同样低概率的n 元
+却从未出现。我们不希望其中一部分概率为0，而另一部分概率为一个很小的正数。我们希望
+对所有相似的n 元进行平滑（smoothing）处理——为从未出现在训练语料库中的n 元保留模型
+的一部分概率，以减小模型的方差。
+18 世纪，皮埃尔-西蒙·拉普拉斯（Pierre-Simon Laplace）提出了一种最简单的平滑方
+法，用来估计像“明天太阳不会升起”这样的罕见事件发生的概率。拉普拉斯的（不正确的）
+太阳系理论认为，太阳系大约有N = 200 万天的历史。从数据上看，在过去的200 万天里，太
+阳没有升起的概率是0，但我们并不想说这个概率完全就是0。拉普拉斯认为，如果我们采用
+均匀先验，并结合目前的证据，那么就可以得出，太阳明天不会升起的概率的最佳估计值为 
+1/(N + 2)——它要么升起要么不升起（即分母中的2），以及均匀先验表明升起和不升起的概率
+相同（即分子中的1）。拉普拉斯平滑（也称为加1 平滑）是朝着正确方向迈出的一步，但是
+对许多自然语言应用来说，它的效果很差。
+另一种选择是回退模型（backoﬀ model），首先进行n 元计数统计，如果某些序列的统计
+值很低（或为0），就回退到n-1 元。线性插值平滑（linear interpolation smoothing）就是一
+种通过线性插值将三元模型、二元模型和一元模型组合起来的回退模型。它将概率估计值定 
+义为
+ 
+其中λ3 + λ2 + λ1 = 1。参数值λi 可以是固定的，也可以使用EM 算法训练得到。λi 的值也可能取
+决于计数值：如果三元计数值很高，则其对应的模型权重相对更大；如果三元计数值较低，那
+么二元模型和一元模型的权重会更大。
+一些研究人员提出了更加复杂的平滑方法（如Witten-Bell 和Kneser-Ney），而另一些研究
+人员则建议收集更大规模的语料库，这样即使是简单的平滑方法也能有很好的效果（其中一种
+方法被称为“stupid backoﬀ”）。二者的目标相同：减小语言模型的方差。
+23.1.5　单词表示
+n 元模型为我们提供了一个可以准确预测单词序列概率的模型，例如，“a black cat”相较
+于“cat black a”更可能是一个英语短语，因为“a black cat”在训练语料库的三元中出现的概
+率大约为0.000014%，而“cat black a”根本没有出现过。n 元单词模型所学到的一切，都是来
+自特定单词序列的计数值。
+但是一个以英语为母语的人可能会从不同的角度解释：“a black cat”之所以有效是因为它
+遵循一种熟悉的模式（冠词-形容词-名词），而“cat black a”则不然。
+现在考虑短语“the fulvous kitten”。说英语的人可以看出它同样遵循冠词-形容词-名词的
+模式（即使他不知道“fulvous”表示“棕黄色”，也能意识到几乎所有以“-ous”结尾的单词
+都是形容词）。此外，他可以意识到“a”和“the”之间密切的句法联系，以及“cat”和“kitten”
+之间紧密的语义关系。因此，通过泛化，数据中“a black cat”的出现证明了“the fulvous 
+kitten”也是有效的英语短语。
+n 元模型则没有这样的泛化能力，因为它是一个原子模型：每个单词都是一个原子，与
+
+23.1  语言模型　　703
+其他单词不同，且没有内部结构。在整本书中，我们看到，因子化模型或结构化模型可以提
+供更强的表达能力和更好的泛化能力。在24.1 节中，我们将看到，一种被称为词嵌入（word 
+embedding）的因子化模型具有更好的泛化能力。
+词典（dictionary）是一种结构化单词模型，通常是人工构建的。例如，WordNet 是一种
+机器可读格式的开源手工编写词典，已被证明适用于许多自然语言应用
+a。下面是WordNet 中
+的“kitten”词条： 
+"kitten" <noun.animal> ("young domestic cat") IS A: young_mammal
+"kitten" <verb.body> ("give birth to kittens") 
+  EXAMPLE: "our cat kittened again this year"
+WordNet 可以帮助你区分名词和动词，并获得其基本类别（小猫是一种年幼的哺乳动物，是一
+种哺乳动物，是一种动物），但它不会告诉你有关小猫的外貌或行为的详细信息。WordNet 会
+告诉你，暹罗猫和曼岛猫是猫的两个品种，但不会再告诉你有关品种的进一步信息。
+23.1.6　词性标注
+对单词进行分类的一种基本方法是依据它们的词性（part of speech，POS），也称为词汇范
+畴（lexical category）或词汇标注（lexical tag）：名词、动词、形容词等。词性允许语言模型捕
+捉一般模式，例如，“英语中形容词通常在名词之前”（在其他语言中，如法语，则通常相反）。
+所有人都会认同“名词”和“动词”是两种词性，但当我们深入到更细节的部分时，却
+没有一个明确的词性列表。图23-1 为Penn Treebank 中使用的45 个标签，Penn Treebank 是
+一个由超过300 万个单词的文本组成，并用词性标签标记的语料库。稍后我们将看到，Penn 
+Treebank 还使用句法分析树对许多句子进行标记，语料库就是由此命名的。下面这段摘录里
+“from”被标记为介词（IN），“the”被标记为限定词（DT），等等： 
+From
+the
+start
+,
+it
+took
+a
+person
+with
+great
+qualities
+to
+succeed
+IN
+DT
+NN
+,
+PRP
+VBD
+DT
+NN
+IN 
+JJ
+NNS
+TO
+VB
+为句子中每个单词分配词性的任务称为词性标注（part-of-speech tagging）。虽然这个任务
+本身不是很有趣，但它是许多其他自然语言处理任务（如问答或翻译）中非常有用的第一步。
+即使是文本语音合成（text-to-speech synthesis）这样的简单任务，也需要知道名词“record”与
+动词“record”的发音不同。在本节中，我们将看到如何将两个熟悉的模型应用于这一标注任
+务，在第24 章中，我们将介绍第三种模型。
+词性标注的一种常见模型是隐马尔可夫模型。回想14.3 节中的内容，隐马尔可夫模型采
+用了证据观察的时间序列，预测可能产生该序列的最可能的隐藏状态。在14.3 节的隐马尔可
+夫模型示例中，证据是观察到一个人带着雨伞（或不带雨伞）的情况，隐藏状态是外界下雨
+（或不下雨）。对于词性标注任务，证据是单词序列W1:N ，隐藏状态是词性C1:N。
+隐马尔可夫模型是一种生成模型，认为产生语言的方法是，从一种状态开始，如IN，介
+词状态，然后做两个选择：应该生成哪个单词（如from），以及接下来应该生成哪种状态（如
+DT）。除当前的词性状态之外，该模型不考虑任何上下文信息，也不知道句子真正要表达什
+么。但是，它是一个有用的模型——如果我们应用维特比算法（14.2.3 节）寻找最可能的隐藏
+状态（词性）序列，我们会发现标注达到了非常高的精度，通常在97% 左右。
+a　甚至适用于计算机视觉应用：WordNet 提供了可供ImageNet 使用的一组类别。
+
+704　　第23 章　自然语言处理
+标签             单词
+描述
+标签
+单词
+描述
+CC	
+     and
+          并列连词
+PRP$
+your
+所有格代词
+CD	
+     three          基数词
+RB
+quickly
+副词
+DT	
+     the
+          限定词
+RBR
+quicker
+副词，比较级
+EX	
+     there          存在there
+RBS
+quickest
+副词，最高级
+FW	
+     per se          外来词
+RP
+oﬀ
+小品词
+IN	
+     of
+          介词
+SYM
++
+符号
+JJ	
+     purple          形容词
+TO
+to
+to
+JJR	
+     better          形容词，比较级
+UH
+eureka
+感叹词
+JJS	
+     best
+          形容词，最高级
+VB
+talk
+动词，原形
+LS	
+     1
+          列表项标记
+VBD
+talked
+动词，过去式
+MD	
+     should          情态动词
+VBG
+talking
+动词，动名词
+NN	
+     kitten          名词，单数或不可数
+VBN
+talked
+动词，过去分词
+NNS	
+     kittens          名词，复数
+VBP
+talk
+动词，非第三人称单数现在时
+NNP	
+     Ali
+          专有名词，单数
+VBZ
+talks
+动词，第三人称单数现在时
+NNPS	
+     Fords          专有名词，复数
+WDT
+which
+wh 限定词
+PDT	
+     all
+          前位限定词
+WP
+who
+wh 代词
+POS	
+     ’s
+          所有格标记
+WP$
+whose
+wh 所有格代词
+PRP	
+     you
+          人称代词
+WRB
+where
+wh 副词
+$	
+     $
+          美元符号
+#
+#
+英镑符号
+“	
+  ‘
+          左引号
+”
+’
+右引号
+(	
+     [
+          左括号
+)
+]
+右括号
+,	
+     ,
+          逗号
+.
+!
+句子结束
+:	
+     ;
+          句中标点
+图23-1 Penn Treebank 语料库的词性标签（每个标签都有一个示例单词）（Marcus et al., 1993）
+要创建一个用于词性标注的隐马尔可夫模型，我们需要转移模型，它给出了一个词性紧跟
+另一词性的概率P(Ct | Ct−1)，以及传感器模型 P(Wt | Ct )。例如，P(Ct = VB | Ct−1 = MD) = 0.8 表
+示给定一个情态动词 （如would），下一个单词是动词（如think）的概率为0.8。0.8 这个数值
+是怎么来的？就像n 元模型一样，从语料库中进行计数统计，并进行适当的平滑处理。事实证
+明，Penn Treebank 中有13 124 个MD 实例，其中10 471 个后面跟着VB。
+对于传感器模型，P(Wt = would | Ct = MD) = 0.1 表示当我们选择情态动词时，10% 的情况
+下我们会选择would。这些数字同样来自带有平滑处理的语料库计数。
+隐马尔可夫模型的一个缺点是，我们对语言的所有了解都必须用转移模型和传感器模型来
+表达。当前单词的词性仅由这两个模型的概率以及前一个单词的词性决定。对系统开发人员而
+言，得出以下结论是很难的，例如，任何以“ous”结尾的单词都可能是形容词，或者，在短
+语“attorney general”中，attorney 是名词，而不是形容词。
+幸运的是，逻辑斯谛回归确实能够表示这样的信息。回想19.6.5 节，在逻辑斯谛回归模型
+中，输入是特征值向量x。然后，我们将这些特征与预训练的权重向量w 进行点积w · x，然后
+将和转换为0 ～1 之间的数字，这个数字可以解释为该输入是一个类别的正例的概率。
+逻辑斯谛回归模型中的权重对应于每个特征对每个类别的预测能力；权重值可以通过梯度
+
+23.1  语言模型　　705
+下降法学习。对于词性标注，我们将建立45 个不同的逻辑斯谛回归模型，每个词性使用一个
+模型。给定一个单词在特定上下文中的特征值，模型将给出该单词属于该类别的可能性。
+接下来的问题是，这些特征应该是什么？词性标注器通常使用二元值特征，对正在标注的
+单词wi（可能还有其他相邻单词）以及分配给前一个单词的词性ci−1（可能还有更前面单词的
+词性）等信息进行编码。特征可能取决于单词的确切身份，它的某种拼写方式，或者它在词典
+条目的某个属性。一组词性标注特征可能包括：
+wi−1 = “I” 
+ 
+ 
+wi+1 =“for”
+wi−1 = “you”  
+ 
+ci−1 = IN
+wi ends with “ous” 
+ 
+wi contains a hyphen
+wi ends with “ly” 
+ 
+wi contains a digit
+wi starts with “un” 
+ 
+wi is all uppercase
+wi−2 = “to” and ci−1 = VB 
+wi−2 has attribute PRESENT
+wi−1 = “I” and wi+1 = “to” 
+wi−2 has attribute PAST
+例如，单词“walk”可以是名词也可以是动词，但在“I walk to school”中，使用词性标
+注特征中最后一行左列的特征，我们可以将“walk”分类为动词（VBP）。另一个例子是，单
+词“cut”可以是名词（NN），也可以是过去时动词（VBD）或现在时动词（VBP）。给定句子
+“Yesterday I cut the rope”，最后一行右列的特征可以帮助我们将“cut”标记为VBD，而在句
+子“Now I cut the rope”中，倒数第二行右列的特征可以帮助我们将“cut”标记为VBP。
+总的来说，可能有100 万个特征，但是对于任意给定的单词，只有几十个特征是非0 的。
+这些特征通常是由人类专家手工设定的，他们会想出有趣的特征模板。
+逻辑斯谛回归没有输入序列的概念——你给它一个单独的特征向量（单个单词的相关信
+息），它产生一个输出（一个标注）。但是，我们可以强制逻辑斯谛回归模型通过贪心搜索来处
+理序列：首先为第一个单词选择最可能的标注，然后按照从左到右的顺序处理其余单词。在每
+一步，根据下式分配词性ci：
+ 
+也就是说，分类器可以查看句子中任意单词的任何非词性特征（因为这些特征都是固定的），
+以及任何为先前单词分配的词性。
+注意，贪心搜索为每个单词做出确定性的词性选择，然后转到下一个单词；即使这一选择
+与句子后面的证据相矛盾，也不可能回过头来推翻这一选择。因此，算法速度很快。相比之
+下，维特比算法会维护一个表格，记录每一步中所有可能的词性选择，表格始终可以更改。这
+使得算法更加准确，但速度较慢。对于这两种算法，一个折中方案是束搜索，在每个时间步，
+我们考虑所有可能的词性，但只保留b 个最可能的标注，丢掉其他不太可能的标注。改变b 的
+大小是在速度和准确性之间进行权衡。
+朴素贝叶斯模型和隐马尔可夫模型都是生成模型（见20.2.3 节）。也就是说，它们学习一
+个联合概率分布P(W, C)，我们可以通过从这一概率分布中采样得到句子的第一个单词（和标
+注），然后每次添加一个单词来生成一条随机句子。
+逻辑斯谛回归是一种判别模型。它学习一个条件概率分布P(C | W)，这意味着它可以根据
+给定的单词序列来分配词性，但不能生成随机句子。研究人员发现，通常，判别模型的错误率
+较低，可能是因为它们直接对预期输出进行建模，也可能是因为它们让分析者更容易创建附加
+特征。然而，生成模型往往收敛得更快，因此在可用训练时间较短或训练数据有限时，可能会
+
+706　　第23 章　自然语言处理
+首选生成模型。
+23.1.7　语言模型的比较
+为了了解不同的n 元模型的效果，我们对本书中的单词建立了一元模型（即词袋）、二元
+模型、三元模型和四元模型，然后从4 个模型中随机采样单词序列。
+ n = 1: logical are as are confusion a may right tries agent goal the was
+ n = 2: systems are very similar computational approach would be represented
+ n = 3: planning and scheduling are integrated the success of naive Bayes model is
+ n = 4: taking advantage of the structure of Bayesian networks and developed various languages 
+for writing “templates” with logical variables, from which large networks could be constructed 
+automatically for each problem instance
+从这个小例子中可以清楚地看出，无论是对一般英语教材还是特定的人工智能教材的内
+容，一元模型都是很糟糕的近似，而四元模型虽然并不完美，但效果要好得多。接下来，为了
+演示样本如何在不同的训练源之间变化（当然不仅仅是为了好玩），我们在四元模型中添加了
+钦定版《圣经》的文本，从而产生了下面这些随机样本。
+ Prove that any 3-SAT problem can be reduced to simpler ones using the laws of thy God.
+ Masters, give unto your servants that which is true iff both P and Q in any model m by a simple 
+experiment: put your hand unto, ye and your households for it is pleasant.
+ Many will intreat the LORD your God, Saying, No; but we will ignore this issue for now; Chapters 
+7 and 8 suggest methods for compactly representing very large belief states.
+ And it came to pass, as if it had no successors.
+ The direct utility estimation is just an instance of the general or algorithm in which new function 
+symbols are constructed “on the fly.” For example, the first child of the Holy Ghost.
+n 元模型有一个限制——随着n 的增加，它们将生成更流畅的语言，但它们倾向于逐字复
+制训练数据中的长段落，而不是生成新的文本。具有更复杂的单词和上下文表示的语言模型可
+以在这方面做得更好。本章的其余部分说明了文法（grammar）如何对语言模型进行改进，而
+第24 章则展示了目前深度学习方法如何生成优秀的语言模型。例如，深度学习模型GPT-2 在
+给定提示时可以生成流畅的英语样例。我们将本段的前两个句子
+a 提示给GPT-2 模型，它产
+生了以下两个样本。
+ Numerous studies have shown that the best language models that can generate language are those 
+that use neural networks, and in particular that use deep learning to model speech. I have used one 
+of these models to generate hundreds of sentences in multiple languages, and it has the ability to 
+generate almost perfect translations of my training sentences. It’s a great model to have, and will 
+save you a lot of time in the future when you need to translate between many languages.
+ These models can also do better if their samples are chosen at random, rather than by an expert in 
+the domain. However, as a general rule, n-gram and language models that include a large number 
+of features tend to produce text better, since these features contribute the most to language learning. 
+To measure the performance of a model, I’ve made some sample sentences that I’d like to train to 
+a　在原书中，本段的前两个句子为：There is a limit to n-gram models—as n increases, they will produce language that 
+is more ﬂuent, but they tend to reproduce long passages from their training data verbatim, rather than generate novel text. 
+Language models with more complex representations of words and context can do better. ——编者注
+
+23.2  文法　　707
+better understand speech and language models. You can read them to get a grasp of how the model 
+predicts.
+可以看到，这些段落内容丰富而且文法流畅；此外，它们的主题也与提示语句相关。但
+是，句子之间并没有相互补充以形成一个连贯的论点。GPT-2 语言模型是一个Transformer
+模型（我们将在24.4 节中介绍），在图24-14 中，我们给出了GPT-2 的其他示例。另一种
+Transformer 模型是CTRL（conditional transformer language，条件Transformer 语言）模型。它
+可以被更灵活地控制。在以下示例中，要求CTRL 生成产品评论类的文本，指定评分分别为1
+和4（满分为5）。
+ 1.0: I bought this for my son who is a huge fan of the show. He was so excited to get it and when 
+he opened it, we were all very disappointed. The quality of the product is terrible. It looks like 
+something you would buy at a dollar store.
+ 4.0: I bought this for my husband and he loves it. He has a small wrist so it is hard to find watches 
+that fit him well. This one fits perfectly.
+23.2  文法
+在第7 章中，我们使用巴克斯-诺尔范式（Backus-Naur form，BNF）写下了一阶逻辑语言
+的文法。文法（grammar）是一组规则，定义了合法短语的树结构，而语言（language）是遵
+循这些规则的句子集。
+自然语言的使用方式与一阶逻辑形式语言并不完全一样——自然语言中不存在合法句和
+非法句之间的硬性界限，对于每个句子也没有单一的确定性的树结构。但是，层次结构在自
+然语言中非常重要。“Stocks rallied on Monday”一句中的“Stocks”一词不仅是一个单词，也
+不仅仅是一个名词；在这个句子中，它还是一个名词短语，这个名词短语是其后动词短语的
+主语。诸如名词短语或动词短语之类的句法范畴（syntactic category）有助于对句子中每个位
+置上可能出现的单词进行约束，短语结构（phrase structure）则为句子的含义或语义提供了 
+框架。
+有许多语言模型基于分层句法结构的思想。在本节中，我们将介绍一种当前流行的模型，
+概率上下文无关文法（probabilistic context-free grammar，PCFG）。概率文法为每个字符串分配
+一个概率，“上下文无关”意味着任一规则都可以在任何上下文中使用：句子开头的名词短语
+的规则与句子后面的另一个名词短语的规则相同，如果同一短语出现在两个不同位置，那么
+每次的概率都必须相同。我们将为一小段英语文本定义一个PCFG 文法，该文法适用于探索
+wumpus 世界的智能体之间的通信。我们称这种语言为E0（见图23-2）。一个像
+ 
+这样的文法规则意味着句法范畴Adjs（形容词列表）可以由单个Adjective（形容词）组成（概
+率为0.80），也可以由Adjective 加上可以构成Adjs 的字符串组成（概率为0.20）。遗憾的是，
+该文法会过生成（overgeneration），也就是说，它会生成不符合文法的句子，如“Me go I”。
+它也会欠生成（undergeneration），也就是说，它无法生成部分符合文法规则的句子，如“I 
+think the wumpus is smelly”。稍后我们将看到如何学习更好的文法；现在，我们专注于如何使
+用这种非常简单的文法。
+
+708　　第23 章　自然语言处理
+              S  →  NP VP  
+[0.90] I+feel a breeze
+                   |    S Conj S  
+[0.10] I feel a breeze+and+It stinks
+           NP  →  Pronoun 
+[0.25] I
+                   |    Name 
+ 
+[0.10] Ali
+                   |    Noun 
+ 
+[0.10] pits
+                   |    Article Noun 
+[0.25] the+wumpus
+                   |    Article Adjs Noun [0.05] the+smelly dead+wumpus
+                   |    Digit Digit 
+[0.05] 3 4
+                   |    NP PP   
+[0.10] the wumpus+in 1 3
+                   |    NP RelClause 
+[0.05] the wumpus+that is smelly
+                   |    NP Conj NP 
+[0.05] the wumpus+and+I
+            VP  →  Verb 
+ 
+[0.40] stinks
+                   |    VP NP  
+[0.35] feel+a breeze
+                   |    VP Adjective 
+[0.05] smells+dead
+                   |    VP PP  
+[0.10] is+in 1 3
+                   |    VP Adverb 
+[0.10] go+ahead
+         Adjs  →  Adjective 
+[0.80] smelly
+                   |    Adjective Adjs 
+[0.20] smelly+dead
+           PP  →  Prep NP 
+[1.00] to+the east
+RelClause  →  RelPro VP 
+[1.00] that+is smelly
+图23-2　E0 的文法，每个规则都有示例短语。句法范畴包括句子（S）、名词短语（NP）、动词短语（VP）、
+形容词列表（Adjs）、介词短语（PP）和关系从句（RelClause）
+E0 的词典
+图23-3 中定义了词典（lexicon）或允许使用的单词的列表。每个词汇范畴都以…结
+尾，表示该范畴中还有其他单词。对于名词、名称、动词、形容词和副词，列出所有单词是
+不可行的。每一类中不仅有成千上万的单词，而且还在不断增加新单词，如“humblebrag”或
+“microbiome”。这5 个范畴被称为开放类（open class）。代词、关系代词、冠词、介词和连词
+被称为封闭类（closed class），它们的单词数量很少（十几个），而且要经过几个世纪才发生变
+化，而不是几个月就发生变化。例如，“thee”和“thou”在17 世纪是常用代词，在19 世纪才
+逐渐减少使用，而如今仅在诗歌和某些地区的方言中才能看到。
+Noun     →  stench [0.05] | breeze [0.10] | wumpus [0.15] | pits [0.05] | …
+Verb       →  is [0.10] | feel [0.10] | smells [0.10] | stinks [0.05] | …
+Adjective  →  right [0.10] | dead [0.05] | smelly [0.02] | breezy [0.02] | …
+Adverb    →  here [0.05] | ahead [0.05] | nearby [0.02] | …
+Pronoun     →  me [0.10] | you [0.03] | I [0.10] | it [0.10] | …
+RelPro        →  that [0.40] | which [0.15] | who [0.20] | whom [0.02] | …
+Name         →  Ali [0.01] | Bo [0.01] | Boston [0.01] | …
+Article        →  the [0.40] | a [0.30] | an [0.10] | every [0.05] | …
+Prep           →  to [0.20] | in [0.10] | in [0.05] | near [0.10] | …
+Conj           →  and [0.50] | or [0.10] | but [0.20] | yet [0.02] | …
+Digit          →  0 [0.20] | 1 [0.20] | 2 [0.20] | 3 [0.20] | 4 [0.20] | … 
+图23-3　E0 的词典。RelPro 是关系代词（relative pronoun）的缩写，Prep 是介词（preposition）的缩写，
+Conj 是连词（conjunction）的缩写。每一类的概率之和都为1
+
+23.3  句法分析　　709
+23.3  句法分析
+句法分析（parsing）
+a 是根据文法规则分析一串单词以获得其短语结构的过程。我们可以
+将它看作对有效句法分析树的搜索，树的叶节点是字符串中的单词。图23-4 表示，我们可以
+从S 符号开始自顶向下搜索，也可以从单词开始自底向上搜索。然而，单纯的自顶向下或自底
+向上的句法分析策略可能很低效，因为它们最终可能会在搜索空间导致死胡同的区域中重复工
+作。考虑以下两个句子：
+Have the students in section 2 of Computer Science 101 take the exam. 
+Have the students in section 2 of Computer Science 101 taken the exam?
+即使共享前10 个单词，这两个句子的句法分析也存在很大差异，因为第一个句子是祈使
+句，而第二个是疑问句。从左到右的句法分析算法必须猜测第一个单词到底属于命令还是提问，
+而且至少到第11 个单词，take 或者taken，算法才能判断它的猜测是否正确。如果算法一开始的
+猜测是错误的，那么它不得不一直回溯到第一个单词，然后在另一种解释下重新分析整个句子。
+为了避免这种效率低下的情况，我们可以使用动态规划（dynamic programming）：每次
+分析子字符串时，存储分析结果，以免之后重复分析。例如，一旦我们发现“the students in 
+section 2 of Computer Science 101”是一个NP 结构，我们就可以将结果记录在一种被称为图表
+（chart）的数据结构中。执行此操作的算法称为图表句法分析器（chart parser）。因为我们正在
+处理上下文无关文法，所以在搜索树的一个分支的上下文中找到的任何短语都可以在搜索树的
+任何其他分支中正常工作。图表句法分析器有很多类型，我们将介绍一种自底向上的图表句法
+分析算法的概率版本，称为CYK 算法，该算法以其发明者姓氏的首字母命名：阿里·科克（Ali 
+Cocke）、丹尼尔·扬格（Daniel Younger）和嵩忠雄（Tadeo Kasami）。
+b
+项目列表
+规则
+S
+NP VP
+S → NP VP
+NP VP Adjective
+VP → VP Adjective
+NP Verb Adjective
+VP → Verb
+NP Verb dead
+Adjective → dead
+NP is dead
+Verb → is
+Article Noun is dead
+NP → Article Noun
+Article wumpus is dead
+Noun → wumpus
+the wumpus is dead
+Article → the
+图23-4 根据E0文法，对字符串“The wumpus is dead”进行句法分析。对于自顶向下的句法分析，我们
+从S 开始，在每一步中，将一个非终结符X 与形式为（X → Y…）的规则匹配并将项目列表中的X 替换为Y…。
+例如，用序列NP VP 替换S。对于自底向上的句法分析，我们从“the wumpus is dead”开始，在每一步中，
+将一串记号，如（Y…），与规则（X → Y…）相匹配，并将记号替换为X。例如，用Article 替换“the”或
+用NP 替换Article Noun
+CYK 算法如图23-5 所示。它要求所有规则都必须为两种特定格式之一：X → word[p]形 
+a　“parsing”在计算语言学中译作“句法分析”，在计算机学科的编译原理中译作“语法分析”。因为本章主要是讲
+自然语言处理，所以此处的翻译遵循计算语言学中使用的术语，译为“句法分析”。——编者注
+b　有时，发明者按CKY 顺序排序。
+
+710　　第23 章　自然语言处理
+式的词法规则，以及X → Y Z [p]形式的句法规则，规则右边恰好有两个范畴。这种文法格式
+称为乔姆斯基范式（Chomsky Normal Form），它看上去是受限的，但其实不然：任何上下文
+无关文法都可以自动转换为乔姆斯基范式。习题23.CNFX 可以引导你思考这一转换过程。
+function CYK-Parse(words, grammar) returns 一个句法分析树表
+    inputs: words，单词列表
+                grammar，LexicalRules和GrammarRules结构
+    T ← 一个表　　// T [X, i, k]是涵盖wordsi:k的最可能的X树
+    P ← 一个表，初始时全为0　// P[X, i, k]表示树T[X, i, k]的概率
+    // 为每个单词插入词汇范畴
+    for i = 1 to len(words) do
+        for each (X, p) in grammar.LexicalRules(wordsi) do
+            P[X, i, i] ← p
+            T [X, i, i] ← Tree(X, wordsi)
+    // 通过Yi:j + Zj+1:k构建Xi:k，最短区间优先
+    for each (i, j, k) in subspans(len(words)) do
+        for each (X, Y, Z, p) in grammar.GrammarRules do
+            PYZ ← P[Y, i, j]×P[Z, j+1, k]×p
+            if PYZ > P[X, i, k] do
+                P[X, i, k] ← PYZ
+                T[X, i, k] ← Tree(X, T [Y, i, j], T [Z, j + 1, k])
+    return T
+function subspans(N) yields (i, j, k)元组
+    for length = 2 to N do
+        for i = 1 to N + 1 − length do
+            k ← i + length − 1
+            for j = i to k − 1 do
+                yield (i, j, k)
+图23-5 CYK句法分析算法。给定一个单词序列，算法将找出该序列及其子序列的最可能的句法分析树。
+表P[X, i, k] 表示的是单词串wordsi:k 构成范畴X 的最可能树的概率。输出表T [X, i, k] 则表示范畴X 涵盖
+位置i 到k 的最可能树。subspans 函数返回涵盖单词串wordsi:k 的所有元组(i, j, k)，其中i ≤ j < k，按照i : 
+k 区间长度递增的顺序列出元组，因此当我们需要把两个较短区间组合成一个更长的区间时，这两个较短
+区间都能在表中找到。LexicalRules(word) 返回一组(X, p) 对，其中每个规则的形式为X → word [p]，而
+GrammarRules 则返回一组(X, Y, Z, p) 元组，其中每个规则的形式为X → Y Z [p]
+CYK 算法中，表P 和表T 所需空间为O(n2m)，所需时间为O(n3m) ，其中n 是句子中单词
+的数量，m 是文法中非终结符的数量。如果我们希望算法适用于所有可能的上下文无关文法，
+那么CYK 算法已经是最好的算法了。但实际上，我们只想对自然语言而不是所有可能文法进
+行句法分析。自然语言已经进化到易于实时理解的程度，而不是变得更加复杂，因此它们似乎
+应该适用于更快的句法分析算法。
+为了尝试达到O(n) 时间，我们可以以一种非常简单的方式应用A
+* 搜索：每个状态都是一
+个项目（单词或范畴）列表，如图23-4 所示。初始状态是单词列表，目标状态是S。状态的代
+价是到目前为止应用的规则所定义的概率的倒数，有很多启发式方法可以用来估计到目标的剩
+余距离；目前使用的最佳启发式方法来自应用句子语料库的机器学习。
+使用A
+* 算法，我们不需要搜索整个状态空间，并且可以保证算法找到的第一个分析就是
+可能性最大的分析（假设是一个可容许的启发式）。它通常比CYK 算法快，但（取决于文法的
+细节）仍然比O(n) 慢。句法分析的示例结果如图23-6 所示。
+
+23.3  句法分析　　711
+图23-6　根据E0 文法得到的句子“Every wumpus smells”的句法分析树。树的每个内部节点均标有概率。
+整个树的概率为0.9×0.25×0.05×0.15×0.40×0.10 = 0.0000675。它也可以以线性形式写为：[S [NP [Article 
+every][Noun wumpus]][VP [Verb smells]]]
+就像词性标注一样，我们可以使用束搜索进行句法分析，在任何时候我们都只考虑b 个最
+可能的选择。这意味着我们不能保证找到概率最高的分析，但是（通过周密的实现）分析器可
+以在O(n) 时间内运行，并且在大多数情况下仍能找到最佳的句法分析。
+b = 1 的束搜索句法分析器称为确定性句法分析器（deterministic parser）。一种流行的确定
+性方法是移位减少句法分析（shift-reduce parsing），我们逐字遍历整个句子，在每一点上选择
+将单词移到成分栈上，或根据文法规则减少栈最顶端的成分。在NLP 社区中，每种句法分析
+方式都有人使用。我们把机器学习应用于文法归纳问题时，即使可以将移位减少系统转换为
+PCFG（反之亦然），每个系统的归纳偏差以及泛化也是不一样的（Abney et al., 1999）。
+23.3.1　依存分析
+另一种广泛使用的句法，称为依存文法（dependency grammar），它假定句法结构是由词汇项
+之间的二元关系形成的，不需要句法成分。图23-7 展示了一个句子的依存分析和短语结构分析。
+图23-7 句子“I detect the smelly wumpus near me”的依存句法分析（上）和相应的短语结构分析（下）
+
+712　　第23 章　自然语言处理
+从某种意义上说，依存文法和短语结构文法只是符号上的变体。如果用每个短语的中心词
+对短语结构树进行标记，就可以从中恢复出依存关系树。在另一个方向上，我们可以通过引入
+任意范畴将依存关系树转换为短语结构树（尽管我们并不总能以这种方式获得一棵自然的树）。
+因此，我们不会因为一种符号更强而选择这种符号；我们更愿意选择一种更自然的符
+号——要么对系统的开发人员来说更加熟悉，要么对必须学习句子结构的机器学习系统来说更
+加自然。通常，对词序几乎固定的语言（如英语）来说，短语结构树更加自然；对词序几乎无
+限制的语言（如拉丁语）来说，依存关系树更加自然，在这类语言中，词序更多地取决于语用
+学而不是句法范畴。
+如今，依存文法的流行很大程度上源于Universal Dependencies 项目（Nivre et al., 2016），这是
+一个开源项目，它定义了一组关系并提供了来自70 多种语言的数百万个经过句法分析后的句子。
+23.3.2  从样例中学习句法分析器
+为大规模的英语语句建立文法是一件费力且容易出错的事。这表明，直接学习文法规则
+（及其概率）比人工标注更好。为了应用监督学习方法，我们需要句子的输入/输出对及其句法
+分析树。Penn Treebank 是最著名的此类数据的来源，由用句法分析树结构标记的十万多个句
+子组成。图23-8 为来自Penn Treebank 的标记树。
+[ [S [NP-2 Her eyes]
+       [VP were
+            [VP glazed
+                   [NP*-2]
+                   [SBAR-ADV as if
+                              [S[NP she]
+                                  [VP did n’t]
+                                      [VP [VP hear [NP*-1]]
+                                            or
+                                            [VP [ADVP even] see [NP*-1]]
+                                            [NP-1 him]]]]]]]]
+.]
+图23-8　来自Penn Treebank 的句子“Her eyes were glazed as if she didn’t hear or even see him.”的标记树。
+需要注意一种我们还未涉及的文法现象：短语从树的一部分移动到另一部分。这棵树将短语“hear or even 
+see him”分析为由两个VP 成分组成，[VP hear [NP *-1]] 和[VP [ADVP even] see [NP *-1]]，两者都含有一
+个空缺，*-1，表示在树中其他地方被标记为[NP-1 him] 的NP。类似地，[NP *-2] 表示[NP-2 Her eyes]
+给定一个树库（treebank），我们可以通过计算每个节点类型在树中出现的次数来创建
+PCFG（通常需要注意平滑低计数值）。在图23-8 中，有两个[S[NP…][VP…]] 形式的节点。我
+们将对这些节点以及语料库中其他所有根为S 的子树进行计数。如果一共有1000 个S 节点，
+其中600 个为上述形式，那么我们可以创建规则：
+	
+S → NP VP [0.6]
+Penn Treebank 一共有10 000 多种不同的节点类型。这反映了一个事实：英语是一种复杂的语言，
+但同时也表明，创建树库的标注人员更偏爱扁树，也许比我们期望的还要扁。例如，“the good 
+and the bad” 被标注为一个单独的名词短语，而不是两个名词短语连用，从而得到如下规则：
+	
+NP → Article Noun Conjunction Article Noun
+
+23.4  扩展文法　　713
+有数百种类似规则都将名词短语定义为中间某处为连词的范畴串。一种更简洁的文法用单个规
+则代替了所有名词短语连用的规则：
+	
+NP → NP Conjunction NP
+博德等人（Bod et al., 2003）（Bod, 2008）展示了如何自动恢复像这样的一般化规则，大大减
+少了树库中规则的数量，他们还创建了一种文法，最终可以更好地泛化到之前未见过的句子。
+他们称这种方法为面向数据的句法分析（data-oriented parsing）。
+我们已经看到，树库不是完美的——它们存在错误并且包含怪异的句法分析。此外，创建
+树库显然需要大量工作。这意味着，与所有还没有使用树来标记的文本相比，树库仍然相对较
+小。另一种方法是无监督句法分析（unsupervised parsing），我们使用不包含树的句子语料库学
+习新文法（或改进现有文法）。
+向内-向外算法（inside-outside algorithm）（Dodd, 1988）（这里不详细介绍）学习从不
+包含树的例句中估计PCFG 中的概率，类似于前向-后向算法（图14-4）估计概率的方式。
+（Spitkovsky et al., 2010a）则提出了一种利用课程学习（curriculum learning）的无监督学习方法：
+从课程的简单部分开始——根据先验知识或注释可以轻松地分析只包含2 个单词的无歧义简短
+句，如“He left”。每一个新的短句句法分析都会扩充系统知识，从而最终可以处理3 个单词、
+4 个单词，甚至是40 个单词的句子。
+我们还可以使用半监督句法分析（semisupervised parsing），首先使用少量树作为数据来构
+建初始文法，然后添加大量未分析的语句来改进文法。半监督方法可以利用部分括号表示法
+（partial bracketing）：我们可以使用由文本作者（而不是语言专家）用部分树状结构标记（采用
+HTML 或其他类似注释形式）的广泛可用文本。在HTML 文本中，大多数括号对应于句法成
+分，因此部分括号表示法有助于学习文法（Pereira and Schabes, 1992; Spitkovsky et al., 2010b）。
+考虑下面来自报纸文章的HTML 文本：
+   In 1998, however, as I <a>established in
+<i>The New Republic</i></a> and Bill Clinton just
+<a>confirmed in his memoirs</a>, Netanyahu changed his mind
+由<i></i> 标记包围的单词构成一个名词短语，由<a></a> 标记包围的两个单词串分别构
+成动词短语。
+23.4  扩展文法
+目前为止，我们已经处理了上下文无关文法。但是，并不是每个NP 都可以以相同的概率
+出现在每个上下文中。
+“I ate a banana”是符合文法的，但是“Me ate a banana”不符合文法，而“I 
+ate a bandanna”则不符合实际。
+①
+问题在于我们的文法侧重于词汇范畴，如代词，但尽管“I”和“me”都是代词，却只有
+“I”可以作为句子主语。同样，
+“banana”和“bandanna”都是名词，但前者更有可能成为“ate”
+的宾语。如语言学家所说，代词“I”属于主格（即，动词的主语），而“me”属于宾格
+②（即，
+动词的宾语）。他们还表明，“I”是第一人称（“you”是第二人称，“she”是第三人称），此外，
+“I”还是单数（“we”是复数）。像代词这样的范畴，已经用诸如“主格、第一人称单数”之类
+①　在英语中，banana 是香蕉，bandanna 是色彩鲜艳的围巾。——编者注
+②　主格（subjective case）有时也被称为nominative case，宾格（objective case）有时也被称为accusative case。许多
+语言还对处于间接宾语位置的单词使用与格来进一步区分。
+
+714　　第23 章　自然语言处理
+的特征进一步扩展，称为子范畴（subcategory）。
+在本节中，我们将展示文法如何表示这类知识，从而更精细地区分哪些句子更可能出
+现。我们还将展示如何以组合方式构造一个短语的语义表示。所有这些都可以通过扩展文法
+（augmented grammar）实现，其中非终结符不只是代词或NP 之类的原子符号，而是结构化表
+示。例如，名词短语“I”可以被表示为NP(Sbj, 1S, Speaker)，表示“主格，第一人称单数形式，
+其含义是说这句话的人”。相反，“me”将被表示为NP(Obj, 1S, Speaker)，表示它是宾格。
+考虑序列“Noun and Noun or Noun”，这个序列可以被分析为“[Noun and Noun] or Noun”
+或“Noun and [Noun or Noun]”。上下文无关文法无法确定应该使用哪种分析，因为关于NP 连
+用的规则NP → NP Conjunction NP[0.05]会赋予两个句法分析相同的概率。对于短语“spaghetti 
+and meatballs or lasagna”和“spaghetti and pie or cake”，我们希望文法能够更偏向于将它们分
+析为“[[spaghetti and meatballs] or lasagna]”和“[spaghetti and [pie or cake]]”。
+词汇化PCFG（lexicalized PCFG）是一种扩展文法，它允许我们根据短语中单词的属性而
+不仅仅是句法范畴来分配概率。如果说包含40 个单词的句子的概率取决于所有的40 个单词，
+那么数据会非常稀疏——这与我们使用n 元模型时注意到的问题一样。为简化起见，我们引入
+了短语头（head）的概念——短语中最重要的词。因此，
+“banana”是NP“a banana”的头，
+“ate”
+是VP“ate a banana”的头。符号VP(v) 表示范畴为VP 且头为v 的短语。以下是一个词汇化
+PCFG ：
+VP(v) → Verb(v) NP(n) 
+ 
+ 
+[P1(v, n)]
+VP(v) → Verb(v) 
+ 
+ 
+ 
+[P2(v)]
+NP(n) → Article(a) Adjs( j) Noun(n) 
+ 
+[P3(n, a)]
+NP(n) → NP(n) Conjunction(c) NP(m)  
+[P4(n, c, m)]
+Verb (ate) → ate 
+ 
+ 
+ 
+[0.002]
+Noun(banana) → banana 
+ 
+ 
+[0.0007]
+这里P1(v, n) 表示一个头为v的VP加上一个头为n的NP形成一个VP的概率。通过保证P1(ate, 
+banana) > P1(ate, bandanna)，我们可以让“ate a banana”的概率大于“ate a bandanna”的概
+率。注意，由于我们仅考虑短语头，因此P1无法区分“ate a banana”和“ate a rancid banana”。 
+从概念上讲，P1是一个庞大的概率表：如果词汇表中有5 000个动词和10 000个名词，那么P1需
+要5 000万个条目，但其中大多数不会被显式存储，而是通过平滑和回退导出。例如，我们可
+以从P1(v, n)回退到仅依赖于v的模型，这样的模型所需的参数只是原来的万分之一，但仍可以
+捕获重要的规则性，例如，相较于像“sleep”一样的不及物动词，“ate”这样的及物动词之
+后更可能跟NP（无论它的头是什么）。
+在23.2 节中，我们看到，E0 的简单文法会过生成，产生诸如“I saw she”或“I sees her”
+之类的非句。为了避免这个问题，我们的文法必须知道，
+“her”而不是 “she”，才是“saw”（或
+其他任何动词）的有效宾语，“see”而不是“sees”，才是主语“I”应该搭配的动词形式。
+我们可以将这些事实完全编码在概率条目中，例如，对所有动词v，P1(v, she) 都是一个
+非常小的值。但是，使用附加变量来扩展NP 范畴会更为简洁和模块化：NP(c, pn, n) 用于表
+示一个名词短语，c 表示格（主格或宾格），pn 表示人称和单复数（如第三人称单数），n 表
+示短语头。图23-9 给出了处理这些附加变量的扩展词汇化文法。让我们详细地考虑一个文法 
+规则：
+	
+S(v) → NP(Sbj, pn, n) VP(pn, v) [P5(n, v)]
+
+23.4  扩展文法　　715
+S(v)
+→
+NP(Sbj, pn, n) VP(pn, v) | …
+NP(c, pn, n)
+→
+Pronoun(c, pn, n) | Noun(c, pn, n) | …
+VP(pn, v)
+→
+Verb(pn, v) NP(Obj, pn, n) | …
+PP(head)
+→
+Prep(head) NP(Obj, pn, h)
+Pronoun(Sbj, 1S, I)
+→
+I
+Pronoun(Sbj, 1P, we)
+→
+we
+Pronoun(Obj, 1S, me)
+→
+me
+Pronoun(Obj, 3P, them)
+→
+them
+Verb(3S, see)
+→
+see
+图23-9 保有格一致性、主语-动词一致性和短语头单词的扩展文法的一部分。大写字母开头的名称表示
+常量：Sbj 和Obj 表示主格和宾格；1S 表示第一人称单数；1P 和3P 分别表示第一人称复数和第三人称复数。
+照例，小写名称是变量。简单起见，省略了概率 
+该规则表示，当一个NP 后跟一个VP 时，它们可以形成一个S，但前提是NP 是主格（Sbj），
+并且NP 和VP 的人称和单复数（pn）相同。（我们可以说它们是一致的。）如果前提成立，那
+么我们就获得了一个S 结构，它的头是VP 中的动词。下面是一个词汇化规则示例，
+	
+Pronoun(Sbj, 1S, I) → I [0.005]
+它说明“I”是一个代词（主格，第一人称单数，头是“I”）。
+23.4.1　语义解释
+为了说明如何在文法中添加语义，我们从一个比英语更简单的示例开始：算术表达式的语
+义。图23-10给出了算术表达式的文法，其中每个规则都用一个描述短语语义解释的变量扩展。
+一个数字的语义（如“3”）是数字本身。表达式“3 + 4”的语义是将运算符“+”作用于短语
+“3”和短语“4”的语义之上。这些文法规则遵循组合语义（compositional semantics）原则——
+短语的语义是其子短语语义的函数。图23-11 展示了该文法下的3 + (4÷2) 的分析树。树的根
+是Exp(5)，表示一个语义解释为5 的表达式。
+Exp(op(x1, x2)) → Exp(x1) Operator(op) Exp(x2) 
+Exp(x) → ( Exp(x) )
+Exp(x) → Number(x) 
+Number(x) → Digit(x)
+Number(10×x1 + x2) → Number(x1) Digit(x2) 
+Operator(+) → +
+Operator(−) → - 
+Operator(×) → ×
+Operator(÷) → ÷ 
+Digit(0) → 0
+Digit(1) → 1
+...
+图23-10 算术表达式的文法，作了语义扩展。每个变量xi 表示一个成分的语义
+现在，让我们继续讨论英语的语义，或者至少是一小部分英语的语义。我们将使用一阶逻
+辑进行语义表示。因此，简单例句“Ali loves Bo”的语义表示形式为Loves(Ali, Bo)。那么组成
+句子的短语呢？我们可以用逻辑项Ali 表示NP“Ali”。但是VP“loves Bo”既不是逻辑项，也
+不是完整的逻辑语句。直观上，“loves Bo”是一种描述，可用于某个特定的人。（在这里，它
+
+716　　第23 章　自然语言处理
+图23-11 字符串“3 + (4÷2)”的带语义解释的句法分析树
+被用于描述Ali。）这意味着“loves Bo”是一个谓词（predicate），它与表示某个人的项组合，
+形成一个完整的逻辑语句。
+使用λ 记号（见8.2.3 节），我们可以将“loves Bo”表示为谓词
+ 
+λx Loves(x, Bo)
+现在我们需要一条规则来说明“一个语义为n 的NP 后跟一个语义为pred 的VP 将形成一
+个句子，其语义为将pred 应用于n 的结果”：
+	
+S(pred(n)) → NP(n) VP(pred)
+这条规则告诉我们“Ali loves Bo”的语义解释为
+ 
+(λx Loves(x, Bo))(Ali)
+这与Loves(Ali, Bo) 是等价的。技术上，我们说这是λ 函数应用的β 归约。
+通过我们目前所采取的方法，可以直接对其余的语义进行描述。因为VP 被表示为谓词，
+所以动词也应该被表示为谓词。动词“loves”表示为λy λx Loves(x, y)，该谓词在给定参数Bo
+时返回谓词λx Loves(x, Bo)。我们最终得到了图23-12 所示的文法和分析树。在更完整的文法
+中，我们将所有扩展（语义、格、人称和短语头）一起放到一组规则中。在这里，我们仅展示
+语义扩展，以使规则的工作方式更加清晰。
+图23-12　（a）一种文法，可以推导出“Ali loves Bo”（以及其他3 个句子）的句法分析树和语义解释。
+每个范畴都用一个表示语义的参数进行扩展。（b）字符串“Ali loves Bo”的带有语义解释的句法分析树
+
+23.5  真实自然语言的复杂性　　717
+23.4.2　学习语义文法
+遗憾的是，Penn Treebank 中不包括句子的语义表示，只包括句法树。因此，如果我们
+要学习一个语义文法，还需要其他样例来源。泽特尔莫耶和科林斯（Zettlemoyer and Collins, 
+2005）介绍了一个系统，该系统从样例中学习问答系统的文法，样例由一个句子和该句子的语
+义形式组成。
+ 句子：What states border Texas?
+ 逻辑形式：λx.state(x) ∧ λx.borders(x, Texas)
+给定大量上述样例对以及每个新领域的少量人工标注知识，系统就会生成合理的词汇条目
+（例如，
+“Texas”和“state”是名词，因此state(Texas) 为真），同时学习文法参数，使得系统可
+以将句子分析为语义表示。泽特尔莫耶和科林斯（Zettlemoyer and Collins, 2005）介绍的系统
+在两个由未参与学习的句子组成的不同测试集上达到了79% 的准确率。赵凯和黄亮（Zhao and 
+Huang, 2015）展示了一种运行速度更快的移位减少句法分析器，并实现了85% ～89% 的准
+确率。
+这些系统的一个局限性在于训练数据包括逻辑形式。创建这样的训练数据代价昂贵，需要
+具有专业知识的人工注释者——并不是每个人都了解λ 演算和谓词逻辑的细微之处，而收集问
+题-答案对样例则要容易得多。
+ 问题：What states border Texas?
+ 答案：Louisiana, Arkansas, Oklahoma, New Mexico.
+ 问题：How many times would Rhode Island ﬁt into California?
+ 答案：135
+这样的问题-答案对在网络上非常常见，因此不需要专家指导就可以建立大型数据库。使
+用这种大型数据源，有可能构建出比使用标记有逻辑形式的小型数据库构建出的分析器性能更
+好的句法分析器（Liang et al., 2011; Liang and Potts, 2015）。这些论文中描述的关键方法是创建
+一种内部逻辑形式，它是组合的，但不允许指数量级的搜索空间。
+23.5  真实自然语言的复杂性
+真实的英语文法是极其复杂的（其他语言也一样）。我们简要地给出一些导致这种复杂性
+的例子。
+量词限定（quantiﬁcation）：考虑句子“Every agent feels a breeze.” 该句子在E0 下只有一种
+句法分析结果，但是在语义上却是有歧义的，是“存在一阵能被所有的智能体感觉到的微风”
+还是“每一个智能体感觉到一阵属于它自己的微风”？这两种解释可以表示为
+∀a a∈Agents ⇒
+             ∃b b∈Breezes ∧ Feel(a, b);
+∃b b∈Breezes ∧ ∀a a∈Agents ⇒
+           Feel(a, b)
+量词限定的一种标准方法是，文法不定义实际的逻辑语义语句，而是定义一种准逻辑形式
+（quasi-logical form），可以通过分析过程之外的算法将该形式转化为逻辑语句。这些算法可以
+有选择量词限定范围的优先规则——这些优先规则不需要直接反映在文法中。
+
+718　　第23 章　自然语言处理
+语用学（pragmatics）：我们已经展示了一个智能体是如何感知字符串并应用文法推导出一
+组可能的语义解释的。现在，我们通过添加有关当前情景的上下文相关信息来完成解释。对于
+语用信息最明显的需求是确定索引词（indexical）的含义，索引词是一些直接指代当前情景的
+短语。例如，在句子“I am in Boston today”中，“I”和“today”都是索引词。单词“I”可以
+用Speaker 表示，在不同时间指代不同对象，确定指代对象取决于听话者——这不是文法需要
+考虑的部分，而是一个语用学问题。
+语用学的另一部分是解释说话者的意图。说话者的话语被认为是一种言语行为（speech 
+act），需要由听者辨认它是一种什么类型的行为，如提问、陈述、承诺、警告、命令等。类似
+“go to 2 2”这样的命令暗指听者去行动。到目前为止，我们的S 文法只涵盖了陈述性语句。我
+们可以将其扩展为涵盖命令性语句——命令是一个动词短语，主语暗指听到命令的人： 
+	
+S(Command(pred(Hearer))) → VP(pred)
+长距离依存关系（long-distance dependencies）：在图23-8 中，我们看到“she didn’t hear or 
+even see him”的分析存在两个空缺，缺失了NP“him”。我们可以用符号  来表示空缺：“she 
+didn’t [hear  or even see  ] him.” 通常，空缺与它所指代的NP 之间的距离可以任意长：在
+“Who did the agent tell you to give the gold to  ?”中，空缺指代的是“Who”，相距11 个单词。
+可以使用一种复杂的扩展规则系统来确保缺失的NP 可以正确匹配。规则很复杂；例如，
+NP 连词结构的分支中不能出现空缺：“What did she play [NP Dungeons and  ]?”是不符合文
+法的。但是，VP 连词结构的两个分支中可以出现同一空缺，如句子“What did you [VP [VP 
+smell  ] and [VP shoot an arrow at  ]]?”
+时间和时态（time and tense）：假设我们要表示“Ali loves Bo”和“Ali loved Bo”之间的
+区别。英语使用动词时态（过去时、现在时和将来时）表示某个事件的相对时间。表示事件时
+间的一个不错选择是10.3 节介绍的事件演算符号。在事件演算中，我们有
+Ali loves Bo: E1 ∈ Loves(Ali, Bo)∧During(Now, Extent(E1))
+Ali loved Bo: E2 ∈ Loves(Ali, Bo)∧After(Now, Extent(E2))
+这表明单词“loves”和“loved”的两个词汇规则应为
+Verb(λy λx e ∈ Loves(x, y)∧During(Now, e)) → loves
+Verb(λy λx e ∈ Loves(x, y)∧After(Now, e)) → loved
+除这一变化之外，关于文法的其他所有内容都保持不变，这是一个好消息；这表明，如果
+我们能够轻松地添加动词时态之类的复合成分（尽管我们只是触及了描述时间和时态的完整文
+法的皮毛），那么我们的方向就是对的。
+歧义（ambiguity）：我们倾向于将歧义视为沟通失败；当听者意识到话语中的歧义时，意
+味着这句话是不清楚或令人困惑的。下面是报纸标题中摘录的一些例子：
+Squad helps dog bite victim.
+Police begin campaign to run down jaywalkers. 
+Helicopter powered by human ﬂies.
+Once-sagging cloth diaper industry saved by full dumps. 
+Include your children when baking cookies.
+Portable toilet bombed; police have nothing to go on. 
+Milk drinkers are turning to powder.
+Two sisters reunited after 18 years in checkout counter.
+
+23.5  真实自然语言的复杂性　　719
+这样的困惑是例外。在大多数情况下，我们听到的话似乎是没有歧义的。因此，在20 世纪60
+年代，当研究人员首次使用计算机分析语言时，他们惊讶地发现几乎每句话都是有歧义的，具
+有多种可能分析（有时是数百种），即使以该语言为母语的人也只能注意到其中一种。例如，
+我们将短语“brown rice and black beans”理解为“[brown rice] and [black beans]”，从未考虑过
+另一种概率很低的解释“brown [rice and black beans]”，其中形容词“brown”修饰整个短语，
+而不只是“rice”。当我们刚听到“Outside of a dog, a book is a person’s best friend”时，会将
+“outside of”理解为“except for”，当我们接着听到格劳乔·马克斯（Groucho Marx，美国喜剧
+演员）笑话的下一个句子“Inside of a dog it’s too dark to read”时，我们就会觉得很好笑。
+词汇歧义（lexical ambiguity）是指一个单词有不止一种含义：“back”可以是副词（go 
+back）、形容词（back door）、名词（the back of the room）、动词（back a candidate）或专有名
+词（加拿大努纳武特地区的一条河）。“Jack”可以是人名、名词（扑克牌、六角金属游戏片、
+航海旗、鱼、鸟、奶酪、插座等）或动词（用千斤顶顶起一辆汽车、拿着灯狩猎或用力击打棒
+球）。句法歧义（syntactic ambiguity）是指一个短语有多种分析，“I smelled a wumpus in 2, 2”
+有两种分析：一种是介词短语“in 2, 2”修饰名词，另一种是修饰动词。句法歧义会导致语义
+歧义（semantic ambiguity），因为一种分析意思是活着的wumpus 在位置(2, 2)，另一种分析意
+思是位置(2, 2) 有死了的wumpus 的臭味。在这种情况下，采用错误的解释可能导致智能体致
+命的错误。
+字面义和比喻义之间也可能存在歧义。修辞格在诗歌中非常重要，在日常演讲中也很常
+见。借代（metonymy）是一种用一个对象代表另一个对象的修辞手法。当我们听到“Chrysler 
+announced a new model”
+（克莱斯勒公司发布了一种新车型）时，我们并不会觉得公司可以说话，
+而是明白是该公司的一位发言人宣布了这一消息。借代非常普遍，听众常常会下意识地对其进
+行解释。
+遗憾的是，我们所写的文法很难这么灵活。为了正确处理借代的语义，我们需要引入一
+种全新层次的歧义。为此，我们可以通过提供两个对象来对句子中的每个短语进行语义解释：
+一个对象为该短语字面上指代的对象（克莱斯勒公司），另一个为借代指代的对象（发言人）。
+我们不得不说两者之间存在联系。在我们当前的文法中，“Chrysler announced”被解释为
+	
+x = Chrysler∧ e ∈ Announce(x)∧ After(Now, Extent(e))
+我们需要把它变为
+	
+x = Chrysler∧e ∈ Announce(m)∧After(Now, Extent(e)) ∧ Metonymy(m, x)
+这就是说，有一个实体x 等同于Chrysler，而另一个实体m 则进行了发布这一动作，两个实体
+存在借代关系。下一步是定义可以出现的借代关系类型。最简单的情况是根本不存在借代——
+字面对象x 和借代对象m 是同一个：
+	
+∀m, x (m = x) ⇒ Metonymy(m, x)
+对于Chrysler 这一例子，一个合理的推广是一个组织可以代表该组织的发言人：
+	
+∀m, x x ∈ Organizations∧Spokesperson(m, x) ⇒ Metonymy(m, x)
+借代还包括用作者指代其作品（I read Shakespeare）（我读过莎士比亚），或更一般地用生产
+者指代其产品（I drive a Honda）（我开的是本田），以及用部分指代整体（The Red Sox need a 
+strong arm）（红袜队需要一只强壮的臂膀）。还有一些更新奇的例子，如“The ham sandwich 
+on Table 4 wants another beer”（4 号桌的火腿三明治想再要一瓶啤酒），需要针对具体情况进行
+
+720　　第23 章　自然语言处理
+解释（服务员招待进餐但不知道顾客的名字，用顾客所点食物指代顾客本人）。
+隐喻（metaphor）是另一种修辞手法，通过类比用字面上是某种含义的短语暗示不同的含
+义。因此，隐喻可以看作一种借代，只不过隐喻中的关系是一种相似性。
+歧义消解（disambiguation）是还原一句话最可能的含义的过程。从某种意义上说，我们
+已经有了解决这个问题的框架：每个规则都有一个与之相关的概率，因此句子解释的概率是导
+出该解释的所有规则的概率的乘积。遗憾的是，概率反映的是短语在学习文法的语料库中的普
+遍程度，因此反映的是一般知识，而不是当前情况的具体知识。为了正确消歧，我们需要结合
+以下4 个模型。
+（1）世界模型（world model）：一个命题在世界上发生的可能性。根据我们对世界的了解，
+“I’m dead”更有可能意味着“I am in big trouble”（我有大麻烦了）或“I lost this video game”（我
+输了电子游戏），而不是“My life ended, and yet I can still talk”（我的生命已经结束，但我仍然
+可以说话）。
+（2）心理模型（mental model）：说话者形成向听者传达某个事实的意图的可能性。这种方
+法结合了多种模型：说话者相信什么，说话者相信听者相信什么，等等。例如，当一个政客说
+“I am not a crook”时，世界模型可能会给命题“该政客不是罪犯”分配50% 的概率，而给命
+题“该政客不是牧羊人的钩状手杖”分配99.999% 的概率。无论如何，我们选择前一种解释，
+因为这更有可能是政客想表达的东西。
+（3）语言模型（language model）：在说话者已有传达某个特定事实的意图的情况下，选择
+某个特定单词串的可能性。
+（4）声学模型（acoustic model）：对语音交流来说，在说话者已经选择某个特定单词串
+的情况下，生成特定声音序列的可能性。（对于手写或打字通信，我们会遇到光学字符识别的
+问题。）
+23.6  自然语言任务
+自然语言处理是一个非常大的领域，需要用一两本完整教材来讲解（Goldberg, 2017; Jurafsky 
+and Martin, 2020）。在本节中，我们简要介绍一些主要任务。你可以通过参考文献获取更多详
+细信息。
+语音识别（speech recognition）是将语音转换为文本的任务。之后我们可以对生成的文本
+执行进一步的任务（如问答）。当前语音识别系统的单词错误率大约为3% ～5%（取决于测试
+集的具体情况），与人工转录员的错误率相近。语音识别系统面临的挑战是即使个别单词有错
+误，也要做出适当的响应。
+现在的顶级语音识别系统结合了循环神经网络和隐马尔可夫模型（Hinton et al., 2012; Yu 
+and Deng, 2016; Deng, 2016; Chiu et al., 2017; Zhang et al., 2017）。2011 年，语音领域引入了深
+度神经网络，错误率立即显著改进了约30%——这一领域似乎已经成熟，之前每年的改进只有
+几个百分点。语音识别问题具有自然的成分分解，所以非常适合使用深度神经网络：从波形到
+音素再到单词最后到句子。这些将在第24 章中介绍。
+文本-语音合成（text-to-speech synthesis）则是与语音识别相反的过程——将文本转换为
+声音。泰勒（Taylor, 2009）用整本书对其进行了概述。文本-语音合成面临的挑战是如何对每
+个单词正确地发音同时通过适当的停顿和强调让每个句子听起来自然流畅。
+
+23.6  自然语言任务　　721
+另一个发展领域是合成不同的声音——从普通男性或女性的声音开始，接着可以合成地
+方方言，甚至模仿名人的声音。与语音识别一样，深层循环神经网络的引入同样为文本-语 
+音合成带来了巨大的进步，大约2/3 的听者认为，WaveNet 神经网络系统（van den Oord et al., 
+2016a）比之前的非神经网络系统听起来更自然。
+机器翻译（machine translation）将文本从一种语言转换到另一种语言。系统通常使用双语
+语料库进行训练。例如，一组成对的文档，每对文档的其中一个使用英语，而另一个使用法
+语。不需要以任何方式对文档进行标记；机器翻译系统学习如何对齐句子和短语，然后当遇到
+其中一种语言的新语句时，可以生成另一种语言的翻译。
+21 世纪早期的机器翻译系统使用n 元模型，系统通常能够理解文本的含义，但大多数句
+子都包含文法错误。一个问题是n 元的长度限制：即使将限制放大到7，信息也很难从句子的
+一端传递到另一端。另一个问题是，一个n 元模型中的所有信息都位于单个单词的层级。这样
+的系统可以学习将“black cat”翻译成“chat noir”，但是却不能学到英语中形容词通常在名词
+之前而法语中形容词通常在名词之后这样的规则。
+序列到序列循环神经网络模型（Sutskever et al., 2015）解决了这一问题。它们可以更好地
+泛化（因为它们可以使用词嵌入而不是特定单词的n 元计数），并且可以在整个深度网络的不
+同层级上形成组合模型，从而有效地传递信息。之后的工作使用Transformer 模型的注意力机
+制（Vaswani et al., 2018）进一步提高了翻译性能，对这两种模型各方面进行结合的混合模型
+则进一步提升了效果，在某些语言对上达到了人类水平的表现（Wu et al., 2016b; Chen et al., 
+2018）。
+信息提取（information extraction）是通过浏览文本并查找文本中特定类别的对象及其关系
+来获取知识的过程。典型的任务包括，从网页中提取地址实例获取街道名、城市名、州名以及
+邮政编码等数据库字段；从天气预报中提取暴风雨信息获取温度、风速以及降水量等字段。如
+果源文本具有很好的结构（如以表格的形式），那么像正则表达式之类的简单技术就可以进行
+信息提取（Cafarella et al., 2008）。如果我们试图提取所有事实，而不仅是特定类型（如天气预
+报），那么提取会变得更加困难；班科等人（Banko et al., 2007）介绍了TextRunner 系统，它
+在一个开放的不断扩展的关系集上进行信息提取。对于自由格式的文本，可以使用隐马尔可
+夫模型和基于规则的学习系统［就像TextRunner 和永无止境语言学习（never-ending language 
+learning，NELL）（Mitchell et al., 2018）中所使用的一样］。最近的系统使用循环神经网络，以
+利用词嵌入的灵活性。你可以在（Kumar, 2017）中找到相关概述。
+信息检索（information retrieval）的任务是查找与给定查询相关且重要的文档。谷歌和百
+度等互联网搜索引擎每天都会执行数十亿次这样的任务。有3 本很好的关于信息检索的教材，
+即（Manning et al., 2008）、（Croft et al., 2010）和（Baeza-Yates and Ribeiro-Neto, 2011）。
+问答（question answering）与信息检索不同，它的查询其实是一个问题，如“Who founded 
+the U.S. Coast Guard?”（谁创立了美国海岸警卫队？），查询结果也不是一个排好序的文档列
+表，而是一个实际答案：“Alexander Hamilton.”。自20 世纪60 年代以来，就已经出现了依赖
+于本章所讨论的句法分析的问答系统，但是直到2001 年，这类系统才开始使用网页信息检索，
+从根本上增加了系统的覆盖范围。卡茨（Katz, 1997）介绍了Start 分析器和问题解答器。班
+科等人（Banko et al., 2002）介绍了AskMSR 系统，AskMSR 在句法分析能力方面并不复杂，
+它更注重使用网络搜索以及对结果进行排序。例如，为了回答“Who founded the U.S. Coast 
+Guard?”，它会搜索诸如[* founded the U.S. Coast Guard] 和[the U.S. Coast Guard was founded by 
+*]之类的查询，然后在知道查询词“who”表示答案应该是某个人的情况下检查多个结果网页，
+
+722　　第23 章　自然语言处理
+找出可能的响应。自1991 年以来，Text REtrieval Conference（TREC）收集了关于这一主题的
+研究，并且每年都会举办比赛（Allan et al., 2017）。最近，研究人员也创建了其他测试集，如
+关于基础科学问题的AI2 ARC 测试集（Clark et al., 2018）。
+小结
+本章有以下主要内容。
+ 基于n 元的概率语言模型可以还原关于一种语言的相当多信息。它们可以在诸如语言识
+别、拼写校正、情感分析、体裁分类和命名实体识别之类的多种任务中表现出色。
+ 这些语言模型可能有数百万个特征，因此对数据进行预处理和平滑处理以减少噪声非常
+重要。
+ 在建立统计语言系统时，最好设计一个可以充分利用可用数据的模型，即使这个模型看
+起来非常简单。
+ 词嵌入可以赋予单词及其相似性更丰富的表示。
+ 短语结构文法（尤其是上下文无关文法）对于捕捉语言的层次结构很有帮助。概率上下
+文无关文法（PCFG）的形式体系和依存文法的形式体系已被广泛使用。
+ 通过图表句法分析器（如CYK 算法），可以在O(n3) 时间内对上下文无关语言的语句进
+行分析，算法要求文法规则为乔姆斯基范式。使用束搜索或移位减少句法分析器可以在
+O(n) 时间内对自然语言进行分析，准确性也不会有很大损失。
+ 树库可以用于学习带参数的PCFG 文法。
+ 扩展文法处理诸如主语-动词一致性和代词格之类的问题非常方便，它可以在单词层级而
+不只是范畴层级对信息进行表示。
+ 语义解释也可以通过扩展文法处理。我们可以从与问题的逻辑形式或答案配对的问题语
+料库中学习语义文法。
+ 自然语言非常复杂，很难用形式文法获取。
+参考文献与历史注释
+马尔可夫（Markov, 1913）提出了用于语言建模的n 元字母模型。克劳德·香农（Shannon 
+and Weaver, 1949）第一个生成了英语的n 元单词模型。词袋模型的名字来自语言学家泽里
+格·哈里斯（Zellig Harris）（Harris, 1954）的一段话：“语言不只是词袋，还是具有特定属性的
+工具。”诺维格（Norvig, 2009）给出了一些可以使用n 元模型完成的任务示例。
+乔姆斯基（Chomsky, 1956, 1957）指出了有限状态模型与上下文无关模型相比所存在的局
+限性，并得出结论：“概率模型对句法结构的一些基本问题没有特殊见解。”的确如此，但是概
+率模型确实能够洞悉上下文无关模型忽略的一些其他基本问题。乔姆斯基的言论造成了遗憾的
+后果，20 年来许多人都回避统计模型，直到这些模型被重新用于语音识别领域（Jelinek, 1976）
+和认知科学领域，其中，优选论（Smolensky and Prince, 1993; Kager, 1999）认为，语言的工作
+原理是找到最能满足竞争性约束的最有可能的候选。
+加1 平滑最早由皮埃尔-西蒙·拉普拉斯（Laplace, 1816）提出，并由杰弗里斯（Jeffreys, 1948） 
+形式化。其他平滑技术包括插值平滑（Jelinek and Mercer, 1980）、Witten-Bell 平滑（Witten and 
+
+参考文献与历史注释　　723
+Bell, 1991）、Good-Turing 平滑（Church and Gale, 1991）、Kneser-Ney 平滑（Kneser and Ney, 1995, 
+2004）和stupid backoﬀ平滑（Brants et al., 2007）。（Chen and Goodman, 1996）和（Goodman, 
+2001）对平滑技术进行了综述。
+简单的n 元字母模型和n 元单词模型不是唯一可能的概率模型。隐狄利克雷分配模型（Blei 
+et al., 2002; Hoﬀman et al., 2011）是一种概率文本模型，它将文档视为主题的组合，每个主题
+都有自己的单词分布。该模型可以看作迪尔韦斯特（Deerwester et al., 1990）的隐含语义索引
+模型的一种扩展和合理化实现，该模型还与萨哈米等人（Sahami et al., 1996）的多因混合模型
+有关。当然，非概率语言模型也引起了研究者的极大兴趣，如第24 章介绍的深度学习模型。
+约林等人（Joulin et al., 2016）给出了一些有效的文本分类技巧。约阿希姆斯（Joachims, 
+2001）使用统计学习理论和支持向量机对分类何时成功进行了理论分析。阿普特（Aptéet al., 
+1994）报告说，将路透社的新闻文章分类为“Earnings”的准确率为96%。科勒和萨哈米（Koller 
+and Sahami, 1997）报告说，使用朴素贝叶斯分类器的准确率可以达到95%，使用贝叶斯分类
+器可以将准确率进一步提高到98.6%。
+沙皮尔和辛格（Schapire and Singer, 2000）表明，简单的线性分类器通常可以达到与更复
+杂的模型几乎一样的准确率，并且运行速度也更快。张驰原等人（Zhang et al., 2016）介绍了
+字符级（而非单词级）文本分类器。威滕等人（Witten et al., 1999）描述了用于分类的压缩算法，
+并表明LZW 压缩算法和最大熵语言模型之间有深层联系。
+Wordnet（Fellbaum, 2001）是一个包含大约10 万个单词和短语的公开可用字典，单词和短
+语根据词性进行分类，通过同义词、反义词和从属等语义关系进行链接。查尔尼克（Charniak, 
+1996）以及克莱因和曼宁（Klein and Manning, 2001）讨论了如何使用树库文法进行句法分析。
+英国国家语料库（Leech et al., 2001）包含1 亿个单词，万维网包含数万亿单词，弗朗兹和布兰
+斯（Franz and Brants, 2006）从网络文本的1 万亿个单词中选取1300 万个不同单词组成Google 
+n-gram 公开语料库。巴克等人（Buck et al., 2014）介绍了来自Common Crawl 项目的类似数据
+集。Penn Treebank（Marcus et al., 1993; Bies et al., 2015）为包含300 万个单词的英语语料库提
+供了句法分析树。
+许多n 元模型技术也被用来解决生物信息学问题。生物统计学和概率NLP 的联系越来越
+紧密，因为它们都要处理来自字母表的结构化长序列。
+早期的词性（POS）标注使用了多种方法，包括规则集（Brill, 1992）、n 元模型（Church, 
+1988）、决策树（Màrquez and Rodríguez, 1998）、隐马尔可夫模型（Brants, 2000）和逻辑斯谛
+回归（Ratnaparkhi, 1996）。从历史上看，逻辑斯谛回归模型也称为“最大熵马尔可夫模型”（即
+MEMM），因此一些工作就是在这个模型下进行的。尤拉夫斯基和马丁撰写的教材（Jurafsky 
+and Martin, 2020）中关于词性标注的一章写得很好。吴恩达和乔丹的论文（Ng and Jordan, 
+2002）中比较了分类任务的判别模型和生成模型。
+像语义网络一样，上下文无关文法最早是古印度文法学家（尤其是公元前350 年的波你尼）
+在研究经典梵语（Shastric Sanskrit）时揭示的（Ingerman, 1967）。诺姆·乔姆斯基（Chomsky, 
+1956）对其进行了改造以对英语进行分析，约翰·巴克斯（John Backus）（Backus, 1959）和彼
+得·诺尔（Peter Naur）也分别对其进行了改造以对Algol-58 语言进行分析。
+布思（Booth, 1969）和萨洛马（Salomaa, 1969）最先对概率上下文无关文法进行了研究。
+优秀短篇专著（Charniak, 1993）以及优秀长篇教材（Manning and Schu¨tze, 1999）和（Jurafsky 
+and Martin, 2020）中都介绍了PCFG 的算法。贝克（Baker, 1979）介绍了用于学习PCFG 的向
+内向外算法。词汇化PCFG（Charniak, 1997; Hwa, 1998）结合了PCFG 与n 元模型的优点。科
+
+724　　第23 章　自然语言处理
+林斯（Collins, 1999）描述了用短语头特征进行词汇化的PCFG 句法分析，约翰逊（Johnson, 
+1998）则展示了PCFG 的准确性如何取决于从中学习PCFG 概率的树库的结构。
+“纯”语言学和计算语言学都进行过许多编写自然语言的形式文法的尝试。英语已经有了
+几种全面但非形式的文法（Quirk et al., 1985; McCawley, 1988; Huddleston and Pullum, 2002）。
+自20 世纪80 年代以来，词汇化趋势一直存在：词汇中信息更多，文法中信息较少。
+词汇功能文法（LFG）（Bresnan, 1982）是第一个高度词汇化的主要文法形式体系。如
+果将词汇化推广到极致，我们最终将得到可能少到只有两条文法规则的范畴文法（Clark and 
+Curran, 2004）或者没有句法范畴而只有单词间关系的依存文法（Smith and Eisner, 2008; Kübler 
+et al., 2009）。
+英韦（Yngve, 1955）提出了第一个由计算机实现的句法分析。20 世纪60 年代又发展了
+一些高效算法，此后走了一些弯路（Kasami, 1965; Younger, 1967; Earley, 1970; Graham et al., 
+1980）。丘奇和帕蒂尔（Church and Patil, 1982）描述了句法歧义并提出了解决歧义的方法。
+克莱因和曼宁（Klein and Manning, 2003）描述了A
+* 句法分析，保尔斯和克莱因（Pauls 
+and Klein, 2009）将其扩展到K 最佳A
+* 句法分析，其结果不是单个分析，而是K 个最佳分析。
+戈德伯格（Goldberg et al., 2013）介绍了一些必要的实现技巧，以确保束搜索句法分析器可以
+在O(n) 而不是O(n2) 时间内运行。朱慕华等人（Zhu et al., 2013）描述了一种针对自然语言的
+快速确定性移位减少句法分析器，佐贺江和拉维（Sagae and Lavie, 2006）展示了如何在移位减
+少句法分析器中添加搜索，以速度为代价提高了准确性。
+如今，高度精确的开源句法分析器包括谷歌的Parsey McParseface（Andor et al., 2016）、
+Stanford Parser（Chen and Manning, 2014）、Berkeley Parser（Kitaev and Klein, 2018）以及SpaCY
+句法分析器。它们都通过神经网络进行泛化，在华尔街日报或Penn Treebank 测试集中达到了
+大约95% 的准确率。然而，该领域也存在一些反对的声音，认为研究者过于狭隘地聚焦于衡
+量句法分析器在某些特定语料库的性能，甚至可能过拟合。
+自然语言的形式语义解释起源于哲学和形式逻辑，尤其是艾尔弗雷德·塔尔斯基关于形式
+语言语义的研究（Tarski, 1935）。巴尔-希勒尔（Bar-Hillel, 1954）首次考虑了语用问题（如索
+引词），并提出可以用形式逻辑来解决语用问题。理查德·蒙太古的论文“English as a formal 
+language”（Montague, 1970）是对语言的逻辑分析的一种宣言，但一些其他书目（Dowty et al., 
+1991; Portner and Partee, 2002; Cruse, 2011）更具可读性。虽然语义解释程序旨在选择最有可能
+的解释，但文学评论家（Empson, 1953; Hobbs, 1990）对于歧义是需要解决还是应该保留的问题
+一直模棱两可。诺维格（Norvig, 1988）讨论了考虑存在多个同步解释的问题，而不是只解决单
+个最大似然解释。拉科夫和约翰逊（Lakoﬀ and Johnson, 1980）对英语中的常见隐喻进行了引人
+入胜的分析和分类。马丁（Martin, 1990）和吉布斯（Gibbs, 2006）提供了隐喻解释的计算模型。
+第一个用于解决实际任务的NLP 系统是Baseball 问答系统（Green et al., 1961），该系统
+处理关于棒球统计数据库的问题。威诺格拉德（Winograd, 1972）的Shrdlu 和伍兹（Woods, 
+1973）的Lunar 紧随其后产生，Shrdlu 用来处理关于方块世界场景的问题和命令，Lunar 用
+来回答关于阿波罗计划从月球带回的岩石的问题。
+班科等人（Banko et al., 2002）在夸克等人（Kwok et al., 2001）的工作的基础上提出了类
+似的AskMSR 问答系统。帕斯卡和哈拉巴久（Pasca and Harabagiu, 2001）则讨论了一个比赛优
+胜的问答系统。
+现代的语义解释方法通常假定从文法到语义的映射是从样本中学到的（Zelle and Mooney, 
+1996; Zettlmoyer and Collins, 2005; Zhao and Huang, 2015）。文法归纳的第一个重要结果是负面
+
+参考文献与历史注释　　725
+的：戈尔德（Gold, 1967）指出，给定一组来自该文法的字符串，从中可靠地学习到完全正确
+的上下文无关文法是不可能的。许多著名的语言学家，如乔姆斯基（Chomsky, 1957）和平克
+（Pinker, 2003），依据戈尔德的研究结果证明了，肯定存在一种所有孩子一出生就具备的先天
+普遍文法（universal grammar）。所谓的刺激贫乏（Poverty of the Stimulus）观点认为，人们并
+没有给孩子足够的知识来学习一个CFG，因此，他们肯定已经“知道”了文法，只是通过知
+识调整某些参数。
+尽管该论点在乔姆斯基语言学中一直占据主导地位，但其他语言学家（Pullum, 1996; 
+Elman et al., 1997）和大多数计算机科学家都拒绝了这一论点。早在1969 年霍宁（Horning）
+就指出，在PAC 学习的意义上，学习一种概率的上下文无关文法是有可能的。从那之后，已
+经有很多令人信服的仅从正例中进行语言学习的实证经验，例如用归纳逻辑编程学习语义文
+法（Muggleton and De Raedt, 1994; Mooney, 1999）、许策的博士论文（Schütze, 1995）和德马尔肯
+的博士论文（de Marcken, 1996）以及基于Transformer 模型的现代语言处理系统（见第24 章）。
+此外，每年都会举行一次国际语法推理会议（International Conference on Grammatical Inference，
+ICGI）。
+詹姆斯·贝克（James Baker）的Dragon 系统（Baker, 1975）被视为第一个成功的语音识
+别系统。Dragon 是第一个将隐马尔可夫模型用于语音的系统。在基于概率语言模型的系统发
+展了几十年后，语音识别领域开始转向深度神经网络（Hinton et al., 2012）。邓力（Deng, 2016）
+介绍了深度学习的引入如何实现语音识别的快速发展，以及其对其他NLP 任务的影响。如今，
+深度学习已成为所有大规模语音识别系统的主流方法。语音识别可以被视为第一个彰显深度学
+习成功性的应用领域，计算机视觉领域紧随其后。
+互联网搜索的广泛使用激发了人们对信息检索领域的兴趣。克罗夫特等人（Croft et al., 
+2010）和曼宁等人（Manning et al., 2008）都提供了涵盖该领域基础知识的教材。TREC（Text 
+REtrieval Conference）会议每年举办一次IR 系统竞赛，并将竞赛结果结集出版。
+布林和佩奇（Brin and Page, 1998）介绍了PageRank 算法，该算法考虑了页面之间的链接，
+并概述了网页搜索引擎的实现。西尔弗斯坦等人（Silverstein et al., 1998）调查了包含10 亿条
+记录的网页搜索日志。Information Retrieval 期刊和一年一度的SIGIR 旗舰会议涵盖了该领域的
+最新进展。
+由美国政府赞助的每年一次的信息理解会议（Message Understanding Conferences，MUC）
+推动了信息提取的研究。罗奇和沙贝斯（Roche and Schabes, 1997）、阿佩尔特（Appelt, 1999）
+和穆斯利（Muslea, 1999）对基于模板的系统进行了调研。克雷文等人（Craven et al., 2000）、
+帕斯卡等人（Pasca et al., 2006）、米切尔（Mitchell, 2007）以及杜尔梅和帕斯卡（Durme and 
+Pasca, 2008）都进行了提取大规模事实数据库的工作。
+弗赖塔格和麦卡勒姆（Freitag and McCallum, 2000）探讨了用于信息提取的隐马尔可夫模
+型。条件随机场也已用于这一任务（Laﬀerty et al., 2001; McCallum, 2003）。萨顿和麦卡勒姆
+（Sutton and McCallum, 2007）给出了包含实践指导的教程。萨拉瓦吉（Sarawagi, 2007）给出了
+一个全面的综述。
+两种早期有影响力的NLP 自动化知识工程方法来自里洛夫（Riloﬀ, 1993）和雅让斯基
+（Yarowsky, 1995），里洛夫指出自动化构建的词典的性能几乎与人工精心制作的领域特定的词
+典一样好，雅让斯基则认为词义分类任务可以通过对未标注文本语料库进行无监督训练来实
+现，其准确性与监督方法相当。
+从少量标注样本中同时提取模板和样本的想法由布卢姆和米切尔（Blum and Mitchell, 
+
+726　　第23 章　自然语言处理
+1998）和布林（Brin, 1998）分别同时提出，布卢姆和米切尔称其为协同训练（cotraining），布
+林称其为DIPRE（Dual Iterative Pattern Relation Extraction，双重迭代模式关系提取）。你会看
+到为什么协同训练的概念停滞不前。与之类似的称为自举法的早期工作由琼斯等人（Jones et 
+al., 1999）完成。该方法通过QXtrace（Agichtein and Gravano, 2003）和KnowItAll（Etzioni 
+et al., 2005）系统进一步改进。米切尔（Mitchell, 2005）和埃齐奥尼（Etzioni et al., 2006）介绍
+了机器阅读，成为TextRunner 项目（Banko et al., 2007; Banko and Etzioni, 2008）的重点。
+本章重点介绍的是自然语言语句，但根据文本的物理结构或几何布局而非语言结构来进
+行信息提取也是可能的。列表、表格、图表、图、图解等，无论是以HTML 语言编码还是通
+过PDF 文档的可视化分析来访问，都是可以提取、合并的数据来源（Hurst, 2000; Pinto et al., 
+2003; Cafarella et al., 2008）。
+肯·丘奇（Ken Church）（Church, 2004）指出，自然语言研究在专注于数据（经验主义）
+和专注于理论（理性主义）之间反复；他描述了具备良好的语言资源和评估方案的优势，但不
+知道我们是否在这方面走得太远（Church and Hestness, 2019）。早期的语言学家专注于实际的
+语言使用数据，包括频率计数。诺姆·乔姆斯基（Chomsky, 1956）证明了有限状态模型的局
+限性，从而导致研究人员更加重视句法理论研究，忽视实际的语言表现。这种方法在20 年来
+一直占据主导地位，直到统计语音识别工作的成功（Jelinek, 1976），经验主义才再度流行。时
+至今日，对经验语言数据的重视仍在继续，人们对考虑更高层次结构（例如，句法和语义关
+系，而不仅是单词序列）的模型的兴趣也越来越浓厚。深度学习神经网络模型也非常受重视，
+我们将在第24 章中介绍这部分内容。
+两年一次的实用自然语言处理（Applied Natural Language Processing，ANLP）会议、自
+然语言处理经验方法（Empirical Methods in Natural Language Processing，EMNLP）会议和
+Natural Language Engineering 期刊介绍了语言处理应用方面的工作。Computational Linguistics
+期刊及其ACL 会议和国际计算语言学（International Computational Linguistic，COLING）会议
+包含了自然语言处理领域的广泛工作。（Jurafsky and Martin, 2020）中对语音和自然语言处理进
+行了全面介绍。

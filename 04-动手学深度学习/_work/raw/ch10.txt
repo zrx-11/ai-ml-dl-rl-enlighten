@@ -1,0 +1,2136 @@
+10
+⾃然语⾔处理
+⾃然语⾔处理关注计算机与⼈类之间的⾃然语⾔交互。在实际中，我们常常使⽤⾃然语⾔处理技
+术，如“循环神经⽹络”⼀章中介绍的语⾔模型，来处理和分析⼤量的⾃然语⾔数据。本章中，根
+据输⼊与输出的不同形式，我们按“定⻓到定⻓”、“不定⻓到定⻓”、“不定⻓到不定⻓”的顺序，
+逐步展⽰在⾃然语⾔处理中如何表征并变换定⻓的词或类别以及不定⻓的句⼦或段落序列。
+我们先介绍如何⽤向量表⽰词，并在语料库上训练词向量。之后，我们把在更⼤语料库上预训练
+的词向量应⽤于求近义词和类⽐词，即“定⻓到定⻓”。接着，在⽂本分类这种“不定⻓到定⻓”
+的任务中，我们进⼀步应⽤词向量来分析⽂本情感，并分别基于循环神经⽹络和卷积神经⽹络为
+表征时序数据提供两种思路。此外，⾃然语⾔处理任务中很多输出是不定⻓的，如任意⻓度的句
+⼦或段落。我们将描述应对这类问题的编码器—解码器模型、束搜索和注意⼒机制，并动⼿实践
+“不定⻓到不定⻓”的机器翻译任务。
+10.1 词嵌⼊（word2vec）
+⾃然语⾔是⼀套⽤来表达含义的复杂系统。在这套系统中，词是表义的基本单元。顾名思义，词
+向量是⽤来表⽰词的向量，也可被认为是词的特征向量或表征。把词映射为实数域向量的技术也
+427
+
+叫词嵌⼊（word embedding）。近年来，词嵌⼊已逐渐成为⾃然语⾔处理的基础知识。
+10.1.1 为何不采⽤one-hot向量
+我们在“循环神经⽹络的从零开始实现”⼀节中使⽤one-hot向量表⽰词（字符为词）。回忆⼀下，
+假设词典中不同词的数量（词典⼤小）为N，每个词可以和从0到N −1的连续整数⼀⼀对应。这些
+与词对应的整数叫作词的索引。假设⼀个词的索引为i，为了得到该词的one-hot向量表⽰，我们
+创建⼀个全0的⻓为N的向量，并将其第i位设成1。这样⼀来，每个词就表⽰成了⼀个⻓度为N的
+向量，可以直接被神经⽹络使⽤。
+虽然one-hot词向量构造起来很容易，但通常并不是⼀个好选择。⼀个主要的原因是，one-hot词
+向量⽆法准确表达不同词之间的相似度，如我们常常使⽤的余弦相似度。对于向量x, y ∈Rd，它
+们的余弦相似度是它们之间夹⻆的余弦值
+x⊤y
+∥x∥∥y∥∈[−1, 1].
+由于任何两个不同词的one-hot向量的余弦相似度都为0，多个不同词之间的相似度难以通过one-
+hot向量准确地体现出来。
+word2vec⼯具的提出正是为了解决上⾯这个问题[1]。它将每个词表⽰成⼀个定⻓的向量，并使
+得这些向量能较好地表达不同词之间的相似和类⽐关系。word2vec⼯具包含了两个模型，即跳字
+模型（skip-gram）[2] 和连续词袋模型（continuous bag of words，CBOW）[3]。接下来让我们
+分别介绍这两个模型以及它们的训练⽅法。
+10.1.2 跳字模型
+跳字模型假设基于某个词来⽣成它在⽂本序列周围的词。举个例⼦，假设⽂本序列是
+“the”“man”“loves”“his”“son”。以“loves”作为中⼼词，设背景窗口⼤小为2。如图10.1所
+⽰，跳字模型所关⼼的是，给定中⼼词“loves”，⽣成与它距离不超过2个词的背景词
+“the”“man”“his”“son”的条件概率，即
+P(“the”, “man”, “his”, “son” | “loves”).
+假设给定中⼼词的情况下，背景词的⽣成是相互独⽴的，那么上式可以改写成
+P(“the” | “loves”) · P(“man” | “loves”) · P(“his” | “loves”) · P(“son” | “loves”).
+428
+10. ⾃然语⾔处理
+
+图10.1: 跳字模型关⼼给定中⼼词⽣成背景词的条件概率
+在跳字模型中，每个词被表⽰成两个d维向量，⽤来计算条件概率。假设这个词在词典中索引为i，
+当它为中⼼词时向量表⽰为vi ∈Rd，而为背景词时向量表⽰为ui ∈Rd。设中⼼词wc在词典中
+索引为c，背景词wo在词典中索引为o，给定中⼼词⽣成背景词的条件概率可以通过对向量内积
+做softmax运算而得到：
+P(wo | wc) =
+exp(u⊤
+o vc)
+∑
+i∈V exp(u⊤
+i vc),
+其中词典索引集V = {0, 1, . . . , |V|−1}。假设给定⼀个⻓度为T的⽂本序列，设时间步t的词为w(t)。
+假设给定中⼼词的情况下背景词的⽣成相互独⽴，当背景窗口⼤小为m时，跳字模型的似然函数
+即给定任⼀中⼼词⽣成所有背景词的概率
+T
+∏
+t=1
+∏
+−m≤j≤m, j̸=0
+P(w(t+j) | w(t)),
+这⾥小于1和⼤于T的时间步可以忽略。
+训练跳字模型
+跳字模型的参数是每个词所对应的中⼼词向量和背景词向量。训练中我们通过最⼤化似然函数来
+学习模型参数，即最⼤似然估计。这等价于最小化以下损失函数：
+−
+T
+∑
+t=1
+∑
+−m≤j≤m, j̸=0
+log P(w(t+j) | w(t)).
+如果使⽤随机梯度下降，那么在每⼀次迭代⾥我们随机采样⼀个较短的⼦序列来计算有关该⼦序
+列的损失，然后计算梯度来更新模型参数。梯度计算的关键是条件概率的对数有关中⼼词向量和
+10.1. 词嵌⼊（word2vec）
+429
+
+背景词向量的梯度。根据定义，⾸先看到
+log P(wo | wc) = u⊤
+o vc −log
+(∑
+i∈V
+exp(u⊤
+i vc)
+)
+通过微分，我们可以得到上式中vc的梯度
+∂log P(wo | wc)
+∂vc
+= uo −
+∑
+j∈V exp(u⊤
+j vc)uj
+∑
+i∈V exp(u⊤
+i vc)
+= uo −
+∑
+j∈V
+(
+exp(u⊤
+j vc)
+∑
+i∈V exp(u⊤
+i vc)
+)
+uj
+= uo −
+∑
+j∈V
+P(wj | wc)uj.
+它的计算需要词典中所有词以wc为中⼼词的条件概率。有关其他词向量的梯度同理可得。
+训练结束后，对于词典中的任⼀索引为i的词，我们均得到该词作为中⼼词和背景词的两组词向
+量vi和ui。在⾃然语⾔处理应⽤中，⼀般使⽤跳字模型的中⼼词向量作为词的表征向量。
+10.1.3 连续词袋模型
+连续词袋模型与跳字模型类似。与跳字模型最⼤的不同在于，连续词袋模型假设基于某中⼼词在
+⽂本序列前后的背景词来⽣成该中⼼词。在同样的⽂本序列“the”“man”“loves”“his”“son”
+⾥，以“loves”作为中⼼词，且背景窗口⼤小为2时，连续词袋模型关⼼的是，给定背景词
+“the”“man”“his”“son”⽣成中⼼词“loves”的条件概率（如图10.2所⽰），也就是
+P(“loves” | “the”, “man”, “his”, “son”).
+图10.2: 连续词袋模型关⼼给定背景词⽣成中⼼词的条件概率
+430
+10. ⾃然语⾔处理
+
+因为连续词袋模型的背景词有多个，我们将这些背景词向量取平均，然后使⽤和跳字模型⼀样的
+⽅法来计算条件概率。设vi ∈Rd和ui ∈Rd分别表⽰词典中索引为i的词作为背景词和中⼼词的向
+量（注意符号的含义与跳字模型中的相反）。设中⼼词wc在词典中索引为c，背景词wo1, . . . , wo2m在
+词典中索引为o1, . . . , o2m，那么给定背景词⽣成中⼼词的条件概率
+P(wc | wo1, . . . , wo2m) =
+exp
+( 1
+2mu⊤
+c (vo1 + . . . + vo2m)
+)
+∑
+i∈V exp
+( 1
+2mu⊤
+i (vo1 + . . . + vo2m)
+).
+为了让符号更加简单，我们记Wo = {wo1, . . . , wo2m}，且¯vo = (vo1 + . . . + vo2m) /(2m)，那么上
+式可以简写成
+P(wc | Wo) =
+exp
+(
+u⊤
+c ¯vo
+)
+∑
+i∈V exp
+(
+u⊤
+i ¯vo
+).
+给定⼀个⻓度为T的⽂本序列，设时间步t的词为w(t)，背景窗口⼤小为m。连续词袋模型的似然
+函数是由背景词⽣成任⼀中⼼词的概率
+T
+∏
+t=1
+P(w(t) | w(t−m), . . . , w(t−1), w(t+1), . . . , w(t+m)).
+训练连续词袋模型
+训练连续词袋模型同训练跳字模型基本⼀致。连续词袋模型的最⼤似然估计等价于最小化损失函
+数
+−
+T
+∑
+t=1
+log P(w(t) | w(t−m), . . . , w(t−1), w(t+1), . . . , w(t+m)).
+注意到
+log P(wc | Wo) = u⊤
+c ¯vo −log
+(∑
+i∈V
+exp
+(
+u⊤
+i ¯vo
+)
+)
+.
+通过微分，我们可以计算出上式中条件概率的对数有关任⼀背景词向量voi（i = 1, . . . , 2m）的梯
+度
+∂log P(wc | Wo)
+∂voi
+=
+1
+2m
+
+uc −
+∑
+j∈V
+exp(u⊤
+j ¯vo)uj
+∑
+i∈V exp(u⊤
+i ¯vo)
+
+=
+1
+2m
+
+uc −
+∑
+j∈V
+P(wj | Wo)uj
+
+.
+有关其他词向量的梯度同理可得。同跳字模型不⼀样的⼀点在于，我们⼀般使⽤连续词袋模型的
+背景词向量作为词的表征向量。
+10.1. 词嵌⼊（word2vec）
+431
+
+⼩结
+• 词向量是⽤来表⽰词的向量。把词映射为实数域向量的技术也叫词嵌⼊。
+• word2vec包含跳字模型和连续词袋模型。跳字模型假设基于中⼼词来⽣成背景词。连续词
+袋模型假设基于背景词来⽣成中⼼词。
+练习
+• 每次梯度的计算复杂度是多少？当词典很⼤时，会有什么问题？
+• 英语中有些固定短语由多个词组成，如“new york”。如何训练它们的词向量？提⽰：可参
+考word2vec论⽂第4节[2]。
+• 让我们以跳字模型为例思考word2vec模型的设计。跳字模型中两个词向量的内积与余弦相
+似度有什么关系？对语义相近的⼀对词来说，为什么它们的词向量的余弦相似度可能会⾼？
+参考⽂献
+[1] word2vec⼯具。https://code.google.com/archive/p/word2vec/
+[2] Mikolov, T., Sutskever, I., Chen, K., Corrado, G. S., & Dean, J. (2013). Distributed represen-
+tations of words and phrases and their compositionality. In Advances in neural information
+processing systems (pp. 3111-3119).
+[3] Mikolov, T., Chen, K., Corrado, G., & Dean, J. (2013). Efficient estimation of word represen-
+tations in vector space. arXiv preprint arXiv:1301.3781.
+扫码直达讨论区
+432
+10. ⾃然语⾔处理
+
+10.2 近似训练
+回忆上⼀节的内容。跳字模型的核⼼在于使⽤softmax运算得到给定中⼼词wc来⽣成背景词wo的
+条件概率
+P(wo | wc) =
+exp(u⊤
+o vc)
+∑
+i∈V exp(u⊤
+i vc).
+该条件概率相应的对数损失
+−log P(wo | wc) = −u⊤
+o vc + log
+(∑
+i∈V
+exp(u⊤
+i vc)
+)
+.
+由于softmax运算考虑了背景词可能是词典V中的任⼀词，以上损失包含了词典⼤小数⽬的项的
+累加。在上⼀节中我们看到，不论是跳字模型还是连续词袋模型，由于条件概率使⽤了softmax运
+算，每⼀步的梯度计算都包含词典⼤小数⽬的项的累加。对于含⼏⼗万或上百万词的较⼤词典，
+每次的梯度计算开销可能过⼤。为了降低该计算复杂度，本节将介绍两种近似训练⽅法，即负采
+样（negative sampling）或层序softmax（hierarchical softmax）。由于跳字模型和连续词袋模型
+类似，本节仅以跳字模型为例介绍这两种⽅法。
+10.2.1 负采样
+负采样修改了原来的⽬标函数。给定中⼼词wc的⼀个背景窗口，我们把背景词wo出现在该背景窗
+口看作⼀个事件，并将该事件的概率计算为
+P(D = 1 | wc, wo) = σ(u⊤
+o vc),
+其中的σ函数与sigmoid激活函数的定义相同：
+σ(x) =
+1
+1 + exp(−x).
+我们先考虑最⼤化⽂本序列中所有该事件的联合概率来训练词向量。具体来说，给定⼀个⻓度
+为T的⽂本序列，设时间步t的词为w(t)且背景窗口⼤小为m，考虑最⼤化联合概率
+T
+∏
+t=1
+∏
+−m≤j≤m, j̸=0
+P(D = 1 | w(t), w(t+j)).
+然而，以上模型中包含的事件仅考虑了正类样本。这导致当所有词向量相等且值为⽆穷⼤时，以上
+的联合概率才被最⼤化为1。很明显，这样的词向量毫⽆意义。负采样通过采样并添加负类样本使
+10.2. 近似训练
+433
+
+⽬标函数更有意义。设背景词wo出现在中⼼词wc的⼀个背景窗口为事件P，我们根据分布P(w)采
+样K个未出现在该背景窗口中的词，即噪声词。设噪声词wk（k = 1, . . . , K）不出现在中⼼词wc的
+该背景窗口为事件Nk。假设同时含有正类样本和负类样本的事件P, N1, . . . , NK相互独⽴，负采
+样将以上需要最⼤化的仅考虑正类样本的联合概率改写为
+T
+∏
+t=1
+∏
+−m≤j≤m, j̸=0
+P(w(t+j) | w(t)),
+其中条件概率被近似表⽰为
+P(w(t+j) | w(t)) = P(D = 1 | w(t), w(t+j))
+K
+∏
+k=1, wk∼P (w)
+P(D = 0 | w(t), wk).
+设⽂本序列中时间步t的词w(t)在词典中的索引为it，噪声词wk在词典中的索引为hk。有关以上条
+件概率的对数损失为
+−log P(w(t+j) | w(t)) = −log P(D = 1 | w(t), w(t+j)) −
+K
+∑
+k=1, wk∼P (w)
+log P(D = 0 | w(t), wk)
+= −log σ
+(
+u⊤
+it+jvit
+)
+−
+K
+∑
+k=1, wk∼P (w)
+log
+(
+1 −σ
+(
+u⊤
+hkvit
+))
+= −log σ
+(
+u⊤
+it+jvit
+)
+−
+K
+∑
+k=1, wk∼P (w)
+log σ
+(
+−u⊤
+hkvit
+)
+.
+现在，训练中每⼀步的梯度计算开销不再与词典⼤小相关，而与K线性相关。当K取较小的常数
+时，负采样在每⼀步的梯度计算开销较小。
+10.2.2 层序softmax
+层序softmax是另⼀种近似训练法。它使⽤了⼆叉树这⼀数据结构，树的每个叶结点代表词典V中
+的每个词。
+434
+10. ⾃然语⾔处理
+
+图10.3: 层序softmax。⼆叉树的每个叶结点代表着词典的每个词
+假设L(w)为从⼆叉树的根结点到词w的叶结点的路径（包括根结点和叶结点）上的结点数。
+设n(w, j)为该路径上第j个结点，并设该结点的背景词向量为un(w,j)。以图10.3为例，L(w3) = 4。
+层序softmax将跳字模型中的条件概率近似表⽰为
+P(wo | wc) =
+L(wo)−1
+∏
+j=1
+σ
+(
+[[n(wo, j + 1) = leftChild(n(wo, j))]] · u⊤
+n(wo,j)vc
+)
+,
+其中σ函数与“多层感知机”⼀节中sigmoid激活函数的定义相同，leftChild(n)是结点n的左⼦结
+点：如果判断x为真，[[x]] = 1；反之[[x]] = −1。让我们计算图10.3中给定词wc⽣成词w3的条件概
+率。我们需要将wc的词向量vc和根结点到w3路径上的⾮叶结点向量⼀⼀求内积。由于在⼆叉树中
+由根结点到叶结点w3的路径上需要向左、向右再向左地遍历（图10.3中加粗的路径），我们得到
+P(w3 | wc) = σ(u⊤
+n(w3,1)vc) · σ(−u⊤
+n(w3,2)vc) · σ(u⊤
+n(w3,3)vc).
+由于σ(x) + σ(−x) = 1，给定中⼼词wc⽣成词典V中任⼀词的条件概率之和为1这⼀条件也将满
+⾜：
+∑
+w∈V
+P(w | wc) = 1.
+此外，由于L(wo) −1的数量级为O(log2|V|)，当词典V很⼤时，层序softmax在训练中每⼀步的梯
+度计算开销相较未使⽤近似训练时⼤幅降低。
+10.2. 近似训练
+435
+
+⼩结
+• 负采样通过考虑同时含有正类样本和负类样本的相互独⽴事件来构造损失函数。其训练中
+每⼀步的梯度计算开销与采样的噪声词的个数线性相关。
+• 层序softmax使⽤了⼆叉树，并根据根结点到叶结点的路径来构造损失函数。其训练中每⼀
+步的梯度计算开销与词典⼤小的对数相关。
+练习
+• 在阅读下⼀节之前，你觉得在负采样中应如何采样噪声词？
+• 本节中最后⼀个公式为什么成⽴？
+• 如何将负采样或层序softmax⽤于训练连续词袋模型？
+扫码直达讨论区
+10.3 word2vec的实现
+本节是对前两节内容的实践。我们以“词嵌⼊（word2vec）”⼀节中的跳字模型和“近似训练”⼀
+节中的负采样为例，介绍在语料库上训练词嵌⼊模型的实现。我们还会介绍⼀些实现中的技巧，
+如⼆次采样（subsampling）。
+⾸先导⼊实验所需的包或模块。
+In [1]: import collections
+import d2lzh as d2l
+import math
+from mxnet import autograd, gluon, nd
+from mxnet.gluon import data as gdata, loss as gloss, nn
+import random
+436
+10. ⾃然语⾔处理
+
+import sys
+import time
+import zipfile
+10.3.1 处理数据集
+PTB（Penn Tree Bank）是⼀个常⽤的小型语料库[1]。它采样⾃《华尔街⽇报》的⽂章，包括训
+练集、验证集和测试集。我们将在PTB训练集上训练词嵌⼊模型。该数据集的每⼀⾏作为⼀个句
+⼦。句⼦中的每个词由空格隔开。
+In [2]: with zipfile.ZipFile('../data/ptb.zip', 'r') as zin:
+zin.extractall('../data/')
+with open('../data/ptb/ptb.train.txt', 'r') as f:
+lines = f.readlines()
+# st是sentence的缩写
+raw_dataset = [st.split() for st in lines]
+'# sentences: %d' % len(raw_dataset)
+Out[2]: '# sentences: 42068'
+对于数据集的前3个句⼦，打印每个句⼦的词数和前5个词。这个数据集中句尾符为“<eos>”，⽣
+僻词全⽤“<unk>”表⽰，数字则被替换成了“N”。
+In [3]: for st in raw_dataset[:3]:
+print('# tokens:', len(st), st[:5])
+# tokens: 24 ['aer', 'banknote', 'berlitz', 'calloway', 'centrust']
+# tokens: 15 ['pierre', '<unk>', 'N', 'years', 'old']
+# tokens: 11 ['mr.', '<unk>', 'is', 'chairman', 'of']
+建⽴词语索引
+为了计算简单，我们只保留在数据集中⾄少出现5次的词。
+In [4]: # tk是token的缩写
+counter = collections.Counter([tk for st in raw_dataset for tk in st])
+counter = dict(filter(lambda x: x[1] >= 5, counter.items()))
+然后将词映射到整数索引。
+In [5]: idx_to_token = [tk for tk, _ in counter.items()]
+token_to_idx = {tk: idx for idx, tk in enumerate(idx_to_token)}
+10.3. word2vec的实现
+437
+
+dataset = [[token_to_idx[tk] for tk in st if tk in token_to_idx]
+for st in raw_dataset]
+num_tokens = sum([len(st) for st in dataset])
+'# tokens: %d' % num_tokens
+Out[5]: '# tokens: 887100'
+⼆次采样
+⽂本数据中⼀般会出现⼀些⾼频词，如英⽂中的“the”“a”和“in”。通常来说，在⼀个背景窗口
+中，⼀个词（如“chip”）和较低频词（如“microprocessor”）同时出现⽐和较⾼频词（如“the”）
+同时出现对训练词嵌⼊模型更有益。因此，训练词嵌⼊模型时可以对词进⾏⼆次采样[2]。具体来
+说，数据集中每个被索引词wi将有⼀定概率被丢弃，该丢弃概率为
+P(wi) = max
+(
+1 −
+√
+t
+f(wi), 0
+)
+,
+其中f(wi) 是数据集中词wi的个数与总词数之⽐，常数t是⼀个超参数（实验中设为10−4）。可⻅，
+只有当f(wi) > t时，我们才有可能在⼆次采样中丢弃词wi，并且越⾼频的词被丢弃的概率越⼤。
+In [6]: def discard(idx):
+return random.uniform(0, 1) < 1 - math.sqrt(
+1e-4 / counter[idx_to_token[idx]] * num_tokens)
+subsampled_dataset = [[tk for tk in st if not discard(tk)] for st in dataset]
+'# tokens: %d' % sum([len(st) for st in subsampled_dataset])
+Out[6]: '# tokens: 376216'
+可以看到，⼆次采样后我们去掉了⼀半左右的词。下⾯⽐较⼀个词在⼆次采样前后出现在数据集
+中的次数。可⻅⾼频词“the”的采样率不⾜1/20。
+In [7]: def compare_counts(token):
+return '# %s: before=%d, after=%d' % (token, sum(
+[st.count(token_to_idx[token]) for st in dataset]), sum(
+[st.count(token_to_idx[token]) for st in subsampled_dataset]))
+compare_counts('the')
+Out[7]: '# the: before=50770, after=2199'
+但低频词“join”则完整地保留了下来。
+In [8]: compare_counts('join')
+438
+10. ⾃然语⾔处理
+
+Out[8]: '# join: before=45, after=45'
+提取中⼼词和背景词
+我们将与中⼼词距离不超过背景窗口⼤小的词作为它的背景词。下⾯定义函数提取出所有中⼼词
+和它们的背景词。它每次在整数1和max_window_size（最⼤背景窗口）之间随机均匀采样⼀
+个整数作为背景窗口⼤小。
+In [9]: def get_centers_and_contexts(dataset, max_window_size):
+centers, contexts = [], []
+for st in dataset:
+if len(st) < 2:
+# 每个句⼦⾄少要有2个词才可能组成⼀对“中⼼词-背景词”
+continue
+centers += st
+for center_i in range(len(st)):
+window_size = random.randint(1, max_window_size)
+indices = list(range(max(0, center_i - window_size),
+min(len(st), center_i + 1 + window_size)))
+indices.remove(center_i)
+# 将中⼼词排除在背景词之外
+contexts.append([st[idx] for idx in indices])
+return centers, contexts
+下⾯我们创建⼀个⼈⼯数据集，其中含有词数分别为7和3的两个句⼦。设最⼤背景窗口为2，打
+印所有中⼼词和它们的背景词。
+In [10]: tiny_dataset = [list(range(7)), list(range(7, 10))]
+print('dataset', tiny_dataset)
+for center, context in zip(*get_centers_and_contexts(tiny_dataset, 2)):
+print('center', center, 'has contexts', context)
+dataset [[0, 1, 2, 3, 4, 5, 6], [7, 8, 9]]
+center 0 has contexts [1]
+center 1 has contexts [0, 2]
+center 2 has contexts [1, 3]
+center 3 has contexts [2, 4]
+center 4 has contexts [2, 3, 5, 6]
+center 5 has contexts [3, 4, 6]
+center 6 has contexts [4, 5]
+center 7 has contexts [8, 9]
+center 8 has contexts [7, 9]
+center 9 has contexts [8]
+实验中，我们设最⼤背景窗口⼤小为5。下⾯提取数据集中所有的中⼼词及其背景词。
+10.3. word2vec的实现
+439
+
+In [11]: all_centers, all_contexts = get_centers_and_contexts(subsampled_dataset, 5)
+10.3.2 负采样
+我们使⽤负采样来进⾏近似训练。对于⼀对中⼼词和背景词，我们随机采样K个噪声词（实验中
+设K = 5）。根据word2vec论⽂的建议，噪声词采样概率P(w)设为w词频与总词频之⽐的0.75次
+⽅[2]。
+In [12]: def get_negatives(all_contexts, sampling_weights, K):
+all_negatives, neg_candidates, i = [], [], 0
+population = list(range(len(sampling_weights)))
+for contexts in all_contexts:
+negatives = []
+while len(negatives) < len(contexts) * K:
+if i == len(neg_candidates):
+# 根据每个词的权重（sampling_weights）随机⽣成k个词的索引作为噪声词。
+# 为了⾼效计算，可以将k设得稍⼤⼀点
+i, neg_candidates = 0, random.choices(
+population, sampling_weights, k=int(1e5))
+neg, i = neg_candidates[i], i + 1
+# 噪声词不能是背景词
+if neg not in set(contexts):
+negatives.append(neg)
+all_negatives.append(negatives)
+return all_negatives
+sampling_weights = [counter[w]**0.75 for w in idx_to_token]
+all_negatives = get_negatives(all_contexts, sampling_weights, 5)
+10.3.3 读取数据
+我们从数据集中提取所有中⼼词all_centers，以及每个中⼼词对应的背景
+词all_contexts和噪声词all_negatives。我们将通过随机小批量来读取它们。
+在⼀个小批量数据中，第i个样本包括⼀个中⼼词以及它所对应的ni个背景词和mi个噪声词。由于
+每个样本的背景窗口⼤小可能不⼀样，其中背景词与噪声词个数之和ni + mi也会不同。在构造小
+批量时，我们将每个样本的背景词和噪声词连结在⼀起，并添加填充项0直⾄连结后的⻓度相同，即
+⻓度均为maxi ni+mi（max_len变量）。为了避免填充项对损失函数计算的影响，我们构造了掩码
+变量masks，其每⼀个元素分别与连结后的背景词和噪声词contexts_negatives中的元素⼀
+440
+10. ⾃然语⾔处理
+
+⼀对应。当contexts_negatives变量中的某个元素为填充项时，相同位置的掩码变量masks中
+的元素取0，否则取1。为了区分正类和负类，我们还需要将contexts_negatives变量中的背
+景词和噪声词区分开来。依据掩码变量的构造思路，我们只需创建与contexts_negatives变
+量形状相同的标签变量labels，并将与背景词（正类）对应的元素设1，其余清0。
+下⾯我们实现这个小批量读取函数batchify。它的小批量输⼊data是⼀个⻓度为批量⼤小的
+列表，其中每个元素分别包含中⼼词center、背景词context和噪声词negative。该函数返
+回的小批量数据符合我们需要的格式，例如，包含了掩码变量。
+In [13]: def batchify(data):
+max_len = max(len(c) + len(n) for _, c, n in data)
+centers, contexts_negatives, masks, labels = [], [], [], []
+for center, context, negative in data:
+cur_len = len(context) + len(negative)
+centers += [center]
+contexts_negatives += [context + negative + [0] * (max_len - cur_len)]
+masks += [[1] * cur_len + [0] * (max_len - cur_len)]
+labels += [[1] * len(context) + [0] * (max_len - len(context))]
+return (nd.array(centers).reshape((-1, 1)), nd.array(contexts_negatives),
+nd.array(masks), nd.array(labels))
+我们⽤刚刚定义的batchify函数指定DataLoader实例中小批量的读取⽅式，然后打印读取的
+第⼀个批量中各个变量的形状。
+In [14]: batch_size = 512
+num_workers = 0 if sys.platform.startswith('win32') else 4
+dataset = gdata.ArrayDataset(all_centers, all_contexts, all_negatives)
+data_iter = gdata.DataLoader(dataset, batch_size, shuffle=True,
+batchify_fn=batchify, num_workers=num_workers)
+for batch in data_iter:
+for name, data in zip(['centers', 'contexts_negatives', 'masks',
+'labels'], batch):
+print(name, 'shape:', data.shape)
+break
+centers shape: (512, 1)
+contexts_negatives shape: (512, 60)
+masks shape: (512, 60)
+labels shape: (512, 60)
+10.3. word2vec的实现
+441
+
+10.3.4 跳字模型
+我们将通过使⽤嵌⼊层和小批量乘法来实现跳字模型。它们也常常⽤于实现其他⾃然语⾔处理的
+应⽤。
+嵌⼊层
+获取词嵌⼊的层称为嵌⼊层，在Gluon中可以通过创建nn.Embedding实例得到。嵌⼊层的权重
+是⼀个矩阵，其⾏数为词典⼤小（input_dim），列数为每个词向量的维度（output_dim）。我
+们设词典⼤小为20，词向量的维度为4。
+In [15]: embed = nn.Embedding(input_dim=20, output_dim=4)
+embed.initialize()
+embed.weight
+Out[15]: Parameter embedding0_weight (shape=(20, 4), dtype=float32)
+嵌⼊层的输⼊为词的索引。输⼊⼀个词的索引i，嵌⼊层返回权重矩阵的第i⾏作为它的词向量。下
+⾯我们将形状为(2, 3)的索引输⼊进嵌⼊层，由于词向量的维度为4，我们得到形状为(2, 3, 4)的词
+向量。
+In [16]: x = nd.array([[1, 2, 3], [4, 5, 6]])
+embed(x)
+Out[16]:
+[[[ 0.01438687
+0.05011239
+0.00628365
+0.04861524]
+[-0.01068833
+0.01729892
+0.02042518 -0.01618656]
+[-0.00873779 -0.02834515
+0.05484822 -0.06206018]]
+[[ 0.06491279 -0.03182812 -0.01631819 -0.00312688]
+[ 0.0408415
+0.04370362
+0.00404529 -0.0028032 ]
+[ 0.00952624 -0.01501013
+0.05958354
+0.04705103]]]
+<NDArray 2x3x4 @cpu(0)>
+⼩批量乘法
+我们可以使⽤小批量乘法运算batch_dot对两个小批量中的矩阵⼀⼀做乘法。假设第⼀个小批量
+中包含n个形状为a×b的矩阵X1, . . . , Xn，第⼆个小批量中包含n个形状为b×c的矩阵Y 1, . . . , Y n。
+这两个小批量的矩阵乘法输出为n个形状为a × c的矩阵X1Y 1, . . . , XnY n。因此，给定两个形状
+分别为(n, a, b)和(n, b, c)的NDArray，小批量乘法输出的形状为(n, a, c)。
+442
+10. ⾃然语⾔处理
+
+In [17]: X = nd.ones((2, 1, 4))
+Y = nd.ones((2, 4, 6))
+nd.batch_dot(X, Y).shape
+Out[17]: (2, 1, 6)
+跳字模型前向计算
+在前向计算中，跳字模型的输⼊包含中⼼词索引center以及连结的背景词与噪
+声词索引contexts_and_negatives。其中center变量的形状为(批量⼤小,
+1)，
+而contexts_and_negatives变量的形状为(批量⼤小, max_len)。这两个变量先通过词
+嵌⼊层分别由词索引变换为词向量，再通过小批量乘法得到形状为(批量⼤小, 1, max_len)的输
+出。输出中的每个元素是中⼼词向量与背景词向量或噪声词向量的内积。
+In [18]: def skip_gram(center, contexts_and_negatives, embed_v, embed_u):
+v = embed_v(center)
+u = embed_u(contexts_and_negatives)
+pred = nd.batch_dot(v, u.swapaxes(1, 2))
+return pred
+10.3.5 训练模型
+在训练词嵌⼊模型之前，我们需要定义模型的损失函数。
+⼆元交叉熵损失函数
+根据负采样中损失函数的定义，我们可以直接使⽤Gluon的⼆元交叉熵损失函
+数SigmoidBinaryCrossEntropyLoss。
+In [19]: loss = gloss.SigmoidBinaryCrossEntropyLoss()
+值得⼀提的是，我们可以通过掩码变量指定小批量中参与损失函数计算的部分预测值和标签：当
+掩码为1时，相应位置的预测值和标签将参与损失函数的计算；当掩码为0时，相应位置的预测值
+和标签则不参与损失函数的计算。我们之前提到，掩码变量可⽤于避免填充项对损失函数计算的
+影响。
+In [20]: pred = nd.array([[1.5, 0.3, -1, 2], [1.1, -0.6, 2.2, 0.4]])
+# 标签变量label中的1和0分别代表背景词和噪声词
+label = nd.array([[1, 0, 0, 0], [1, 1, 0, 0]])
+10.3. word2vec的实现
+443
+
+mask = nd.array([[1, 1, 1, 1], [1, 1, 1, 0]])
+# 掩码变量
+loss(pred, label, mask) * mask.shape[1] / mask.sum(axis=1)
+Out[20]:
+[0.8739896 1.2099689]
+<NDArray 2 @cpu(0)>
+作为⽐较，下⾯将从零开始实现⼆元交叉熵损失函数的计算，并根据掩码变量mask计算掩码为1的
+预测值和标签的损失。
+In [21]: def sigmd(x):
+return -math.log(1 / (1 + math.exp(-x)))
+print('%.7f' % ((sigmd(1.5) + sigmd(-0.3) + sigmd(1) + sigmd(-2)) / 4))
+print('%.7f' % ((sigmd(1.1) + sigmd(-0.6) + sigmd(-2.2)) / 3))
+0.8739896
+1.2099689
+初始化模型参数
+我们分别构造中⼼词和背景词的嵌⼊层，并将超参数词向量维度embed_size设置成100。
+In [22]: embed_size = 100
+net = nn.Sequential()
+net.add(nn.Embedding(input_dim=len(idx_to_token), output_dim=embed_size),
+nn.Embedding(input_dim=len(idx_to_token), output_dim=embed_size))
+定义训练函数
+下⾯定义训练函数。由于填充项的存在，与之前的训练函数相⽐，损失函数的计算稍有不同。
+In [23]: def train(net, lr, num_epochs):
+ctx = d2l.try_gpu()
+net.initialize(ctx=ctx, force_reinit=True)
+trainer = gluon.Trainer(net.collect_params(), 'adam',
+{'learning_rate': lr})
+for epoch in range(num_epochs):
+start, l_sum, n = time.time(), 0.0, 0
+for batch in data_iter:
+center, context_negative, mask, label = [
+data.as_in_context(ctx) for data in batch]
+with autograd.record():
+pred = skip_gram(center, context_negative, net[0], net[1])
+444
+10. ⾃然语⾔处理
+
+# 使⽤掩码变量mask来避免填充项对损失函数计算的影响
+l = (loss(pred.reshape(label.shape), label, mask) *
+mask.shape[1] / mask.sum(axis=1))
+l.backward()
+trainer.step(batch_size)
+l_sum += l.sum().asscalar()
+n += l.size
+print('epoch %d, loss %.2f, time %.2fs'
+% (epoch + 1, l_sum / n, time.time() - start))
+现在我们就可以使⽤负采样训练跳字模型了。
+In [24]: train(net, 0.005, 5)
+epoch 1, loss 0.46, time 23.13s
+epoch 2, loss 0.39, time 24.17s
+epoch 3, loss 0.35, time 22.86s
+epoch 4, loss 0.32, time 22.97s
+epoch 5, loss 0.31, time 22.91s
+10.3.6 应⽤词嵌⼊模型
+训练好词嵌⼊模型之后，我们可以根据两个词向量的余弦相似度表⽰词与词之间在语义上的相似
+度。可以看到，使⽤训练得到的词嵌⼊模型时，与词“chip”语义最接近的词⼤多与芯⽚有关。
+In [25]: def get_similar_tokens(query_token, k, embed):
+W = embed.weight.data()
+x = W[token_to_idx[query_token]]
+# 添加的1e-9是为了数值稳定性
+cos = nd.dot(W, x) / (nd.sum(W * W, axis=1) * nd.sum(x * x) + 1e-9).sqrt()
+topk = nd.topk(cos, k=k+1, ret_typ='indices').asnumpy().astype('int32')
+for i in topk[1:]:
+# 除去输⼊词
+print('cosine sim=%.3f: %s' % (cos[i].asscalar(), (idx_to_token[i])))
+get_similar_tokens('chip', 3, net[0])
+cosine sim=0.614: intel
+cosine sim=0.467: microprocessor
+cosine sim=0.450: computer
+⼩结
+• 可以使⽤Gluon通过负采样训练跳字模型。
+10.3. word2vec的实现
+445
+
+• ⼆次采样试图尽可能减轻⾼频词对训练词嵌⼊模型的影响。
+• 可以将⻓度不同的样本填充⾄⻓度相同的小批量，并通过掩码变量区分⾮填充和填充，然
+后只令⾮填充参与损失函数的计算。
+练习
+• 在创建nn.Embedding实例时设参数sparse_grad=True，训练是否可以加速？查
+阅MXNet⽂档，了解该参数的意义。
+• 我们⽤batchify函数指定DataLoader实例中小批量的读取⽅式，并打印了读取的第⼀
+个批量中各个变量的形状。这些形状该如何计算得到？
+• 试着找出其他词的近义词。
+• 调⼀调超参数，观察并分析实验结果。
+• 当数据集较⼤时，我们通常在迭代模型参数时才对当前小批量⾥的中⼼词采样背景词和噪
+声词。也就是说，同⼀个中⼼词在不同的迭代周期可能会有不同的背景词或噪声词。这样
+训练有哪些好处？尝试实现该训练⽅法。
+参考⽂献
+[1] Penn Tree Bank. https://catalog.ldc.upenn.edu/LDC99T42
+[2] Mikolov, T., Sutskever, I., Chen, K., Corrado, G. S., & Dean, J. (2013). Distributed represen-
+tations of words and phrases and their compositionality. In Advances in neural information
+processing systems (pp. 3111-3119).
+扫码直达讨论区
+446
+10. ⾃然语⾔处理
+
+10.4 ⼦词嵌⼊（fastText）
+英语单词通常有其内部结构和形成⽅式。例如，我们可以从“dog”“dogs”和“dogcatcher”的
+字⾯上推测它们的关系。这些词都有同⼀个词根“dog”，但使⽤不同的后缀来改变词的含义。而
+且，这个关联可以推⼴⾄其他词汇。例如，“dog”和“dogs”的关系如同“cat”和“cats”的关
+系，“boy”和“boyfriend”的关系如同“girl”和“girlfriend”的关系。这⼀特点并⾮为英语所
+独有。在法语和西班⽛语中，很多动词根据场景不同有40多种不同的形态，而在芬兰语中，⼀个
+名词可能有15种以上的形态。事实上，构词学（morphology）作为语⾔学的⼀个重要分⽀，研究
+的正是词的内部结构和形成⽅式。
+在word2vec中，我们并没有直接利⽤构词学中的信息。⽆论是在跳字模型还是连续词袋模型中，
+我们都将形态不同的单词⽤不同的向量来表⽰。例如，“dog”和“dogs”分别⽤两个不同的向量
+表⽰，而模型中并未直接表达这两个向量之间的关系。鉴于此，fastText提出了⼦词嵌⼊（subword
+embedding）的⽅法，从而试图将构词信息引⼊word2vec中的跳字模型[1]。
+在fastText中，每个中⼼词被表⽰成⼦词的集合。下⾯我们⽤单词“where”作为例⼦来了解⼦词
+是如何产⽣的。⾸先，我们在单词的⾸尾分别添加特殊字符“<”和“>”以区分作为前后缀的⼦
+词。然后，将单词当成⼀个由字符构成的序列来提取n元语法。例如，当n = 3时，我们得到所有
+⻓度为3的⼦词：“<wh”“whe”“her”“ere”“re>”以及特殊⼦词“<where>”。
+在fastText中，对于⼀个词w，我们将它所有⻓度在3 ∼6的⼦词和特殊⼦词的并集记为Gw。那么
+词典则是所有词的⼦词集合的并集。假设词典中⼦词g的向量为zg，那么跳字模型中词w的作为
+中⼼词的向量vw则表⽰成
+vw =
+∑
+g∈Gw
+zg.
+fastText的其余部分同跳字模型⼀致，不在此重复。可以看到，与跳字模型相⽐，fastText中词典
+规模更⼤，造成模型参数更多，同时⼀个词的向量需要对所有⼦词向量求和，继而导致计算复杂
+度更⾼。但与此同时，较⽣僻的复杂单词，甚⾄是词典中没有的单词，可能会从同它结构类似的
+其他词那⾥获取更好的词向量表⽰。
+⼩结
+• fastText提出了⼦词嵌⼊⽅法。它在word2vec中的跳字模型的基础上，将中⼼词向量表⽰成
+单词的⼦词向量之和。
+• ⼦词嵌⼊利⽤构词上的规律，通常可以提升⽣僻词表⽰的质量。
+10.4. ⼦词嵌⼊（fastText）
+447
+
+练习
+• ⼦词过多（例如，6字英⽂组合数约为3 × 108）会有什么问题？你有什么办法来解决它吗？
+提⽰：可参考fastText论⽂3.2节末尾[1]。
+• 如何基于连续词袋模型设计⼦词嵌⼊模型？
+参考⽂献
+[1] Bojanowski, P., Grave, E., Joulin, A., & Mikolov, T. (2016). Enriching word vectors with sub-
+word information. arXiv preprint arXiv:1607.04606.
+扫码直达讨论区
+10.5 全局向量的词嵌⼊（GloVe）
+让我们先回顾⼀下word2vec中的跳字模型。将跳字模型中使⽤softmax运算表达的条件概
+率P(wj | wi)记作qij，即
+qij =
+exp(u⊤
+j vi)
+∑
+k∈V exp(u⊤
+k vi),
+其中vi和ui分别是索引为i的词wi作为中⼼词和背景词时的向量表⽰，V = {0, 1, . . . , |V| −1}为词
+典索引集。
+对于词wi，它在数据集中可能多次出现。我们将每⼀次以它作为中⼼词的所有背景词全部汇总
+并保留重复元素，记作多重集（multiset）Ci。⼀个元素在多重集中的个数称为该元素的重数
+（multiplicity）。举例来说，假设词wi在数据集中出现2次：⽂本序列中以这2个wi作为中⼼词的背
+景窗口分别包含背景词索引2, 1, 5, 2和2, 3, 2, 1。那么多重集Ci = {1, 1, 2, 2, 2, 2, 3, 5}，其中元素1的
+重数为2，元素2的重数为4，元素3和5的重数均为1。将多重集Ci中元素j的重数记作xij：它表⽰
+448
+10. ⾃然语⾔处理
+
+了整个数据集中所有以wi为中⼼词的背景窗口中词wj的个数。那么，跳字模型的损失函数还可以
+⽤另⼀种⽅式表达：
+−
+∑
+i∈V
+∑
+j∈V
+xij log qij.
+我们将数据集中所有以词wi为中⼼词的背景词的数量之和|Ci|记为xi，并将以wi为中⼼词⽣成背
+景词wj的条件概率xij/xi记作pij。我们可以进⼀步改写跳字模型的损失函数为
+−
+∑
+i∈V
+xi
+∑
+j∈V
+pij log qij.
+上式中，−∑
+j∈V pij log qij计算的是以wi为中⼼词的背景词条件概率分布pij和模型预测的条件概
+率分布qij的交叉熵，且损失函数使⽤所有以词wi为中⼼词的背景词的数量之和来加权。最小化上
+式中的损失函数会令预测的条件概率分布尽可能接近真实的条件概率分布。
+然而，作为常⽤损失函数的⼀种，交叉熵损失函数有时并不是好的选择。⼀⽅⾯，正如我们在“近
+似训练”⼀节中所提到的，令模型预测qij成为合法概率分布的代价是它在分⺟中基于整个词典的
+累加项。这很容易带来过⼤的计算开销。另⼀⽅⾯，词典中往往有⼤量⽣僻词，它们在数据集中
+出现的次数极少。而有关⼤量⽣僻词的条件概率分布在交叉熵损失函数中的最终预测往往并不准
+确。
+10.5.1 GloVe模型
+鉴于此，作为在word2vec之后提出的词嵌⼊模型，GloVe模型采⽤了平⽅损失，并基于该损失对
+跳字模型做了3点改动[1]：
+1. 使⽤⾮概率分布的变量p′
+ij = xij和q′
+ij = exp(u⊤
+j vi)，并对它们取对数。因此，平⽅损失项
+是
+(
+log p′
+ij −log q′
+ij
+)2 =
+(
+u⊤
+j vi −log xij
+)2。
+2. 为每个词wi增加两个为标量的模型参数：中⼼词偏差项bi和背景词偏差项ci。
+3. 将每个损失项的权重替换成函数h(xij)。权重函数h(x)是值域在[0, 1]的单调递增函数。
+如此⼀来，GloVe模型的⽬标是最小化损失函数
+∑
+i∈V
+∑
+j∈V
+h(xij)
+(
+u⊤
+j vi + bi + cj −log xij
+)2 .
+其中权重函数h(x)的⼀个建议选择是：当x < c时（如c = 100），令h(x) = (x/c)α（如α = 0.75），
+反之令h(x) = 1。因为h(0) = 0，所以对于xij = 0的平⽅损失项可以直接忽略。当使⽤小批量随
+机梯度下降来训练时，每个时间步我们随机采样小批量⾮零xij，然后计算梯度来迭代模型参数。
+10.5. 全局向量的词嵌⼊（GloVe）
+449
+
+这些⾮零xij是预先基于整个数据集计算得到的，包含了数据集的全局统计信息。因此，GloVe模
+型的命名取“全局向量”（Global Vectors）之意。
+需要强调的是，如果词wi出现在词wj的背景窗口⾥，那么词wj也会出现在词wi的背景窗口⾥。也
+就是说，xij = xji。不同于word2vec中拟合的是⾮对称的条件概率pij，GloVe模型拟合的是对称
+的log xij。因此，任意词的中⼼词向量和背景词向量在GloVe模型中是等价的。但由于初始化值
+的不同，同⼀个词最终学习到的两组词向量可能不同。当学习得到所有词向量以后，GloVe模型
+使⽤中⼼词向量与背景词向量之和作为该词的最终词向量。
+10.5.2 从条件概率⽐值理解GloVe模型
+我们还可以从另外⼀个⻆度来理解GloVe模型。沿⽤本节前⾯的符号，P(wj | wi)表⽰数据集中
+以wi为中⼼词⽣成背景词wj的条件概率，并记作pij。作为源于某⼤型语料库的真实例⼦，以下列
+举了两组分别以“ice”（冰）和“steam”（蒸汽）为中⼼词的条件概率以及它们之间的⽐值[1]：
+wk=
+“solid”
+“gas”
+“water” “fashion”
+p1 = P(wk | “ice”)
+0.00019
+0.000066
+0.003
+0.000017
+p2 = P(wk | “steam”)
+0.000022
+0.00078
+0.0022
+0.000018
+p1/p2
+8.9
+0.085
+1.36
+0.96
+我们可以观察到以下现象。
+• 对于与“ice”相关而与“steam”不相关的词wk，如wk =“solid”（固体），我们期望条件
+概率⽐值较⼤，如上表最后⼀⾏中的值8.9；
+• 对于与“ice”不相关而与“steam”相关的词wk，如wk =“gas”（⽓体），我们期望条件概
+率⽐值较小，如上表最后⼀⾏中的值0.085；
+• 对于与“ice”和“steam”都相关的词wk，如wk =“water”（⽔），我们期望条件概率⽐值
+接近1，如上表最后⼀⾏中的值1.36；
+• 对于与“ice”和“steam”都不相关的词wk，如wk =“fashion”（时尚），我们期望条件概
+率⽐值接近1，如上表最后⼀⾏中的值0.96。
+由此可⻅，条件概率⽐值能⽐较直观地表达词与词之间的关系。我们可以构造⼀个词向量函数使
+它能有效拟合条件概率⽐值。我们知道，任意⼀个这样的⽐值需要3个词wi、wj和wk。以wi作为
+450
+10. ⾃然语⾔处理
+
+中⼼词的条件概率⽐值为pij/pik。我们可以找⼀个函数，它使⽤词向量来拟合这个条件概率⽐值
+f(uj, uk, vi) ≈pij
+pik
+.
+这⾥函数f可能的设计并不唯⼀，我们只需考虑⼀种较为合理的可能性。注意到条件概率⽐值是⼀
+个标量，我们可以将f限制为⼀个标量函数：f(uj, uk, vi) = f
+(
+(uj −uk)⊤vi
+)
+。交换索引j和k后
+可以看到函数f应该满⾜f(x)f(−x) = 1，因此⼀种可能是f(x) = exp(x)，于是
+f(uj, uk, vi) = exp
+(
+u⊤
+j vi
+)
+exp
+(
+u⊤
+k vi
+) ≈pij
+pik
+.
+满⾜最右边约等号的⼀种可能是exp
+(
+u⊤
+j vi
+)
+≈αpij，这⾥α是⼀个常数。考虑到pij = xij/xi，取
+对数后u⊤
+j vi ≈log α + log xij −log xi。我们使⽤额外的偏差项来拟合−log α + log xi，例如，
+中⼼词偏差项bi和背景词偏差项cj：
+u⊤
+j vi + bi + cj ≈log(xij).
+对上式左右两边取平⽅误差并加权，我们可以得到GloVe模型的损失函数。
+⼩结
+• 在有些情况下，交叉熵损失函数有劣势。GloVe模型采⽤了平⽅损失，并通过词向量拟合预
+先基于整个数据集计算得到的全局统计信息。
+• 任意词的中⼼词向量和背景词向量在GloVe模型中是等价的。
+练习
+• 如果⼀个词出现在另⼀个词的背景窗口中，如何利⽤它们之间在⽂本序列的距离重新设计
+条件概率pij的计算⽅式？（提⽰：可参考GloVe论⽂4.2节[1]。）
+• 对于任意词，它在GloVe模型的中⼼词偏差项和背景词偏差项是否等价？为什么？
+参考⽂献
+[1] Pennington, J., Socher, R., & Manning, C. (2014). Glove: Global vectors for word repre-
+sentation. In Proceedings of the 2014 conference on empirical methods in natural language
+processing (EMNLP) (pp. 1532-1543).
+10.5. 全局向量的词嵌⼊（GloVe）
+451
+
+扫码直达讨论区
+10.6 求近义词和类⽐词
+在“word2vec的实现”⼀节中，我们在小规模数据集上训练了⼀个word2vec词嵌⼊模型，并通过
+词向量的余弦相似度搜索近义词。实际中，在⼤规模语料上预训练的词向量常常可以应⽤到下游
+⾃然语⾔处理任务中。本节将演⽰如何⽤这些预训练的词向量来求近义词和类⽐词。我们还将在
+后⾯两节中继续应⽤预训练的词向量。
+10.6.1 使⽤预训练的词向量
+MXNet的contrib.text包提供了跟⾃然语⾔处理相关的函数和类（更多参⻅GluonNLP⼯具包
+[1]）。下⾯查看它⽬前提供的预训练词嵌⼊的名称。
+In [1]: from mxnet import nd
+from mxnet.contrib import text
+text.embedding.get_pretrained_file_names().keys()
+Out[1]: dict_keys(['glove', 'fasttext'])
+给定词嵌⼊名称，可以查看该词嵌⼊提供了哪些预训练的模型。每个模型的词向量维度可能不同，
+或是在不同数据集上预训练得到的。
+In [2]: print(text.embedding.get_pretrained_file_names('glove'))
+['glove.42B.300d.txt', 'glove.6B.50d.txt', 'glove.6B.100d.txt', 'glove.6B.200d.txt',
+'glove.6B.300d.txt', 'glove.840B.300d.txt', 'glove.twitter.27B.25d.txt',
+'glove.twitter.27B.50d.txt', 'glove.twitter.27B.100d.txt',
+'glove.twitter.27B.200d.txt']
+,→
+,→
+,→
+预训练的GloVe模型的命名规范⼤致是“模型.（数据集.）数据集词数.词向量维度.txt”。更多信息可
+以参考GloVe和fastText的项⽬⽹站[2,3]。下⾯我们使⽤基于维基百科⼦集预训练的50维GloVe词
+向量。第⼀次创建预训练词向量实例时会⾃动下载相应的词向量，因此需要联⽹。
+452
+10. ⾃然语⾔处理
+
+In [3]: glove_6b50d = text.embedding.create(
+'glove', pretrained_file_name='glove.6B.50d.txt')
+打印词典⼤小。其中含有40万个词和1个特殊的未知词符号。
+In [4]: len(glove_6b50d)
+Out[4]: 400001
+我们可以通过词来获取它在词典中的索引，也可以通过索引获取词。
+In [5]: glove_6b50d.token_to_idx['beautiful'], glove_6b50d.idx_to_token[3367]
+Out[5]: (3367, 'beautiful')
+10.6.2 应⽤预训练词向量
+下⾯我们以GloVe模型为例，展⽰预训练词向量的应⽤。
+求近义词
+这⾥重新实现“word2vec的实现”⼀节中介绍过的使⽤余弦相似度来搜索近义词的算法。为了
+在求类⽐词时重⽤其中的求k近邻（k-nearest neighbors）的逻辑，我们将这部分逻辑单独封装
+在knn函数中。
+In [6]: def knn(W, x, k):
+# 添加的1e-9是为了数值稳定性
+cos = nd.dot(W, x.reshape((-1,))) / (
+(nd.sum(W * W, axis=1) + 1e-9).sqrt() * nd.sum(x * x).sqrt())
+topk = nd.topk(cos, k=k, ret_typ='indices').asnumpy().astype('int32')
+return topk, [cos[i].asscalar() for i in topk]
+然后，我们通过预训练词向量实例embed来搜索近义词。
+In [7]: def get_similar_tokens(query_token, k, embed):
+topk, cos = knn(embed.idx_to_vec,
+embed.get_vecs_by_tokens([query_token]), k+1)
+for i, c in zip(topk[1:], cos[1:]):
+# 除去输⼊词
+print('cosine sim=%.3f: %s' % (c, (embed.idx_to_token[i])))
+已创建的预训练词向量实例glove_6b50d的词典中含40万个词和1个特殊的未知词。除去输⼊词
+和未知词，我们从中搜索与“chip”语义最相近的3个词。
+In [8]: get_similar_tokens('chip', 3, glove_6b50d)
+10.6. 求近义词和类⽐词
+453
+
+cosine sim=0.856: chips
+cosine sim=0.749: intel
+cosine sim=0.749: electronics
+接下来查找“baby”和“beautiful”的近义词。
+In [9]: get_similar_tokens('baby', 3, glove_6b50d)
+cosine sim=0.839: babies
+cosine sim=0.800: boy
+cosine sim=0.792: girl
+In [10]: get_similar_tokens('beautiful', 3, glove_6b50d)
+cosine sim=0.921: lovely
+cosine sim=0.893: gorgeous
+cosine sim=0.830: wonderful
+求类⽐词
+除了求近义词以外，我们还可以使⽤预训练词向量求词与词之间的类⽐关系。例如，“man”（男
+⼈）: “woman”（⼥⼈）:: “son”（⼉⼦）: “daughter”（⼥⼉）是⼀个类⽐例⼦：“man”之
+于“woman”相当于“son”之于“daughter”。求类⽐词问题可以定义为：对于类⽐关系中的4个
+词a : b :: c : d，给定前3个词a、b和c，求d。设词w的词向量为vec(w)。求类⽐词的思路是，搜索
+与vec(c) + vec(b) −vec(a)的结果向量最相似的词向量。
+In [11]: def get_analogy(token_a, token_b, token_c, embed):
+vecs = embed.get_vecs_by_tokens([token_a, token_b, token_c])
+x = vecs[1] - vecs[0] + vecs[2]
+topk, cos = knn(embed.idx_to_vec, x, 1)
+return embed.idx_to_token[topk[0]]
+验证⼀下“男-⼥”类⽐。
+In [12]: get_analogy('man', 'woman', 'son', glove_6b50d)
+Out[12]: 'daughter'
+“⾸都-国家”类⽐：“beijing”（北京）之于“china”（中国）相当于“tokyo”（东京）之于什么？
+答案应该是“japan”（⽇本）。
+In [13]: get_analogy('beijing', 'china', 'tokyo', glove_6b50d)
+Out[13]: 'japan'
+454
+10. ⾃然语⾔处理
+
+“形容词-形容词最⾼级”类⽐：“bad”（坏的）之于“worst”（最坏的）相当于“big”（⼤的）之
+于什么？答案应该是“biggest”（最⼤的）。
+In [14]: get_analogy('bad', 'worst', 'big', glove_6b50d)
+Out[14]: 'biggest'
+“动词⼀般时-动词过去时”类⽐：“do”（做）之于“did”（做过）相当于“go”（去）之于什么？
+答案应该是“went”（去过）。
+In [15]: get_analogy('do', 'did', 'go', glove_6b50d)
+Out[15]: 'went'
+⼩结
+• 在⼤规模语料上预训练的词向量常常可以应⽤于下游⾃然语⾔处理任务中。
+• 可以应⽤预训练的词向量求近义词和类⽐词。
+练习
+• 测试⼀下fastText的结果。值得⼀提的是，fastText有预训练的中⽂词向量（pre-
+trained_file_name='wiki.zh.vec'）。
+• 如果词典特别⼤，如何提升近义词或类⽐词的搜索速度？
+参考⽂献
+[1] GluonNLP⼯具包。https://gluon-nlp.mxnet.io/
+[2] GloVe项⽬⽹站。https://nlp.stanford.edu/projects/glove/
+[3] fastText项⽬⽹站。https://fasttext.cc/
+10.6. 求近义词和类⽐词
+455
+
+扫码直达讨论区
+10.7 ⽂本情感分类：使⽤循环神经⽹络
+⽂本分类是⾃然语⾔处理的⼀个常⻅任务，它把⼀段不定⻓的⽂本序列变换为⽂本的类别。本节
+关注它的⼀个⼦问题：使⽤⽂本情感分类来分析⽂本作者的情绪。这个问题也叫情感分析，并有
+着⼴泛的应⽤。例如，我们可以分析⽤⼾对产品的评论并统计⽤⼾的满意度，或者分析⽤⼾对市
+场⾏情的情绪并⽤以预测接下来的⾏情。
+同搜索近义词和类⽐词⼀样，⽂本分类也属于词嵌⼊的下游应⽤。在本节中，我们将应⽤预训练
+的词向量和含多个隐藏层的双向循环神经⽹络，来判断⼀段不定⻓的⽂本序列中包含的是正⾯还
+是负⾯的情绪。
+在实验开始前，导⼊所需的包或模块。
+In [1]: import collections
+import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.contrib import text
+from mxnet.gluon import data as gdata, loss as gloss, nn, rnn, utils as gutils
+import os
+import random
+import tarfile
+10.7.1 ⽂本情感分类数据
+我们使⽤斯坦福的IMDb数据集（Stanford’s Large Movie Review Dataset）作为⽂本情感分类
+的数据集[1]。这个数据集分为训练和测试⽤的两个数据集，分别包含25,000条从IMDb下载的关
+于电影的评论。在每个数据集中，标签为“正⾯”和“负⾯”的评论数量相等。
+456
+10. ⾃然语⾔处理
+
+读取数据
+⾸先下载这个数据集到../data路径下，然后解压⾄../data/aclImdb下。
+In [2]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def download_imdb(data_dir='../data'):
+url = ('http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz')
+sha1 = '01ada507287d82875905620988597833ad4e0903'
+fname = gutils.download(url, data_dir, sha1_hash=sha1)
+with tarfile.open(fname, 'r') as f:
+f.extractall(data_dir)
+download_imdb()
+接下来，读取训练数据集和测试数据集。每个样本是⼀条评论及其对应的标签：1表⽰“正⾯”，
+0表⽰“负⾯”。
+In [3]: def read_imdb(folder='train'):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+data = []
+for label in ['pos', 'neg']:
+folder_name = os.path.join('../data/aclImdb/', folder, label)
+for file in os.listdir(folder_name):
+with open(os.path.join(folder_name, file), 'rb') as f:
+review = f.read().decode('utf-8').replace('\n', '').lower()
+data.append([review, 1 if label == 'pos' else 0])
+random.shuffle(data)
+return data
+train_data, test_data = read_imdb('train'), read_imdb('test')
+预处理数据
+我们需要对每条评论做分词，从而得到分好词的评论。这⾥定义的get_tokenized_imdb函数
+使⽤最简单的⽅法：基于空格进⾏分词。
+In [4]: def get_tokenized_imdb(data):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+def tokenizer(text):
+return [tok.lower() for tok in text.split(' ')]
+return [tokenizer(review) for review, _ in data]
+现在，我们可以根据分好词的训练数据集来创建词典了。我们在这⾥过滤掉了出现次数少于5的
+词。
+10.7. ⽂本情感分类：使⽤循环神经⽹络
+457
+
+In [5]: def get_vocab_imdb(data):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+tokenized_data = get_tokenized_imdb(data)
+counter = collections.Counter([tk for st in tokenized_data for tk in st])
+return text.vocab.Vocabulary(counter, min_freq=5)
+vocab = get_vocab_imdb(train_data)
+'# words in vocab:', len(vocab)
+Out[5]: ('# words in vocab:', 46151)
+因为每条评论⻓度不⼀致所以不能直接组合成小批量，我们定义preprocess_imdb函数对每条
+评论进⾏分词，并通过词典转换成词索引，然后通过截断或者补0来将每条评论⻓度固定成500。
+In [6]: def preprocess_imdb(data, vocab):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+max_l = 500
+# 将每条评论通过截断或者补0，使得⻓度变成500
+def pad(x):
+return x[:max_l] if len(x) > max_l else x + [0] * (max_l - len(x))
+tokenized_data = get_tokenized_imdb(data)
+features = nd.array([pad(vocab.to_indices(x)) for x in tokenized_data])
+labels = nd.array([score for _, score in data])
+return features, labels
+创建数据迭代器
+现在，我们创建数据迭代器。每次迭代将返回⼀个小批量的数据。
+In [7]: batch_size = 64
+train_set = gdata.ArrayDataset(*preprocess_imdb(train_data, vocab))
+test_set = gdata.ArrayDataset(*preprocess_imdb(test_data, vocab))
+train_iter = gdata.DataLoader(train_set, batch_size, shuffle=True)
+test_iter = gdata.DataLoader(test_set, batch_size)
+打印第⼀个小批量数据的形状以及训练集中小批量的个数。
+In [8]: for X, y in train_iter:
+print('X', X.shape, 'y', y.shape)
+break
+'#batches:', len(train_iter)
+X (64, 500) y (64,)
+Out[8]: ('#batches:', 391)
+458
+10. ⾃然语⾔处理
+
+10.7.2 使⽤循环神经⽹络的模型
+在这个模型中，每个词先通过嵌⼊层得到特征向量。然后，我们使⽤双向循环神经⽹络对特征序
+列进⼀步编码得到序列信息。最后，我们将编码的序列信息通过全连接层变换为输出。具体来说，
+我们可以将双向⻓短期记忆在最初时间步和最终时间步的隐藏状态连结，作为特征序列的表征传
+递给输出层分类。在下⾯实现的BiRNN类中，Embedding实例即嵌⼊层，LSTM实例即为序列编
+码的隐藏层，Dense实例即⽣成分类结果的输出层。
+In [9]: class BiRNN(nn.Block):
+def __init__(self, vocab, embed_size, num_hiddens, num_layers, **kwargs):
+super(BiRNN, self).__init__(**kwargs)
+self.embedding = nn.Embedding(len(vocab), embed_size)
+# bidirectional设为True即得到双向循环神经⽹络
+self.encoder = rnn.LSTM(num_hiddens, num_layers=num_layers,
+bidirectional=True, input_size=embed_size)
+self.decoder = nn.Dense(2)
+def forward(self, inputs):
+# inputs的形状是(批量⼤⼩, 词数)，因为LSTM需要将序列作为第⼀维，所以将输⼊转置后
+# 再提取词特征，输出形状为(词数, 批量⼤⼩, 词向量维度)
+embeddings = self.embedding(inputs.T)
+# rnn.LSTM只传⼊输⼊embeddings，因此只返回最后⼀层的隐藏层在各时间步的隐藏状态。
+# outputs形状是(词数, 批量⼤⼩, 2 * 隐藏单元个数)
+outputs = self.encoder(embeddings)
+# 连结初始时间步和最终时间步的隐藏状态作为全连接层输⼊。它的形状为
+# (批量⼤⼩, 4 * 隐藏单元个数)。
+encoding = nd.concat(outputs[0], outputs[-1])
+outs = self.decoder(encoding)
+return outs
+创建⼀个含两个隐藏层的双向循环神经⽹络。
+In [10]: embed_size, num_hiddens, num_layers, ctx = 100, 100, 2, d2l.try_all_gpus()
+net = BiRNN(vocab, embed_size, num_hiddens, num_layers)
+net.initialize(init.Xavier(), ctx=ctx)
+加载预训练的词向量
+由于情感分类的训练数据集并不是很⼤，为应对过拟合，我们将直接使⽤在更⼤规模语料上预训
+练的词向量作为每个词的特征向量。这⾥，我们为词典vocab中的每个词加载100维的GloVe词向
+量。
+10.7. ⽂本情感分类：使⽤循环神经⽹络
+459
+
+In [11]: glove_embedding = text.embedding.create(
+'glove', pretrained_file_name='glove.6B.100d.txt', vocabulary=vocab)
+然后，我们将⽤这些词向量作为评论中每个词的特征向量。注意，预训练词向量的维度需要与创
+建的模型中的嵌⼊层输出⼤小embed_size⼀致。此外，在训练中我们不再更新这些词向量。
+In [12]: net.embedding.weight.set_data(glove_embedding.idx_to_vec)
+net.embedding.collect_params().setattr('grad_req', 'null')
+训练并评价模型
+这时候就可以开始训练模型了。
+In [13]: lr, num_epochs = 0.01, 5
+trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
+loss = gloss.SoftmaxCrossEntropyLoss()
+d2l.train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs)
+training on [gpu(0), gpu(1)]
+epoch 1, loss 0.6548, train acc 0.624, test acc 0.565, time 41.4 sec
+epoch 2, loss 0.4306, train acc 0.798, test acc 0.814, time 42.4 sec
+epoch 3, loss 0.3301, train acc 0.857, test acc 0.849, time 40.9 sec
+epoch 4, loss 0.2821, train acc 0.882, test acc 0.853, time 41.8 sec
+epoch 5, loss 0.2572, train acc 0.895, test acc 0.789, time 41.0 sec
+最后，定义预测函数。
+In [14]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def predict_sentiment(net, vocab, sentence):
+sentence = nd.array(vocab.to_indices(sentence), ctx=d2l.try_gpu())
+label = nd.argmax(net(sentence.reshape((1, -1))), axis=1)
+return 'positive' if label.asscalar() == 1 else 'negative'
+下⾯使⽤训练好的模型对两个简单句⼦的情感进⾏分类。
+In [15]: predict_sentiment(net, vocab, ['this', 'movie', 'is', 'so', 'great'])
+Out[15]: 'positive'
+In [16]: predict_sentiment(net, vocab, ['this', 'movie', 'is', 'so', 'bad'])
+Out[16]: 'negative'
+⼩结
+• ⽂本分类把⼀段不定⻓的⽂本序列变换为⽂本的类别。它属于词嵌⼊的下游应⽤。
+460
+10. ⾃然语⾔处理
+
+• 可以应⽤预训练的词向量和循环神经⽹络对⽂本的情感进⾏分类。
+练习
+• 增加迭代周期。训练后的模型能在训练和测试数据集上得到怎样的准确率？再调节其他超
+参数试试？
+• 使⽤更⼤的预训练词向量，如300维的GloVe词向量，能否提升分类准确率？
+• 使⽤spaCy分词⼯具，能否提升分类准确率？你需要安装spaCy（pip install spacy），
+并且安装英⽂包（python -m spacy download en）。在代码中，先导⼊spacy（im-
+port spacy）。然后加载spacy英⽂包（spacy_en = spacy.load('en')）。最后
+定义函数def tokenizer(text): return [tok.text for tok in spacy_en.
+tokenizer(text)]并替换原来的基于空格分词的tokenizer函数。需要注意的是，
+GloVe词向量对于名词词组的存储⽅式是⽤“-”连接各个单词，例如，词组“new york”
+在GloVe词向量中的表⽰为“new-york”，而使⽤spaCy分词之后“new york”的存储可能是
+“new york”。
+参考⽂献
+[1] Maas, A. L., Daly, R. E., Pham, P. T., Huang, D., Ng, A. Y., & Potts, C. (2011, June). Learning
+word vectors for sentiment analysis. In Proceedings of the 49th annual meeting of the asso-
+ciation for computational linguistics: Human language technologies-volume 1 (pp. 142-150).
+Association for Computational Linguistics.
+扫码直达讨论区
+10.7. ⽂本情感分类：使⽤循环神经⽹络
+461
+
+10.8 ⽂本情感分类：使⽤卷积神经⽹络（textCNN）
+在“卷积神经⽹络”⼀章中我们探究了如何使⽤⼆维卷积神经⽹络来处理⼆维图像数据。在之前
+的语⾔模型和⽂本分类任务中，我们将⽂本数据看作是只有⼀个维度的时间序列，并很⾃然地使
+⽤循环神经⽹络来表征这样的数据。其实，我们也可以将⽂本当作⼀维图像，从而可以⽤⼀维卷
+积神经⽹络来捕捉临近词之间的关联。本节将介绍将卷积神经⽹络应⽤到⽂本分析的开创性⼯作
+之⼀：textCNN [1]。
+⾸先导⼊实验所需的包和模块。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.contrib import text
+from mxnet.gluon import data as gdata, loss as gloss, nn
+10.8.1 ⼀维卷积层
+在介绍模型前我们先来解释⼀维卷积层的⼯作原理。与⼆维卷积层⼀样，⼀维卷积层使⽤⼀维的
+互相关运算。在⼀维互相关运算中，卷积窗口从输⼊数组的最左⽅开始，按从左往右的顺序，依
+次在输⼊数组上滑动。当卷积窗口滑动到某⼀位置时，窗口中的输⼊⼦数组与核数组按元素相乘
+并求和，得到输出数组中相应位置的元素。如图10.4所⽰，输⼊是⼀个宽为7的⼀维数组，核数组
+的宽为2。可以看到输出的宽度为7 −2 + 1 = 6，且第⼀个元素是由输⼊的最左边的宽为2的⼦数
+组与核数组按元素相乘后再相加得到的：0 × 1 + 1 × 2 = 2。
+图10.4: ⼀维互相关运算
+下⾯我们将⼀维互相关运算实现在corr1d函数⾥。它接受输⼊数组X和核数组K，并输出数组Y。
+In [2]: def corr1d(X, K):
+w = K.shape[0]
+Y = nd.zeros((X.shape[0] - w + 1))
+for i in range(Y.shape[0]):
+Y[i] = (X[i: i + w] * K).sum()
+return Y
+462
+10. ⾃然语⾔处理
+
+让我们复现图10.4中⼀维互相关运算的结果。
+In [3]: X, K = nd.array([0, 1, 2, 3, 4, 5, 6]), nd.array([1, 2])
+corr1d(X, K)
+Out[3]:
+[ 2.
+5.
+8. 11. 14. 17.]
+<NDArray 6 @cpu(0)>
+多输⼊通道的⼀维互相关运算也与多输⼊通道的⼆维互相关运算类似：在每个通道上，将核与相
+应的输⼊做⼀维互相关运算，并将通道之间的结果相加得到输出结果。图10.5展⽰了含3个输⼊
+通道的⼀维互相关运算，其中阴影部分为第⼀个输出元素及其计算所使⽤的输⼊和核数组元素：
+0 × 1 + 1 × 2 + 1 × 3 + 2 × 4 + 2 × (−1) + 3 × (−3) = 2。
+图10.5: 含3个输⼊通道的⼀维互相关运算
+让我们复现图10.5中多输⼊通道的⼀维互相关运算的结果。
+In [4]: def corr1d_multi_in(X, K):
+# ⾸先沿着X和K的第0维（通道维）遍历。然后使⽤*将结果列表变成add_n函数的位置参数
+#（positional argument）来进⾏相加
+return nd.add_n(*[corr1d(x, k) for x, k in zip(X, K)])
+X = nd.array([[0, 1, 2, 3, 4, 5, 6],
+[1, 2, 3, 4, 5, 6, 7],
+[2, 3, 4, 5, 6, 7, 8]])
+K = nd.array([[1, 2], [3, 4], [-1, -3]])
+corr1d_multi_in(X, K)
+Out[4]:
+[ 2.
+8. 14. 20. 26. 32.]
+<NDArray 6 @cpu(0)>
+由⼆维互相关运算的定义可知，多输⼊通道的⼀维互相关运算可以看作单输⼊通道的⼆维互相关
+运算。如图10.6所⽰，我们也可以将图10.5中多输⼊通道的⼀维互相关运算以等价的单输⼊通道
+10.8. ⽂本情感分类：使⽤卷积神经⽹络（textCNN）
+463
+
+的⼆维互相关运算呈现。这⾥核的⾼等于输⼊的⾼。图10.6中的阴影部分为第⼀个输出元素及其
+计算所使⽤的输⼊和核数组元素：2 × (−1) + 3 × (−3) + 1 × 3 + 2 × 4 + 0 × 1 + 1 × 2 = 2。
+图10.6: 单输⼊通道的⼆维互相关运算
+图10.4和图10.5中的输出都只有⼀个通道。我们在“多输⼊通道和多输出通道”⼀节中介绍了如
+何在⼆维卷积层中指定多个输出通道。类似地，我们也可以在⼀维卷积层指定多个输出通道，从
+而拓展卷积层中的模型参数。
+10.8.2 时序最⼤池化层
+类似地，我们有⼀维池化层。textCNN中使⽤的时序最⼤池化（max-over-time pooling）层实际
+上对应⼀维全局最⼤池化层：假设输⼊包含多个通道，各通道由不同时间步上的数值组成，各通
+道的输出即该通道所有时间步中最⼤的数值。因此，时序最⼤池化层的输⼊在各个通道上的时间
+步数可以不同。
+为提升计算性能，我们常常将不同⻓度的时序样本组成⼀个小批量，并通过在较短序列后附加特
+殊字符（如0）令批量中各时序样本⻓度相同。这些⼈为添加的特殊字符当然是⽆意义的。由于时
+序最⼤池化的主要⽬的是抓取时序中最重要的特征，它通常能使模型不受⼈为添加字符的影响。
+10.8.3 读取和预处理IMDb数据集
+我们依然使⽤和上⼀节中相同的IMDb数据集做情感分析。以下读取和预处理数据集的步骤与上
+⼀节中的相同。
+In [5]: batch_size = 64
+d2l.download_imdb()
+train_data, test_data = d2l.read_imdb('train'), d2l.read_imdb('test')
+vocab = d2l.get_vocab_imdb(train_data)
+train_iter = gdata.DataLoader(gdata.ArrayDataset(
+464
+10. ⾃然语⾔处理
+
+*d2l.preprocess_imdb(train_data, vocab)), batch_size, shuffle=True)
+test_iter = gdata.DataLoader(gdata.ArrayDataset(
+*d2l.preprocess_imdb(test_data, vocab)), batch_size)
+10.8.4 textCNN模型
+textCNN模型主要使⽤了⼀维卷积层和时序最⼤池化层。假设输⼊的⽂本序列由n个词组成，每
+个词⽤d维的词向量表⽰。那么输⼊样本的宽为n，⾼为1，输⼊通道数为d。textCNN的计算主要
+分为以下⼏步。
+1. 定义多个⼀维卷积核，并使⽤这些卷积核对输⼊分别做卷积计算。宽度不同的卷积核可能
+会捕捉到不同个数的相邻词的相关性。
+2. 对输出的所有通道分别做时序最⼤池化，再将这些通道的池化输出值连结为向量。
+3. 通过全连接层将连结后的向量变换为有关各类别的输出。这⼀步可以使⽤丢弃层应对过拟
+合。
+图10.7⽤⼀个例⼦解释了textCNN的设计。这⾥的输⼊是⼀个有11个词的句⼦，每个词⽤6维词向
+量表⽰。因此输⼊序列的宽为11，输⼊通道数为6。给定2个⼀维卷积核，核宽分别为2和4，输出
+通道数分别设为4和5。因此，⼀维卷积计算后，4个输出通道的宽为11 −2 + 1 = 10，而其他5个
+通道的宽为11 −4 + 1 = 8。尽管每个通道的宽不同，我们依然可以对各个通道做时序最⼤池化，
+并将9个通道的池化输出连结成⼀个9维向量。最终，使⽤全连接将9维向量变换为2维输出，即正
+⾯情感和负⾯情感的预测。
+10.8. ⽂本情感分类：使⽤卷积神经⽹络（textCNN）
+465
+
+图10.7: textCNN的设计
+下⾯我们来实现textCNN模型。与上⼀节相⽐，除了⽤⼀维卷积层替换循环神经⽹络外，这⾥我
+们还使⽤了两个嵌⼊层，⼀个的权重固定，另⼀个则参与训练。
+In [6]: class TextCNN(nn.Block):
+def __init__(self, vocab, embed_size, kernel_sizes, num_channels,
+**kwargs):
+super(TextCNN, self).__init__(**kwargs)
+self.embedding = nn.Embedding(len(vocab), embed_size)
+# 不参与训练的嵌⼊层
+self.constant_embedding = nn.Embedding(len(vocab), embed_size)
+self.dropout = nn.Dropout(0.5)
+self.decoder = nn.Dense(2)
+# 时序最⼤池化层没有权重，所以可以共⽤⼀个实例
+self.pool = nn.GlobalMaxPool1D()
+466
+10. ⾃然语⾔处理
+
+self.convs = nn.Sequential()
+# 创建多个⼀维卷积层
+for c, k in zip(num_channels, kernel_sizes):
+self.convs.add(nn.Conv1D(c, k, activation='relu'))
+def forward(self, inputs):
+# 将两个形状是(批量⼤⼩, 词数, 词向量维度)的嵌⼊层的输出按词向量连结
+embeddings = nd.concat(
+self.embedding(inputs), self.constant_embedding(inputs), dim=2)
+# 根据Conv1D要求的输⼊格式，将词向量维，即⼀维卷积层的通道维，变换到前⼀维
+embeddings = embeddings.transpose((0, 2, 1))
+# 对于每个⼀维卷积层，在时序最⼤池化后会得到⼀个形状为(批量⼤⼩, 通道⼤⼩, 1)的
+# NDArray。使⽤flatten函数去掉最后⼀维，然后在通道维上连结
+encoding = nd.concat(*[nd.flatten(
+self.pool(conv(embeddings))) for conv in self.convs], dim=1)
+# 应⽤丢弃法后使⽤全连接层得到输出
+outputs = self.decoder(self.dropout(encoding))
+return outputs
+创建⼀个TextCNN实例。它有3个卷积层，它们的核宽分别为3、4和5，输出通道数均为100。
+In [7]: embed_size, kernel_sizes, nums_channels = 100, [3, 4, 5], [100, 100, 100]
+ctx = d2l.try_all_gpus()
+net = TextCNN(vocab, embed_size, kernel_sizes, nums_channels)
+net.initialize(init.Xavier(), ctx=ctx)
+加载预训练的词向量
+同上⼀节⼀样，加载预训练的100维GloVe词向量，并分别初始化嵌⼊
+层embedding和constant_embedding，前者参与训练，而后者权重固定。
+In [8]: glove_embedding = text.embedding.create(
+'glove', pretrained_file_name='glove.6B.100d.txt', vocabulary=vocab)
+net.embedding.weight.set_data(glove_embedding.idx_to_vec)
+net.constant_embedding.weight.set_data(glove_embedding.idx_to_vec)
+net.constant_embedding.collect_params().setattr('grad_req', 'null')
+训练并评价模型
+现在就可以训练模型了。
+In [9]: lr, num_epochs = 0.001, 5
+trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
+10.8. ⽂本情感分类：使⽤卷积神经⽹络（textCNN）
+467
+
+loss = gloss.SoftmaxCrossEntropyLoss()
+d2l.train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs)
+training on [gpu(0), gpu(1)]
+epoch 1, loss 0.6060, train acc 0.719, test acc 0.832, time 10.6 sec
+epoch 2, loss 0.3579, train acc 0.844, test acc 0.854, time 10.3 sec
+epoch 3, loss 0.2624, train acc 0.893, test acc 0.859, time 10.4 sec
+epoch 4, loss 0.1740, train acc 0.935, test acc 0.870, time 10.4 sec
+epoch 5, loss 0.1086, train acc 0.962, test acc 0.860, time 10.1 sec
+下⾯，我们使⽤训练好的模型对两个简单句⼦的情感进⾏分类。
+In [10]: d2l.predict_sentiment(net, vocab, ['this', 'movie', 'is', 'so', 'great'])
+Out[10]: 'positive'
+In [11]: d2l.predict_sentiment(net, vocab, ['this', 'movie', 'is', 'so', 'bad'])
+Out[11]: 'negative'
+⼩结
+• 可以使⽤⼀维卷积来表征时序数据。
+• 多输⼊通道的⼀维互相关运算可以看作单输⼊通道的⼆维互相关运算。
+• 时序最⼤池化层的输⼊在各个通道上的时间步数可以不同。
+• textCNN主要使⽤了⼀维卷积层和时序最⼤池化层。
+练习
+• 动⼿调参，从准确率和运⾏效率⽐较情感分析的两类⽅法：使⽤循环神经⽹络和使⽤卷积
+神经⽹络。
+• 使⽤上⼀节练习中介绍的3种⽅法（调节超参数、使⽤更⼤的预训练词向量和使⽤spaCy分
+词⼯具），能使模型在测试集上的准确率进⼀步提⾼吗？
+• 还能将textCNN应⽤于⾃然语⾔处理的哪些任务中？
+468
+10. ⾃然语⾔处理
+
+参考⽂献
+[1] Kim, Y. (2014). Convolutional neural networks for sentence classification. arXiv preprint
+arXiv:1408.5882.
+扫码直达讨论区
+10.9 编码器—解码器（seq2seq）
+我们已经在前两节中表征并变换了不定⻓的输⼊序列。但在⾃然语⾔处理的很多应⽤中，输⼊和
+输出都可以是不定⻓序列。以机器翻译为例，输⼊可以是⼀段不定⻓的英语⽂本序列，输出可以
+是⼀段不定⻓的法语⽂本序列，例如
+英语输⼊：“They”、“are”、“watching”、“.”
+法语输出：“Ils”、“regardent”、“.”
+当输⼊和输出都是不定⻓序列时，我们可以使⽤编码器—解码器（encoder-decoder）[1] 或
+者seq2seq模型[2]。这两个模型本质上都⽤到了两个循环神经⽹络，分别叫做编码器和解码器。
+编码器⽤来分析输⼊序列，解码器⽤来⽣成输出序列。
+图10.8描述了使⽤编码器—解码器将上述英语句⼦翻译成法语句⼦的⼀种⽅法。在训练数据集中，
+我们可以在每个句⼦后附上特殊符号“<eos>”（end of sequence）以表⽰序列的终⽌。编码器每
+个时间步的输⼊依次为英语句⼦中的单词、标点和特殊符号“<eos>”。图10.8中使⽤了编码器在
+最终时间步的隐藏状态作为输⼊句⼦的表征或编码信息。解码器在各个时间步中使⽤输⼊句⼦的
+编码信息和上个时间步的输出以及隐藏状态作为输⼊。我们希望解码器在各个时间步能正确依次
+输出翻译后的法语单词、标点和特殊符号“<eos>”。需要注意的是，解码器在最初时间步的输⼊
+⽤到了⼀个表⽰序列开始的特殊符号“<bos>”（beginning of sequence）。
+10.9. 编码器—解码器（seq2seq）
+469
+
+图10.8: 使⽤编码器—解码器将句⼦由英语翻译成法语。编码器和解码器分别为循环神经⽹络
+接下来，我们分别介绍编码器和解码器的定义。
+10.9.1 编码器
+编码器的作⽤是把⼀个不定⻓的输⼊序列变换成⼀个定⻓的背景变量c，并在该背景变量中编码
+输⼊序列信息。常⽤的编码器是循环神经⽹络。
+让我们考虑批量⼤小为1的时序数据样本。假设输⼊序列是x1, . . . , xT ，例如xi是输⼊句⼦中的
+第i个词。在时间步t，循环神经⽹络将输⼊xt的特征向量xt和上个时间步的隐藏状态ht−1变换为
+当前时间步的隐藏状态ht。我们可以⽤函数f表达循环神经⽹络隐藏层的变换：
+ht = f(xt, ht−1).
+接下来，编码器通过⾃定义函数q将各个时间步的隐藏状态变换为背景变量
+c = q(h1, . . . , hT ).
+例如，当选择q(h1, . . . , hT ) = hT 时，背景变量是输⼊序列最终时间步的隐藏状态hT 。
+以上描述的编码器是⼀个单向的循环神经⽹络，每个时间步的隐藏状态只取决于该时间步及之前
+的输⼊⼦序列。我们也可以使⽤双向循环神经⽹络构造编码器。在这种情况下，编码器每个时间
+步的隐藏状态同时取决于该时间步之前和之后的⼦序列（包括当前时间步的输⼊），并编码了整
+个序列的信息。
+470
+10. ⾃然语⾔处理
+
+10.9.2 解码器
+刚刚已经介绍，编码器输出的背景变量c编码了整个输⼊序列x1, . . . , xT 的信息。给定训练样本中
+的输出序列y1, y2, . . . , yT ′，对每个时间步t′（符号与输⼊序列或编码器的时间步t有区别），解码器
+输出yt′的条件概率将基于之前的输出序列y1, . . . , yt′−1和背景变量c，即P(yt′ | y1, . . . , yt′−1, c)。
+为此，我们可以使⽤另⼀个循环神经⽹络作为解码器。在输出序列的时间步t′，解码器将上⼀时
+间步的输出yt′−1以及背景变量c作为输⼊，并将它们与上⼀时间步的隐藏状态st′−1变换为当前时
+间步的隐藏状态st′。因此，我们可以⽤函数g表达解码器隐藏层的变换：
+st′ = g(yt′−1, c, st′−1).
+有了解码器的隐藏状态后，我们可以使⽤⾃定义的输出层和softmax运算来计算P(yt′
+|
+y1, . . . , yt′−1, c)，例如，基于当前时间步的解码器隐藏状态st′、上⼀时间步的输出yt′−1以及背景
+变量c来计算当前时间步输出yt′的概率分布。
+10.9.3 训练模型
+根据最⼤似然估计，我们可以最⼤化输出序列基于输⼊序列的条件概率
+P(y1, . . . , yT ′ | x1, . . . , xT ) =
+T ′
+∏
+t′=1
+P(yt′ | y1, . . . , yt′−1, x1, . . . , xT )
+=
+T ′
+∏
+t′=1
+P(yt′ | y1, . . . , yt′−1, c),
+并得到该输出序列的损失
+−log P(y1, . . . , yT ′ | x1, . . . , xT ) = −
+T ′
+∑
+t′=1
+log P(yt′ | y1, . . . , yt′−1, c),
+在模型训练中，所有输出序列损失的均值通常作为需要最小化的损失函数。在图10.8所描述的模
+型预测中，我们需要将解码器在上⼀个时间步的输出作为当前时间步的输⼊。与此不同，在训练
+中我们也可以将标签序列（训练集的真实输出序列）在上⼀个时间步的标签作为解码器在当前时
+间步的输⼊。这叫作强制教学（teacher forcing）。
+⼩结
+• 编码器-解码器（seq2seq）可以输⼊并输出不定⻓的序列。
+10.9. 编码器—解码器（seq2seq）
+471
+
+• 编码器—解码器使⽤了两个循环神经⽹络。
+• 在编码器—解码器的训练中，可以采⽤强制教学。
+练习
+• 除了机器翻译，你还能想到编码器-解码器的哪些应⽤？
+• 有哪些⽅法可以设计解码器的输出层？
+参考⽂献
+[1] Cho, K., Van Merriënboer, B., Gulcehre, C., Bahdanau, D., Bougares, F., Schwenk, H., &
+Bengio, Y. (2014). Learning phrase representations using RNN encoder-decoder for statistical
+machine translation. arXiv preprint arXiv:1406.1078.
+[2] Sutskever, I., Vinyals, O., & Le, Q. V. (2014). Sequence to sequence learning with neural
+networks. In Advances in neural information processing systems (pp. 3104-3112).
+扫码直达讨论区
+10.10 束搜索
+上⼀节介绍了如何训练输⼊和输出均为不定⻓序列的编码器—解码器。本节我们介绍如何使⽤编
+码器—解码器来预测不定⻓的序列。
+上⼀节⾥已经提到，在准备训练数据集时，我们通常会在样本的输⼊序列和输出序列后⾯分别
+附上⼀个特殊符号“<eos>”表⽰序列的终⽌。我们在接下来的讨论中也将沿⽤上⼀节的全部数
+学符号。为了便于讨论，假设解码器的输出是⼀段⽂本序列。设输出⽂本词典Y（包含特殊符号
+472
+10. ⾃然语⾔处理
+
+“<eos>”）的⼤小为|Y|，输出序列的最⼤⻓度为T ′。所有可能的输出序列⼀共有O(|Y|T ′
+)种。这
+些输出序列中所有特殊符号“<eos>”后⾯的⼦序列将被舍弃。
+10.10.1 贪婪搜索
+让我们先来看⼀个简单的解决⽅案：贪婪搜索（greedy search）。对于输出序列任⼀时间步t′，我
+们从|Y|个词中搜索出条件概率最⼤的词
+yt′ = argmax
+y∈Y
+P(y | y1, . . . , yt′−1, c)
+作为输出。⼀旦搜索出“<eos>”符号，或者输出序列⻓度已经达到了最⼤⻓度T ′，便完成输出。
+我们在描述解码器时提到，基于输⼊序列⽣成输出序列的条件概率是∏T ′
+t′=1 P(yt′
+|
+y1, . . . , yt′−1, c)。我们将该条件概率最⼤的输出序列称为最优输出序列。而贪婪搜索的主要问
+题是不能保证得到最优输出序列。
+下⾯来看⼀个例⼦。假设输出词典⾥⾯有“A”“B”“C”和“<eos>”这4个词。图10.9中每个时间步
+下的4个数字分别代表了该时间步⽣成“A”“B”“C”和“<eos>”这4个词的条件概率。在每个时
+间步，贪婪搜索选取条件概率最⼤的词。因此，图10.9中将⽣成输出序列“A”“B”“C”“<eos>”。
+该输出序列的条件概率是0.5 × 0.4 × 0.4 × 0.6 = 0.048。
+图10.9: 在每个时间步，贪婪搜索选取条件概率最⼤的词
+接下来，观察图10.10演⽰的例⼦。与图10.9中不同，图10.10在时间步2中选取了条件概率第⼆⼤的
+词“C”。由于时间步3所基于的时间步1和2的输出⼦序列由图10.9中的“A”“B”变为了图10.10中的
+“A”“C”，图10.10中时间步3⽣成各个词的条件概率发⽣了变化。我们选取条件概率最⼤的词“B”。
+此时时间步4所基于的前3个时间步的输出⼦序列为“A”“C”“B”，与图10.9中的“A”“B”“C”
+不同。因此，图10.10中时间步4⽣成各个词的条件概率也与图10.9中的不同。我们发现，此时的
+输出序列“A”“C”“B”“<eos>”的条件概率是0.5 × 0.3 × 0.6 × 0.6 = 0.054，⼤于贪婪搜索得到
+10.10. 束搜索
+473
+
+的输出序列的条件概率。因此，贪婪搜索得到的输出序列“A”“B”“C”“<eos>”并⾮最优输出
+序列。
+图10.10: 在时间步2选取条件概率第⼆⼤的词“C”
+10.10.2 穷举搜索
+如果⽬标是得到最优输出序列，我们可以考虑穷举搜索（exhaustive search）：穷举所有可能的
+输出序列，输出条件概率最⼤的序列。
+虽然穷举搜索可以得到最优输出序列，但它的计算开销O(|Y|T ′
+)很容易过⼤。例如，当|Y| =
+10000且T ′ = 10时，我们将评估1000010 = 1040个序列：这⼏乎不可能完成。而贪婪搜索的计
+算开销是O(|Y| T ′)，通常显著小于穷举搜索的计算开销。例如，当|Y| = 10000且T ′ = 10时，我
+们只需评估10000 × 10 = 105个序列。
+10.10.3 束搜索
+束搜索（beam search）是对贪婪搜索的⼀个改进算法。它有⼀个束宽（beam size）超参数。我
+们将它设为k。在时间步1时，选取当前时间步条件概率最⼤的k个词，分别组成k个候选输出序列
+的⾸词。在之后的每个时间步，基于上个时间步的k个候选输出序列，从k |Y|个可能的输出序列
+中选取条件概率最⼤的k个，作为该时间步的候选输出序列。最终，我们从各个时间步的候选输
+出序列中筛选出包含特殊符号“<eos>”的序列，并将它们中所有特殊符号“<eos>”后⾯的⼦序
+列舍弃，得到最终候选输出序列的集合。
+474
+10. ⾃然语⾔处理
+
+图10.11: 束搜索的过程。束宽为2，输出序列最⼤⻓度为3。候选输出序列有A、C、AB、CE、
+ABD和CED
+图10.11通过⼀个例⼦演⽰了束搜索的过程。假设输出序列的词典中只包含5个元素，即Y =
+{A, B, C, D, E}，且其中⼀个为特殊符号“<eos>”。设束搜索的束宽等于2，输出序列最⼤⻓度为3。
+在输出序列的时间步1时，假设条件概率P(y1 | c)最⼤的2个词为A和C。我们在时间步2时将对所
+有的y2 ∈Y都分别计算P(A, y2 | c) = P(A | c)P(y2 | A, c)和P(C, y2 | c) = P(C | c)P(y2 | C, c)，
+并从计算出的10个条件概率中取最⼤的2个，假设为P(A, B | c)和P(C, E | c)。那么，我们在时
+间步3时将对所有的y3 ∈Y都分别计算P(A, B, y3 | c) = P(A, B | c)P(y3 | A, B, c)和P(C, E, y3 |
+c) = P(C, E | c)P(y3 | C, E, c)，并从计算出的10个条件概率中取最⼤的2个，假设为P(A, B, D |
+c)和P(C, E, D | c)。如此⼀来，我们得到6个候选输出序列：（1）A；（2）C；（3）A、B；（4）C、
+E；（5）A、B、D和（6）C、E、D。接下来，我们将根据这6个序列得出最终候选输出序列的集
+合。
+在最终候选输出序列的集合中，我们取以下分数最⾼的序列作为输出序列：
+1
+Lα log P(y1, . . . , yL) = 1
+Lα
+L
+∑
+t′=1
+log P(yt′ | y1, . . . , yt′−1, c),
+其中L为最终候选序列⻓度，α⼀般可选为0.75。分⺟上的Lα是为了惩罚较⻓序列在以上分数中
+10.10. 束搜索
+475
+
+较多的对数相加项。分析可知，束搜索的计算开销为O(k |Y| T ′)。这介于贪婪搜索和穷举搜索的
+计算开销之间。此外，贪婪搜索可看作是束宽为1的束搜索。束搜索通过灵活的束宽k来权衡计算
+开销和搜索质量。
+⼩结
+• 预测不定⻓序列的⽅法包括贪婪搜索、穷举搜索和束搜索。
+• 束搜索通过灵活的束宽来权衡计算开销和搜索质量。
+练习
+• 穷举搜索可否看作特殊束宽的束搜索？为什么？
+• 在“循环神经⽹络的从零开始实现”⼀节中，我们使⽤语⾔模型创作歌词。它的输出属于
+哪种搜索？你能改进它吗？
+扫码直达讨论区
+10.11 注意⼒机制
+在“编码器—解码器（seq2seq）”⼀节⾥，解码器在各个时间步依赖相同的背景变量来获取输⼊序
+列信息。当编码器为循环神经⽹络时，背景变量来⾃它最终时间步的隐藏状态。
+现在，让我们再次思考那⼀节提到的翻译例⼦：输⼊为英语序列“They”“are”“watching”“.”，
+输出为法语序列“Ils”“regardent”“.”。不难想到，解码器在⽣成输出序列中的每⼀个词时可能只
+需利⽤输⼊序列某⼀部分的信息。例如，在输出序列的时间步1，解码器可以主要依赖“They”“are”
+的信息来⽣成“Ils”，在时间步2则主要使⽤来⾃“watching”的编码信息⽣成“regardent”，最
+后在时间步3则直接映射句号“.”。这看上去就像是在解码器的每⼀时间步对输⼊序列中不同时
+间步的表征或编码信息分配不同的注意⼒⼀样。这也是注意⼒机制的由来[1]。
+476
+10. ⾃然语⾔处理
+
+仍然以循环神经⽹络为例，注意⼒机制通过对编码器所有时间步的隐藏状态做加权平均来得到背
+景变量。解码器在每⼀时间步调整这些权重，即注意⼒权重，从而能够在不同时间步分别关注输
+⼊序列中的不同部分并编码进相应时间步的背景变量。本节我们将讨论注意⼒机制是怎么⼯作
+的。
+在“编码器—解码器（seq2seq）”⼀节⾥我们区分了输⼊序列或编码器的索引t与输出序列或解码
+器的索引t′。该节中，解码器在时间步t′的隐藏状态st′ = g(yt′−1, c, st′−1)，其中yt′−1是上⼀时间
+步t′ −1的输出yt′−1的表征，且任⼀时间步t′使⽤相同的背景变量c。但在注意⼒机制中，解码器
+的每⼀时间步将使⽤可变的背景变量。记ct′是解码器在时间步t′的背景变量，那么解码器在该时
+间步的隐藏状态可以改写为
+st′ = g(yt′−1, ct′, st′−1).
+这⾥的关键是如何计算背景变量ct′和如何利⽤它来更新隐藏状态st′。下⾯将分别描述这两个关
+键点。
+10.11.1 计算背景变量
+我们先描述第⼀个关键点，即计算背景变量。图10.12描绘了注意⼒机制如何为解码器在时间步2计
+算背景变量。⾸先，函数a根据解码器在时间步1的隐藏状态和编码器在各个时间步的隐藏状态计
+算softmax运算的输⼊。softmax运算输出概率分布并对编码器各个时间步的隐藏状态做加权平
+均，从而得到背景变量。
+图10.12: 编码器—解码器上的注意⼒机制
+10.11. 注意⼒机制
+477
+
+具体来说，令编码器在时间步t的隐藏状态为ht，且总时间步数为T。那么解码器在时间步t′的背
+景变量为所有编码器隐藏状态的加权平均：
+ct′ =
+T
+∑
+t=1
+αt′tht,
+其中给定t′时，权重αt′t在t = 1, . . . , T的值是⼀个概率分布。为了得到概率分布，我们可以使
+⽤softmax运算:
+αt′t =
+exp(et′t)
+∑T
+k=1 exp(et′k)
+,
+t = 1, . . . , T.
+现在，我们需要定义如何计算上式中softmax运算的输⼊et′t。由于et′t同时取决于解码器的时间
+步t′和编码器的时间步t，我们不妨以解码器在时间步t′ −1的隐藏状态st′−1与编码器在时间步t的
+隐藏状态ht为输⼊，并通过函数a计算et′t：
+et′t = a(st′−1, ht).
+这⾥函数a有多种选择，如果两个输⼊向量⻓度相同，⼀个简单的选择是计算它们的内积a(s, h) =
+s⊤h。而最早提出注意⼒机制的论⽂则将输⼊连结后通过含单隐藏层的多层感知机变换[1]：
+a(s, h) = v⊤tanh(W ss + W hh),
+其中v、W s、W h都是可以学习的模型参数。
+⽮量化计算
+我们还可以对注意⼒机制采⽤更⾼效的⽮量化计算。⼴义上，注意⼒机制的输⼊包括查询项以及
+⼀⼀对应的键项和值项，其中值项是需要加权平均的⼀组项。在加权平均中，值项的权重来⾃查
+询项以及与该值项对应的键项的计算。
+在上⾯的例⼦中，查询项为解码器的隐藏状态，键项和值项均为编码器的隐藏状态。让我们考虑
+⼀个常⻅的简单情形，即编码器和解码器的隐藏单元个数均为h，且函数a(s, h) = s⊤h。假设我
+们希望根据解码器单个隐藏状态st′−1 ∈Rh和编码器所有隐藏状态ht ∈Rh, t = 1, . . . , T来计算背
+景向量ct′ ∈Rh。我们可以将查询项矩阵Q ∈R1×h设为s⊤
+t′−1，并令键项矩阵K ∈RT ×h和值项矩
+阵V ∈RT ×h相同且第t⾏均为h⊤
+t 。此时，我们只需要通过⽮量化计算
+softmax(QK⊤)V
+即可算出转置后的背景向量c⊤
+t′ 。当查询项矩阵Q的⾏数为n时，上式将得到n⾏的输出矩阵。输出
+矩阵与查询项矩阵在相同⾏上⼀⼀对应。
+478
+10. ⾃然语⾔处理
+
+10.11.2 更新隐藏状态
+现在我们描述第⼆个关键点，即更新隐藏状态。以⻔控循环单元为例，在解码器中我们可以对“⻔
+控循环单元（GRU）”⼀节中⻔控循环单元的设计稍作修改，从而变换上⼀时间步t′−1的输出yt′−1、
+隐藏状态st′−1和当前时间步t′的含注意⼒机制的背景变量ct′ [1]。解码器在时间步:math:t’的隐
+藏状态为
+st′ = zt′ ⊙st′−1 + (1 −zt′) ⊙˜st′,
+其中的重置⻔、更新⻔和候选隐藏状态分别为
+rt′ = σ(W yryt′−1 + W srst′−1 + W crct′ + br),
+zt′ = σ(W yzyt′−1 + W szst′−1 + W czct′ + bz),
+˜st′ = tanh(W ysyt′−1 + W ss(st′−1 ⊙rt′) + W csct′ + bs),
+其中含下标的W 和b分别为⻔控循环单元的权重参数和偏差参数。
+10.11.3 发展
+本质上，注意⼒机制能够为表征中较有价值的部分分配较多的计算资源。这个有趣的想法⾃提出
+后得到了快速发展，特别是启发了依靠注意⼒机制来编码输⼊序列并解码出输出序列的变换器
+（Transformer）模型的设计[2]。变换器抛弃了卷积神经⽹络和循环神经⽹络的架构。它在计算效
+率上⽐基于循环神经⽹络的编码器—解码器模型通常更具明显优势。含注意⼒机制的变换器的编
+码结构在后来的BERT预训练模型中得以应⽤并令后者⼤放异彩：微调后的模型在多达11项⾃然
+语⾔处理任务中取得了当时最先进的结果[3]。不久后，同样是基于变换器设计的GPT-2模型于新
+收集的语料数据集预训练后，在7个未参与训练的语⾔模型数据集上均取得了当时最先进的结果
+[4]。除了⾃然语⾔处理领域，注意⼒机制还被⼴泛⽤于图像分类、⾃动图像描述、唇语解读以及
+语⾳识别。
+⼩结
+• 可以在解码器的每个时间步使⽤不同的背景变量，并对输⼊序列中不同时间步编码的信息
+分配不同的注意⼒。
+• ⼴义上，注意⼒机制的输⼊包括查询项以及⼀⼀对应的键项和值项。
+• 注意⼒机制可以采⽤更为⾼效的⽮量化计算。
+10.11. 注意⼒机制
+479
+
+练习
+• 基于本节的模型设计，为什么不可以将解码器在不同时间步的隐藏状态s⊤
+t′−1 ∈R1×h, t′ ∈
+1, . . . , T ′连结成查询项矩阵Q ∈RT ′×h，从而同时计算不同时间步的含注意⼒机制的背景变
+量c⊤
+t′ , t′ ∈1, . . . , T ′？
+• 不修改“⻔控循环单元（GRU）”⼀节中的gru函数，应如何⽤它实现本节介绍的解码器？
+参考⽂献
+[1] Bahdanau, D., Cho, K., & Bengio, Y. (2014). Neural machine translation by jointly learning
+to align and translate. arXiv preprint arXiv:1409.0473.
+[2] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., …& Polosukhin,
+I. (2017). Attention is all you need. In Advances in Neural Information Processing Systems
+(pp. 5998-6008).
+[3] Devlin, J., Chang, M. W., Lee, K., & Toutanova, K. (2018). Bert: Pre-training of deep bidirec-
+tional transformers for language understanding. arXiv preprint arXiv:1810.04805.
+[4] Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., Sutskever I. (2019). Language Models
+are Unsupervised Multitask Learners. OpenAI.
+扫码直达讨论区
+10.12 机器翻译
+机器翻译是指将⼀段⽂本从⼀种语⾔⾃动翻译到另⼀种语⾔。因为⼀段⽂本序列在不同语⾔中的
+⻓度不⼀定相同，所以我们使⽤机器翻译为例来介绍编码器—解码器和注意⼒机制的应⽤。
+480
+10. ⾃然语⾔处理
+
+10.12.1 读取和预处理数据
+我们先定义⼀些特殊符号。其中“<pad>”（padding）符号⽤来添加在较短序列后，直到每个序
+列等⻓，而“<bos>”和“<eos>”符号分别表⽰序列的开始和结束。
+In [1]: import collections
+import io
+import math
+from mxnet import autograd, gluon, init, nd
+from mxnet.contrib import text
+from mxnet.gluon import data as gdata, loss as gloss, nn, rnn
+PAD, BOS, EOS = '<pad>', '<bos>', '<eos>'
+接着定义两个辅助函数对后⾯读取的数据进⾏预处理。
+In [2]: # 将⼀个序列中所有的词记录在all_tokens中以便之后构造词典，然后在该序列后⾯添加PAD直到序列
+# ⻓度变为max_seq_len，然后将序列保存在all_seqs中
+def process_one_seq(seq_tokens, all_tokens, all_seqs, max_seq_len):
+all_tokens.extend(seq_tokens)
+seq_tokens += [EOS] + [PAD] * (max_seq_len - len(seq_tokens) - 1)
+all_seqs.append(seq_tokens)
+# 使⽤所有的词来构造词典。并将所有序列中的词变换为词索引后构造NDArray实例
+def build_data(all_tokens, all_seqs):
+vocab = text.vocab.Vocabulary(collections.Counter(all_tokens),
+reserved_tokens=[PAD, BOS, EOS])
+indices = [vocab.to_indices(seq) for seq in all_seqs]
+return vocab, nd.array(indices)
+为了演⽰⽅便，我们在这⾥使⽤⼀个很小的法语—英语数据集。在这个数据集⾥，每⼀⾏是⼀对
+法语句⼦和它对应的英语句⼦，中间使⽤'\t'隔开。在读取数据时，我们在句末附上“<eos>”
+符号，并可能通过添加“<pad>”符号使每个序列的⻓度均为max_seq_len。我们为法语词和英
+语词分别创建词典。法语词的索引和英语词的索引相互独⽴。
+In [3]: def read_data(max_seq_len):
+# in和out分别是input和output的缩写
+in_tokens, out_tokens, in_seqs, out_seqs = [], [], [], []
+with io.open('../data/fr-en-small.txt') as f:
+lines = f.readlines()
+for line in lines:
+in_seq, out_seq = line.rstrip().split('\t')
+in_seq_tokens, out_seq_tokens = in_seq.split(' '), out_seq.split(' ')
+if max(len(in_seq_tokens), len(out_seq_tokens)) > max_seq_len - 1:
+10.12. 机器翻译
+481
+
+continue
+# 如果加上EOS后⻓于max_seq_len，则忽略掉此样本
+process_one_seq(in_seq_tokens, in_tokens, in_seqs, max_seq_len)
+process_one_seq(out_seq_tokens, out_tokens, out_seqs, max_seq_len)
+in_vocab, in_data = build_data(in_tokens, in_seqs)
+out_vocab, out_data = build_data(out_tokens, out_seqs)
+return in_vocab, out_vocab, gdata.ArrayDataset(in_data, out_data)
+将序列的最⼤⻓度设成7，然后查看读取到的第⼀个样本。该样本分别包含法语词索引序列和英
+语词索引序列。
+In [4]: max_seq_len = 7
+in_vocab, out_vocab, dataset = read_data(max_seq_len)
+dataset[0]
+Out[4]: (
+[ 6.
+5. 46.
+4.
+3.
+1.
+1.]
+<NDArray 7 @cpu(0)>,
+[ 9.
+5. 28.
+4.
+3.
+1.
+1.]
+<NDArray 7 @cpu(0)>)
+10.12.2 含注意⼒机制的编码器—解码器
+我们将使⽤含注意⼒机制的编码器—解码器来将⼀段简短的法语翻译成英语。下⾯我们来介绍模
+型的实现。
+编码器
+在编码器中，我们将输⼊语⾔的词索引通过词嵌⼊层得到词的表征，然后输⼊到⼀个多层⻔控循
+环单元中。正如我们在“循环神经⽹络的简洁实现”⼀节提到的，Gluon的rnn.GRU实例在前向
+计算后也会分别返回输出和最终时间步的多层隐藏状态。其中的输出指的是最后⼀层的隐藏层在
+各个时间步的隐藏状态，并不涉及输出层计算。注意⼒机制将这些输出作为键项和值项。
+In [5]: class Encoder(nn.Block):
+def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
+drop_prob=0, **kwargs):
+super(Encoder, self).__init__(**kwargs)
+self.embedding = nn.Embedding(vocab_size, embed_size)
+self.rnn = rnn.GRU(num_hiddens, num_layers, dropout=drop_prob)
+def forward(self, inputs, state):
+# 输⼊形状是(批量⼤⼩, 时间步数)。将输出互换样本维和时间步维
+482
+10. ⾃然语⾔处理
+
+embedding = self.embedding(inputs).swapaxes(0, 1)
+return self.rnn(embedding, state)
+def begin_state(self, *args, **kwargs):
+return self.rnn.begin_state(*args, **kwargs)
+下⾯我们来创建⼀个批量⼤小为4、时间步数为7的小批量序列输⼊。设⻔控循环单元的隐藏层个
+数为2，隐藏单元个数为16。编码器对该输⼊执⾏前向计算后返回的输出形状为(时间步数, 批量
+⼤小, 隐藏单元个数)。⻔控循环单元在最终时间步的多层隐藏状态的形状为(隐藏层个数, 批量⼤
+小, 隐藏单元个数)。对于⻔控循环单元来说，state列表中只含⼀个元素，即隐藏状态；如果使
+⽤⻓短期记忆，state列表中还将包含另⼀个元素，即记忆细胞。
+In [6]: encoder = Encoder(vocab_size=10, embed_size=8, num_hiddens=16, num_layers=2)
+encoder.initialize()
+output, state = encoder(nd.zeros((4, 7)), encoder.begin_state(batch_size=4))
+output.shape, state[0].shape
+Out[6]: ((7, 4, 16), (2, 4, 16))
+注意⼒机制
+在介绍如何实现注意⼒机制的⽮量化计算之前，我们先了解⼀下Dense实例的flatten选项。当
+输⼊的维度⼤于2时，默认情况下，Dense实例会将除了第⼀维（样本维）以外的维度均视作需
+要仿射变换的特征维，并将输⼊⾃动转成⾏为样本、列为特征的⼆维矩阵。计算后，输出矩阵的
+形状为(样本数, 输出个数)。如果我们希望全连接层只对输⼊的最后⼀维做仿射变换，而保持其他
+维度上的形状不变，便需要将Dense实例的flatten选项设为False。在下⾯例⼦中，全连接层
+只对输⼊的最后⼀维做仿射变换，因此输出形状中只有最后⼀维变为全连接层的输出个数2。
+In [7]: dense = nn.Dense(2, flatten=False)
+dense.initialize()
+dense(nd.zeros((3, 5, 7))).shape
+Out[7]: (3, 5, 2)
+我们将实现“注意⼒机制”⼀节中定义的函数a：将输⼊连结后通过含单隐藏层的多层感知
+机变换。其中隐藏层的输⼊是解码器的隐藏状态与编码器在所有时间步上隐藏状态的⼀⼀连
+结，且使⽤tanh函数作为激活函数。输出层的输出个数为1。两个Dense实例均不使⽤偏差，且
+设flatten=False。其中函数a定义⾥向量v的⻓度是⼀个超参数，即attention_size。
+In [8]: def attention_model(attention_size):
+model = nn.Sequential()
+model.add(nn.Dense(attention_size, activation='tanh', use_bias=False,
+10.12. 机器翻译
+483
+
+flatten=False),
+nn.Dense(1, use_bias=False, flatten=False))
+return model
+注意⼒机制的输⼊包括查询项、键项和值项。设编码器和解码器的隐藏单元个数相同。这⾥的查
+询项为解码器在上⼀时间步的隐藏状态，形状为(批量⼤小, 隐藏单元个数)；键项和值项均为编码
+器在所有时间步的隐藏状态，形状为(时间步数, 批量⼤小, 隐藏单元个数)。注意⼒机制返回当前
+时间步的背景变量，形状为(批量⼤小, 隐藏单元个数)。
+In [9]: def attention_forward(model, enc_states, dec_state):
+# 将解码器隐藏状态⼴播到和编码器隐藏状态形状相同后进⾏连结
+dec_states = nd.broadcast_axis(
+dec_state.expand_dims(0), axis=0, size=enc_states.shape[0])
+enc_and_dec_states = nd.concat(enc_states, dec_states, dim=2)
+e = model(enc_and_dec_states)
+# 形状为(时间步数, 批量⼤⼩, 1)
+alpha = nd.softmax(e, axis=0)
+# 在时间步维度做softmax运算
+return (alpha * enc_states).sum(axis=0)
+# 返回背景变量
+在下⾯的例⼦中，编码器的时间步数为10，批量⼤小为4，编码器和解码器的隐藏单元个数均为8。
+注意⼒机制返回⼀个小批量的背景向量，每个背景向量的⻓度等于编码器的隐藏单元个数。因此
+输出的形状为(4, 8)。
+In [10]: seq_len, batch_size, num_hiddens = 10, 4, 8
+model = attention_model(10)
+model.initialize()
+enc_states = nd.zeros((seq_len, batch_size, num_hiddens))
+dec_state = nd.zeros((batch_size, num_hiddens))
+attention_forward(model, enc_states, dec_state).shape
+Out[10]: (4, 8)
+含注意⼒机制的解码器
+我们直接将编码器在最终时间步的隐藏状态作为解码器的初始隐藏状态。这要求编码器和解码器
+的循环神经⽹络使⽤相同的隐藏层个数和隐藏单元个数。
+在解码器的前向计算中，我们先通过刚刚介绍的注意⼒机制计算得到当前时间步的背景向量。由
+于解码器的输⼊来⾃输出语⾔的词索引，我们将输⼊通过词嵌⼊层得到表征，然后和背景向量在
+特征维连结。我们将连结后的结果与上⼀时间步的隐藏状态通过⻔控循环单元计算出当前时间步
+的输出与隐藏状态。最后，我们将输出通过全连接层变换为有关各个输出词的预测，形状为(批量
+⼤小, 输出词典⼤小)。
+484
+10. ⾃然语⾔处理
+
+In [11]: class Decoder(nn.Block):
+def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
+attention_size, drop_prob=0, **kwargs):
+super(Decoder, self).__init__(**kwargs)
+self.embedding = nn.Embedding(vocab_size, embed_size)
+self.attention = attention_model(attention_size)
+self.rnn = rnn.GRU(num_hiddens, num_layers, dropout=drop_prob)
+self.out = nn.Dense(vocab_size, flatten=False)
+def forward(self, cur_input, state, enc_states):
+# 使⽤注意⼒机制计算背景向量
+c = attention_forward(self.attention, enc_states, state[0][-1])
+# 将嵌⼊后的输⼊和背景向量在特征维连结
+input_and_c = nd.concat(self.embedding(cur_input), c, dim=1)
+# 为输⼊和背景向量的连结增加时间步维，时间步个数为1
+output, state = self.rnn(input_and_c.expand_dims(0), state)
+# 移除时间步维，输出形状为(批量⼤⼩, 输出词典⼤⼩)
+output = self.out(output).squeeze(axis=0)
+return output, state
+def begin_state(self, enc_state):
+# 直接将编码器最终时间步的隐藏状态作为解码器的初始隐藏状态
+return enc_state
+10.12.3 训练模型
+我们先实现batch_loss函数计算⼀个小批量的损失。解码器在最初时间步的输⼊是特殊字
+符BOS。之后，解码器在某时间步的输⼊为样本输出序列在上⼀时间步的词，即强制教学。此
+外，同“word2vec的实现”⼀节中的实现⼀样，我们在这⾥也使⽤掩码变量避免填充项对损失函
+数计算的影响。
+In [12]: def batch_loss(encoder, decoder, X, Y, loss):
+batch_size = X.shape[0]
+enc_state = encoder.begin_state(batch_size=batch_size)
+enc_outputs, enc_state = encoder(X, enc_state)
+# 初始化解码器的隐藏状态
+dec_state = decoder.begin_state(enc_state)
+# 解码器在最初时间步的输⼊是BOS
+dec_input = nd.array([out_vocab.token_to_idx[BOS]] * batch_size)
+# 我们将使⽤掩码变量mask来忽略掉标签为填充项PAD的损失
+mask, num_not_pad_tokens = nd.ones(shape=(batch_size,)), 0
+l = nd.array([0])
+10.12. 机器翻译
+485
+
+for y in Y.T:
+dec_output, dec_state = decoder(dec_input, dec_state, enc_outputs)
+l = l + (mask * loss(dec_output, y)).sum()
+dec_input = y
+# 使⽤强制教学
+num_not_pad_tokens += mask.sum().asscalar()
+# 当遇到EOS时，序列后⾯的词将均为PAD，相应位置的掩码设成0
+mask = mask * (y != out_vocab.token_to_idx[EOS])
+return l / num_not_pad_tokens
+在训练函数中，我们需要同时迭代编码器和解码器的模型参数。
+In [13]: def train(encoder, decoder, dataset, lr, batch_size, num_epochs):
+encoder.initialize(init.Xavier(), force_reinit=True)
+decoder.initialize(init.Xavier(), force_reinit=True)
+enc_trainer = gluon.Trainer(encoder.collect_params(), 'adam',
+{'learning_rate': lr})
+dec_trainer = gluon.Trainer(decoder.collect_params(), 'adam',
+{'learning_rate': lr})
+loss = gloss.SoftmaxCrossEntropyLoss()
+data_iter = gdata.DataLoader(dataset, batch_size, shuffle=True)
+for epoch in range(num_epochs):
+l_sum = 0.0
+for X, Y in data_iter:
+with autograd.record():
+l = batch_loss(encoder, decoder, X, Y, loss)
+l.backward()
+enc_trainer.step(1)
+dec_trainer.step(1)
+l_sum += l.asscalar()
+if (epoch + 1) % 10 == 0:
+print("epoch %d, loss %.3f" % (epoch + 1, l_sum / len(data_iter)))
+接下来，创建模型实例并设置超参数。然后，我们就可以训练模型了。
+In [14]: embed_size, num_hiddens, num_layers = 64, 64, 2
+attention_size, drop_prob, lr, batch_size, num_epochs = 10, 0.5, 0.01, 2, 50
+encoder = Encoder(len(in_vocab), embed_size, num_hiddens, num_layers,
+drop_prob)
+decoder = Decoder(len(out_vocab), embed_size, num_hiddens, num_layers,
+attention_size, drop_prob)
+train(encoder, decoder, dataset, lr, batch_size, num_epochs)
+epoch 10, loss 0.625
+epoch 20, loss 0.320
+epoch 30, loss 0.212
+486
+10. ⾃然语⾔处理
+
+epoch 40, loss 0.129
+epoch 50, loss 0.089
+10.12.4 预测不定⻓的序列
+在“束搜索”⼀节中我们介绍了3种⽅法来⽣成解码器在每个时间步的输出。这⾥我们实现最简
+单的贪婪搜索。
+In [15]: def translate(encoder, decoder, input_seq, max_seq_len):
+in_tokens = input_seq.split(' ')
+in_tokens += [EOS] + [PAD] * (max_seq_len - len(in_tokens) - 1)
+enc_input = nd.array([in_vocab.to_indices(in_tokens)])
+enc_state = encoder.begin_state(batch_size=1)
+enc_output, enc_state = encoder(enc_input, enc_state)
+dec_input = nd.array([out_vocab.token_to_idx[BOS]])
+dec_state = decoder.begin_state(enc_state)
+output_tokens = []
+for _ in range(max_seq_len):
+dec_output, dec_state = decoder(dec_input, dec_state, enc_output)
+pred = dec_output.argmax(axis=1)
+pred_token = out_vocab.idx_to_token[int(pred.asscalar())]
+if pred_token == EOS:
+# 当任⼀时间步搜索出EOS时，输出序列即完成
+break
+else:
+output_tokens.append(pred_token)
+dec_input = pred
+return output_tokens
+简单测试⼀下模型。输⼊法语句⼦“ils regardent.”，翻译后的英语句⼦应该是“they are watch-
+ing.”。
+In [16]: input_seq = 'ils regardent .'
+translate(encoder, decoder, input_seq, max_seq_len)
+Out[16]: ['they', 'are', 'watching', '.']
+10.12.5 评价翻译结果
+评价机器翻译结果通常使⽤BLEU（Bilingual Evaluation Understudy）[1]。对于模型预测序列中
+任意的⼦序列，BLEU考察这个⼦序列是否出现在标签序列中。
+10.12. 机器翻译
+487
+
+具体来说，设词数为n的⼦序列的精度为pn。它是预测序列与标签序列匹配词数为n的⼦序列的数
+量与预测序列中词数为n的⼦序列的数量之⽐。举个例⼦，假设标签序列为A、B、C、D、E、F，
+预测序列为A、B、B、C、D，那么p1 = 4/5, p2 = 3/4, p3 = 1/3, p4 = 0。设lenlabel和lenpred分
+别为标签序列和预测序列的词数，那么，BLEU的定义为
+exp
+(
+min
+(
+0, 1 −lenlabel
+lenpred
+))
+k
+∏
+n=1
+p1/2n
+n
+,
+其中k是我们希望匹配的⼦序列的最⼤词数。可以看到当预测序列和标签序列完全⼀致时，
+BLEU为1。
+因为匹配较⻓⼦序列⽐匹配较短⼦序列更难，BLEU对匹配较⻓⼦序列的精度赋予了更⼤权重。例
+如，当pn固定在0.5时，随着n的增⼤，0.51/2 ≈0.7, 0.51/4 ≈0.84, 0.51/8 ≈0.92, 0.51/16 ≈0.96。
+另外，模型预测较短序列往往会得到较⾼pn值。因此，上式中连乘项前⾯的系数是为了惩罚较短
+的输出而设的。举个例⼦，当k = 2时，假设标签序列为A、B、C、D、E、F，而预测序列为A、
+B。虽然p1 = p2 = 1，但惩罚系数exp(1 −6/2) ≈0.14，因此BLEU也接近0.14。
+下⾯来实现BLEU的计算。
+In [17]: def bleu(pred_tokens, label_tokens, k):
+len_pred, len_label = len(pred_tokens), len(label_tokens)
+score = math.exp(min(0, 1 - len_label / len_pred))
+for n in range(1, k + 1):
+num_matches, label_subs = 0, collections.defaultdict(int)
+for i in range(len_label - n + 1):
+label_subs[''.join(label_tokens[i: i + n])] += 1
+for i in range(len_pred - n + 1):
+if label_subs[''.join(pred_tokens[i: i + n])] > 0:
+num_matches += 1
+label_subs[''.join(pred_tokens[i: i + n])] -= 1
+score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
+return score
+接下来，定义⼀个辅助打印函数。
+In [18]: def score(input_seq, label_seq, k):
+pred_tokens = translate(encoder, decoder, input_seq, max_seq_len)
+label_tokens = label_seq.split(' ')
+print('bleu %.3f, predict: %s' % (bleu(pred_tokens, label_tokens, k),
+' '.join(pred_tokens)))
+预测正确则分数为1。
+In [19]: score('ils regardent .', 'they are watching .', k=2)
+488
+10. ⾃然语⾔处理
+
+bleu 1.000, predict: they are watching .
+测试⼀个不在训练集中的样本。
+In [20]: score('ils sont canadiens .', 'they are canadian .', k=2)
+bleu 0.658, predict: they are watching .
+⼩结
+• 可以将编码器—解码器和注意⼒机制应⽤于机器翻译中。
+• BLEU可以⽤来评价翻译结果。
+练习
+• 如果编码器和解码器的隐藏单元个数不同或隐藏层个数不同，该如何改进解码器的隐藏状
+态的初始化⽅法？
+• 在训练中，将强制教学替换为使⽤解码器在上⼀时间步的输出作为解码器在当前时间步的
+输⼊，结果有什么变化吗？
+• 试着使⽤更⼤的翻译数据集来训练模型，如WMT [2] 和Tatoeba Project [3]。
+参考⽂献
+[1] Papineni, K., Roukos, S., Ward, T., & Zhu, W. J. (2002, July). BLEU: a method for automatic
+evaluation of machine translation. In Proceedings of the 40th annual meeting on association
+for computational linguistics (pp. 311-318). Association for Computational Linguistics.
+[2] WMT. http://www.statmt.org/wmt14/translation-task.html
+[3] Tatoeba Project. http://www.manythings.org/anki/
+10.12. 机器翻译
+489
+
+扫码直达讨论区
+490
+10. ⾃然语⾔处理

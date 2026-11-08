@@ -1,0 +1,1024 @@
+7
+优化算法
+如果你⼀直按照本书的顺序读到这⾥，那么你已经使⽤了优化算法来训练深度学习模型。具体来
+说，在训练模型时，我们会使⽤优化算法不断迭代模型参数以降低模型损失函数的值。当迭代终
+⽌时，模型的训练随之终⽌，此时的模型参数就是模型通过训练所学习到的参数。
+优化算法对于深度学习⼗分重要。⼀⽅⾯，训练⼀个复杂的深度学习模型可能需要数小时、数⽇，
+甚⾄数周时间，而优化算法的表现直接影响模型的训练效率；另⼀⽅⾯，理解各种优化算法的原
+理以及其中超参数的意义将有助于我们更有针对性地调参，从而使深度学习模型表现更好。
+本章将详细介绍深度学习中常⽤的优化算法。
+7.1 优化与深度学习
+本节将讨论优化与深度学习的关系，以及优化在深度学习中的挑战。在⼀个深度学习问题中，我
+们通常会预先定义⼀个损失函数。有了损失函数以后，我们就可以使⽤优化算法试图将其最小化。
+在优化中，这样的损失函数通常被称作优化问题的⽬标函数（objective function）。依据惯例，优
+253
+
+化算法通常只考虑最小化⽬标函数。其实，任何最⼤化问题都可以很容易地转化为最小化问题，
+只需令⽬标函数的相反数为新的⽬标函数即可。
+7.1.1 优化与深度学习的关系
+虽然优化为深度学习提供了最小化损失函数的⽅法，但本质上，优化与深度学习的⽬标是有区别
+的。在“模型选择、⽋拟合和过拟合”⼀节中，我们区分了训练误差和泛化误差。由于优化算法
+的⽬标函数通常是⼀个基于训练数据集的损失函数，优化的⽬标在于降低训练误差。而深度学习
+的⽬标在于降低泛化误差。为了降低泛化误差，除了使⽤优化算法降低训练误差以外，还需要注
+意应对过拟合。
+本章中，我们只关注优化算法在最小化⽬标函数上的表现，而不关注模型的泛化误差。
+7.1.2 优化在深度学习中的挑战
+我们在“线性回归”⼀节中对优化问题的解析解和数值解做了区分。深度学习中绝⼤多数⽬标函
+数都很复杂。因此，很多优化问题并不存在解析解，而需要使⽤基于数值⽅法的优化算法找到近
+似解，即数值解。本书中讨论的优化算法都是这类基于数值⽅法的算法。为了求得最小化⽬标函
+数的数值解，我们将通过优化算法有限次迭代模型参数来尽可能降低损失函数的值。
+优化在深度学习中有很多挑战。下⾯描述了其中的两个挑战，即局部最小值和鞍点。为了更好地
+描述问题，我们先导⼊本节中实验需要的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mpl_toolkits import mplot3d
+import numpy as np
+局部最⼩值
+对于⽬标函数f(x)，如果f(x)在x上的值⽐在x邻近的其他点的值更小，那么f(x)可能是⼀个局部
+最小值（local minimum）。如果f(x)在x上的值是⽬标函数在整个定义域上的最小值，那么f(x)是
+全局最小值（global minimum）。
+举个例⼦，给定函数
+f(x) = x · cos(πx),
+−1.0 ≤x ≤2.0,
+254
+7. 优化算法
+
+我们可以⼤致找出该函数的局部最小值和全局最小值的位置。需要注意的是，图中箭头所指⽰的
+只是⼤致位置。
+In [2]: def f(x):
+return x * np.cos(np.pi * x)
+d2l.set_figsize((4.5, 2.5))
+x = np.arange(-1.0, 2.0, 0.1)
+fig, = d2l.plt.plot(x, f(x))
+# 逗号表⽰只取返回列表中的第⼀个元素
+fig.axes.annotate('local minimum', xy=(-0.3, -0.25), xytext=(-0.77, -1.0),
+arrowprops=dict(arrowstyle='->'))
+fig.axes.annotate('global minimum', xy=(1.1, -0.95), xytext=(0.6, 0.8),
+arrowprops=dict(arrowstyle='->'))
+d2l.plt.xlabel('x')
+d2l.plt.ylabel('f(x)');
+深度学习模型的⽬标函数可能有若⼲局部最优值。当⼀个优化问题的数值解在局部最优解附近
+时，由于⽬标函数有关解的梯度接近或变成零，最终迭代求得的数值解可能只令⽬标函数局部最
+小化而⾮全局最小化。
+鞍点
+刚刚我们提到，梯度接近或变成零可能是由于当前解在局部最优解附近造成的。事实上，另⼀种
+可能性是当前解在鞍点（saddle point）附近。
+7.1. 优化与深度学习
+255
+
+举个例⼦，给定函数
+f(x) = x3,
+我们可以找出该函数的鞍点位置。
+In [3]: x = np.arange(-2.0, 2.0, 0.1)
+fig, = d2l.plt.plot(x, x**3)
+fig.axes.annotate('saddle point', xy=(0, -0.2), xytext=(-0.52, -5.0),
+arrowprops=dict(arrowstyle='->'))
+d2l.plt.xlabel('x')
+d2l.plt.ylabel('f(x)');
+再举个定义在⼆维空间的函数的例⼦，例如：
+f(x, y) = x2 −y2.
+我们可以找出该函数的鞍点位置。也许你已经发现了，该函数看起来像⼀个⻢鞍，而鞍点恰好是
+⻢鞍上可坐区域的中⼼。
+In [4]: x, y = np.mgrid[-1: 1: 31j, -1: 1: 31j]
+z = x**2 - y**2
+ax = d2l.plt.figure().add_subplot(111, projection='3d')
+ax.plot_wireframe(x, y, z, **{'rstride': 2, 'cstride': 2})
+ax.plot([0], [0], [0], 'rx')
+ticks = [-1,
+0, 1]
+d2l.plt.xticks(ticks)
+256
+7. 优化算法
+
+d2l.plt.yticks(ticks)
+ax.set_zticks(ticks)
+d2l.plt.xlabel('x')
+d2l.plt.ylabel('y');
+在图的鞍点位置，⽬标函数在x轴⽅向上是局部最小值，但在y轴⽅向上是局部最⼤值。
+假设⼀个函数的输⼊为k维向量，输出为标量，那么它的海森矩阵（Hessian matrix）有k个特征
+值（参⻅附录中“数学基础”⼀节）。该函数在梯度为0的位置上可能是局部最小值、局部最⼤值
+或者鞍点。
+• 当函数的海森矩阵在梯度为零的位置上的特征值全为正时，该函数得到局部最小值。
+• 当函数的海森矩阵在梯度为零的位置上的特征值全为负时，该函数得到局部最⼤值。
+• 当函数的海森矩阵在梯度为零的位置上的特征值有正有负时，该函数得到鞍点。
+随机矩阵理论告诉我们，对于⼀个⼤的⾼斯随机矩阵来说，任⼀特征值是正或者是负的概率都
+是0.5 [1]。那么，以上第⼀种情况的概率为0.5k。由于深度学习模型参数通常都是⾼维的（k很
+⼤），⽬标函数的鞍点通常⽐局部最小值更常⻅。
+在深度学习中，虽然找到⽬标函数的全局最优解很难，但这并⾮必要。我们将在本章接下来的⼏
+节中逐⼀介绍深度学习中常⽤的优化算法，它们在很多实际问题中都能够训练出⼗分有效的深度
+学习模型。
+7.1. 优化与深度学习
+257
+
+⼩结
+• 由于优化算法的⽬标函数通常是⼀个基于训练数据集的损失函数，优化的⽬标在于降低训
+练误差。
+• 由于深度学习模型参数通常都是⾼维的，⽬标函数的鞍点通常⽐局部最小值更常⻅。
+练习
+• 对于深度学习中的优化问题，你还能想到哪些其他的挑战？
+参考⽂献
+[1] Wigner, E. P. (1958). On the distribution of the roots of certain symmetric matrices. Annals
+of Mathematics, 325-327.
+扫码直达讨论区
+7.2 梯度下降和随机梯度下降
+在本节中，我们将介绍梯度下降（gradient descent）的⼯作原理。虽然梯度下降在深度学习中很
+少被直接使⽤，但理解梯度的意义以及沿着梯度反⽅向更新⾃变量可能降低⽬标函数值的原因是
+学习后续优化算法的基础。随后，我们将引出随机梯度下降（stochastic gradient descent）。
+7.2.1 ⼀维梯度下降
+我们先以简单的⼀维梯度下降为例，解释梯度下降算法可能降低⽬标函数值的原因。假设连续可
+导的函数f : R →R的输⼊和输出都是标量。给定绝对值⾜够小的数ϵ，根据泰勒展开公式（参⻅
+258
+7. 优化算法
+
+附录中“数学基础”⼀节），我们得到以下的近似：
+f(x + ϵ) ≈f(x) + ϵf ′(x).
+这⾥f ′(x)是函数f在x处的梯度。⼀维函数的梯度是⼀个标量，也称导数。
+接下来，找到⼀个常数η > 0，使得|ηf ′(x)|⾜够小，那么可以将ϵ替换为−ηf ′(x)并得到
+f(x −ηf ′(x)) ≈f(x) −ηf ′(x)2.
+如果导数f ′(x)̸ = 0，那么ηf ′(x)2 > 0，所以
+f(x −ηf ′(x)) ≲f(x).
+这意味着，如果通过
+x ←x −ηf ′(x)
+来迭代x，函数f(x)的值可能会降低。因此在梯度下降中，我们先选取⼀个初始值x和常数η > 0，
+然后不断通过上式来迭代x，直到达到停⽌条件，例如f ′(x)2的值已⾜够小或迭代次数已达到某个
+值。
+下⾯我们以⽬标函数f(x) = x2为例来看⼀看梯度下降是如何⼯作的。虽然我们知道最小化f(x)的
+解为x = 0，这⾥依然使⽤这个简单函数来观察x是如何被迭代的。⾸先，导⼊本节实验所需的包
+或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+import math
+from mxnet import nd
+import numpy as np
+接下来使⽤x = 10作为初始值，并设η = 0.2。使⽤梯度下降对x迭代10次，可⻅最终x的值较接近
+最优解。
+In [2]: def gd(eta):
+x = 10
+results = [x]
+for i in range(10):
+x -= eta * 2 * x
+# f(x) = x * x的导数为f'(x) = 2 * x
+results.append(x)
+print('epoch 10, x:', x)
+return results
+res = gd(0.2)
+7.2. 梯度下降和随机梯度下降
+259
+
+epoch 10, x: 0.06046617599999997
+下⾯将绘制出⾃变量x的迭代轨迹。
+In [3]: def show_trace(res):
+n = max(abs(min(res)), abs(max(res)), 10)
+f_line = np.arange(-n, n, 0.1)
+d2l.set_figsize()
+d2l.plt.plot(f_line, [x * x for x in f_line])
+d2l.plt.plot(res, [x * x for x in res], '-o')
+d2l.plt.xlabel('x')
+d2l.plt.ylabel('f(x)')
+show_trace(res)
+7.2.2 学习率
+上述梯度下降算法中的正数η通常叫作学习率。这是⼀个超参数，需要⼈⼯设定。如果使⽤过小
+的学习率，会导致x更新缓慢从而需要更多的迭代才能得到较好的解。
+下⾯展⽰使⽤学习率η = 0.05时⾃变量x的迭代轨迹。可⻅，同样迭代10次后，当学习率过小时，
+最终x的值依然与最优解存在较⼤偏差。
+In [4]: show_trace(gd(0.05))
+epoch 10, x: 3.4867844009999995
+260
+7. 优化算法
+
+如果使⽤过⼤的学习率，|ηf ′(x)|可能会过⼤从而使前⾯提到的⼀阶泰勒展开公式不再成⽴：这
+时我们⽆法保证迭代x会降低f(x)的值。
+举个例⼦，当设学习率η = 1.1时，可以看到x不断越过（overshoot）最优解x = 0并逐渐发散。
+In [5]: show_trace(gd(1.1))
+epoch 10, x: 61.917364224000096
+7.2. 梯度下降和随机梯度下降
+261
+
+7.2.3 多维梯度下降
+在了解了⼀维梯度下降之后，我们再考虑⼀种更⼴义的情况：⽬标函数的输⼊为向量，输出为标
+量。假设⽬标函数f : Rd →R的输⼊是⼀个d维向量x = [x1, x2, . . . , xd]⊤。⽬标函数f(x)有关x的
+梯度是⼀个由d个偏导数组成的向量：
+∇xf(x) =
+[∂f(x)
+∂x1
+, ∂f(x)
+∂x2
+, . . . , ∂f(x)
+∂xd
+]⊤
+.
+为表⽰简洁，我们⽤∇f(x)代替∇xf(x)。梯度中每个偏导数元素∂f(x)/∂xi代表着f在x有关输
+⼊xi的变化率。为了测量f沿着单位向量u（即∥u∥= 1）⽅向上的变化率，在多元微积分中，我
+们定义f在x上沿着u⽅向的⽅向导数为
+Duf(x) = lim
+h→0
+f(x + hu) −f(x)
+h
+.
+依据⽅向导数性质[1，14.6节定理三]，以上⽅向导数可以改写为
+Duf(x) = ∇f(x) · u.
+⽅向导数Duf(x)给出了f在x上沿着所有可能⽅向的变化率。为了最小化f，我们希望找到f能被
+降低最快的⽅向。因此，我们可以通过单位向量u来最小化⽅向导数Duf(x)。
+由于Duf(x) = ∥∇f(x)∥· ∥u∥· cos(θ) = ∥∇f(x)∥· cos(θ)，其中θ为梯度∇f(x)和单位向量u之间
+的夹⻆，当θ = π时，cos(θ)取得最小值−1。因此，当u在梯度⽅向∇f(x)的相反⽅向时，⽅向导
+数Duf(x)被最小化。因此，我们可能通过梯度下降算法来不断降低⽬标函数f的值：
+x ←x −η∇f(x).
+同样，其中η（取正数）称作学习率。
+下⾯我们构造⼀个输⼊为⼆维向量x = [x1, x2]⊤和输出为标量的⽬标函数f(x) = x2
+1 + 2x2
+2。那么，
+梯度∇f(x) = [2x1, 4x2]⊤。我们将观察梯度下降从初始位置[−5, −2]开始对⾃变量x的迭代轨迹。
+我们先定义两个辅助函数，第⼀个函数使⽤给定的⾃变量更新函数，从初始位置[−5, −2]开始迭
+代⾃变量x共20次，第⼆个函数对⾃变量x的迭代轨迹进⾏可视化。
+In [6]: def train_2d(trainer):
+# 本函数将保存在d2lzh包中⽅便以后使⽤
+x1, x2, s1, s2 = -5, -2, 0, 0
+# s1和s2是⾃变量状态，本章后续⼏节会使⽤
+results = [(x1, x2)]
+for i in range(20):
+x1, x2, s1, s2 = trainer(x1, x2, s1, s2)
+results.append((x1, x2))
+262
+7. 优化算法
+
+print('epoch %d, x1 %f, x2 %f' % (i + 1, x1, x2))
+return results
+def show_trace_2d(f, results):
+# 本函数将保存在d2lzh包中⽅便以后使⽤
+d2l.plt.plot(*zip(*results), '-o', color='#ff7f0e')
+x1, x2 = np.meshgrid(np.arange(-5.5, 1.0, 0.1), np.arange(-3.0, 1.0, 0.1))
+d2l.plt.contour(x1, x2, f(x1, x2), colors='#1f77b4')
+d2l.plt.xlabel('x1')
+d2l.plt.ylabel('x2')
+然后，观察学习率为0.1时⾃变量的迭代轨迹。使⽤梯度下降对⾃变量x迭代20次后，可⻅最终x的
+值较接近最优解[0, 0]。
+In [7]: eta = 0.1
+def f_2d(x1, x2):
+# ⽬标函数
+return x1 ** 2 + 2 * x2 ** 2
+def gd_2d(x1, x2, s1, s2):
+return (x1 - eta * 2 * x1, x2 - eta * 4 * x2, 0, 0)
+show_trace_2d(f_2d, train_2d(gd_2d))
+epoch 20, x1 -0.057646, x2 -0.000073
+7.2. 梯度下降和随机梯度下降
+263
+
+7.2.4 随机梯度下降
+在深度学习⾥，⽬标函数通常是训练数据集中有关各个样本的损失函数的平均。设fi(x)是有关索
+引为i的训练数据样本的损失函数，n是训练数据样本数，x是模型的参数向量，那么⽬标函数定
+义为
+f(x) = 1
+n
+n
+∑
+i=1
+fi(x).
+⽬标函数在x处的梯度计算为
+∇f(x) = 1
+n
+n
+∑
+i=1
+∇fi(x).
+如果使⽤梯度下降，每次⾃变量迭代的计算开销为O(n)，它随着n线性增⻓。因此，当训练数据
+样本数很⼤时，梯度下降每次迭代的计算开销很⾼。
+随机梯度下降（stochastic gradient descent，SGD）减少了每次迭代的计算开销。在随机梯度下
+降的每次迭代中，我们随机均匀采样的⼀个样本索引i ∈{1, . . . , n}，并计算梯度∇fi(x)来迭代x：
+x ←x −η∇fi(x).
+这⾥η同样是学习率。可以看到每次迭代的计算开销从梯度下降的O(n)降到了常数O(1)。值得强
+调的是，随机梯度∇fi(x)是对梯度∇f(x)的⽆偏估计：
+Ei∇fi(x) = 1
+n
+n
+∑
+i=1
+∇fi(x) = ∇f(x).
+这意味着，平均来说，随机梯度是对梯度的⼀个良好的估计。
+下⾯我们通过在梯度中添加均值为0的随机噪声来模拟随机梯度下降，以此来⽐较它与梯度下降
+的区别。
+In [8]: def sgd_2d(x1, x2, s1, s2):
+return (x1 - eta * (2 * x1 + np.random.normal(0.1)),
+x2 - eta * (4 * x2 + np.random.normal(0.1)), 0, 0)
+show_trace_2d(f_2d, train_2d(sgd_2d))
+epoch 20, x1 -0.229936, x2 -0.125876
+264
+7. 优化算法
+
+可以看到，随机梯度下降中⾃变量的迭代轨迹相对于梯度下降中的来说更为曲折。这是由于实验
+所添加的噪声使模拟的随机梯度的准确度下降。在实际中，这些噪声通常指训练数据集中的⽆意
+义的⼲扰。
+⼩结
+• 使⽤适当的学习率，沿着梯度反⽅向更新⾃变量可能降低⽬标函数值。梯度下降重复这⼀
+更新过程直到得到满⾜要求的解。
+• 学习率过⼤或过小都有问题。⼀个合适的学习率通常是需要通过多次实验找到的。
+• 当训练数据集的样本较多时，梯度下降每次迭代的计算开销较⼤，因而随机梯度下降通常
+更受⻘睐。
+练习
+• 使⽤⼀个不同的⽬标函数，观察梯度下降和随机梯度下降中⾃变量的迭代轨迹。
+• 在⼆维梯度下降的实验中尝试使⽤不同的学习率，观察并分析实验现象。
+参考⽂献
+[1] Stewart, J. (2010). Calculus: early transcendentals. 7th ed. Cengage Learning.
+7.2. 梯度下降和随机梯度下降
+265
+
+扫码直达讨论区
+7.3 ⼩批量随机梯度下降
+在每⼀次迭代中，梯度下降使⽤整个训练数据集来计算梯度，因此它有时也被称为批量梯度下降
+（batch gradient descent）。而随机梯度下降在每次迭代中只随机采样⼀个样本来计算梯度。正如
+我们在前⼏章中所看到的，我们还可以在每轮迭代中随机均匀采样多个样本来组成⼀个小批量，
+然后使⽤这个小批量来计算梯度。下⾯就来描述小批量随机梯度下降。
+设⽬标函数f(x) : Rd →R。在迭代开始前的时间步设为0。该时间步的⾃变量记为x0 ∈Rd，通
+常由随机初始化得到。在接下来的每⼀个时间步t > 0中，小批量随机梯度下降随机均匀采样⼀个
+由训练数据样本索引组成的小批量Bt。我们可以通过重复采样（sampling with replacement）或
+者不重复采样（sampling without replacement）得到⼀个小批量中的各个样本。前者允许同⼀
+个小批量中出现重复的样本，后者则不允许如此，且更常⻅。对于这两者间的任⼀种⽅式，都可
+以使⽤
+gt ←∇fBt(xt−1) = 1
+|B|
+∑
+i∈Bt
+∇fi(xt−1)
+来计算时间步t的小批量Bt上⽬标函数位于xt−1处的梯度gt。这⾥|B|代表批量⼤小，即小批量
+中样本的个数，是⼀个超参数。同随机梯度⼀样，重复采样所得的小批量随机梯度gt也是对梯
+度∇f(xt−1)的⽆偏估计。给定学习率ηt（取正数），小批量随机梯度下降对⾃变量的迭代如下：
+xt ←xt−1 −ηtgt.
+基于随机采样得到的梯度的⽅差在迭代过程中⽆法减小，因此在实际中，（小批量）随机梯度
+下降的学习率可以在迭代过程中⾃我衰减，例如ηt = ηtα（通常α = −1或者−0.5）、ηt = ηαt
+（如α = 0.95）或者每迭代若⼲次后将学习率衰减⼀次。如此⼀来，学习率和（小批量）随机梯度
+乘积的⽅差会减小。而梯度下降在迭代过程中⼀直使⽤⽬标函数的真实梯度，⽆须⾃我衰减学习
+率。
+266
+7. 优化算法
+
+小批量随机梯度下降中每次迭代的计算开销为O(|B|)。当批量⼤小为1时，该算法即为随机梯度
+下降；当批量⼤小等于训练数据样本数时，该算法即为梯度下降。当批量较小时，每次迭代中使
+⽤的样本少，这会导致并⾏处理和内存使⽤效率变低。这使得在计算同样数⽬样本的情况下⽐使
+⽤更⼤批量时所花时间更多。当批量较⼤时，每个小批量梯度⾥可能含有更多的冗余信息。为了
+得到较好的解，批量较⼤时⽐批量较小时需要计算的样本数⽬可能更多，例如增⼤迭代周期数。
+7.3.1 读取数据
+本章⾥我们将使⽤⼀个来⾃NASA的测试不同⻜机机翼噪⾳的数据集来⽐较各个优化算法[1]。我
+们使⽤该数据集的前1,500个样本和5个特征，并使⽤标准化对数据进⾏预处理。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import nn, data as gdata, loss as gloss
+import numpy as np
+import time
+def get_data_ch7():
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+data = np.genfromtxt('../data/airfoil_self_noise.dat', delimiter='\t')
+data = (data - data.mean(axis=0)) / data.std(axis=0)
+return nd.array(data[:1500, :-1]), nd.array(data[:1500, -1])
+features, labels = get_data_ch7()
+features.shape
+Out[1]: (1500, 5)
+7.3.2 从零开始实现
+“线性回归的从零开始实现”⼀节中已经实现过小批量随机梯度下降算法。我们在这⾥将它的输
+⼊参数变得更加通⽤，主要是为了⽅便本章后⾯介绍的其他优化算法也可以使⽤同样的输⼊。具
+体来说，我们添加了⼀个状态输⼊states并将超参数放在字典hyperparams⾥。此外，我们将
+在训练函数⾥对各个小批量样本的损失求平均，因此优化算法⾥的梯度不需要除以批量⼤小。
+In [2]: def sgd(params, states, hyperparams):
+for p in params:
+p[:] -= hyperparams['lr'] * p.grad
+7.3. ⼩批量随机梯度下降
+267
+
+下⾯实现⼀个通⽤的训练函数，以⽅便本章后⾯介绍的其他优化算法使⽤。它初始化⼀个线性回
+归模型，然后可以使⽤小批量随机梯度下降以及后续小节介绍的其他算法来训练模型。
+In [3]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def train_ch7(trainer_fn, states, hyperparams, features, labels,
+batch_size=10, num_epochs=2):
+# 初始化模型
+net, loss = d2l.linreg, d2l.squared_loss
+w = nd.random.normal(scale=0.01, shape=(features.shape[1], 1))
+b = nd.zeros(1)
+w.attach_grad()
+b.attach_grad()
+def eval_loss():
+return loss(net(features, w, b), labels).mean().asscalar()
+ls = [eval_loss()]
+data_iter = gdata.DataLoader(
+gdata.ArrayDataset(features, labels), batch_size, shuffle=True)
+for _ in range(num_epochs):
+start = time.time()
+for batch_i, (X, y) in enumerate(data_iter):
+with autograd.record():
+l = loss(net(X, w, b), y).mean()
+# 使⽤平均损失
+l.backward()
+trainer_fn([w, b], states, hyperparams)
+# 迭代模型参数
+if (batch_i + 1) * batch_size % 100 == 0:
+ls.append(eval_loss())
+# 每100个样本记录下当前训练误差
+# 打印结果和作图
+print('loss: %f, %f sec per epoch' % (ls[-1], time.time() - start))
+d2l.set_figsize()
+d2l.plt.plot(np.linspace(0, num_epochs, len(ls)), ls)
+d2l.plt.xlabel('epoch')
+d2l.plt.ylabel('loss')
+当批量⼤小为样本总数1,500时，优化使⽤的是梯度下降。梯度下降的1个迭代周期对模型参数只
+迭代1次。可以看到6次迭代后⽬标函数值（训练损失）的下降趋向了平稳。
+In [4]: def train_sgd(lr, batch_size, num_epochs=2):
+train_ch7(sgd, None, {'lr': lr}, features, labels, batch_size, num_epochs)
+train_sgd(1, 1500, 6)
+loss: 0.246095, 0.023798 sec per epoch
+268
+7. 优化算法
+
+当批量⼤小为1时，优化使⽤的是随机梯度下降。为了简化实现，有关（小批量）随机梯度下降的
+实验中，我们未对学习率进⾏⾃我衰减，而是直接采⽤较小的常数学习率。随机梯度下降中，每
+处理⼀个样本会更新⼀次⾃变量（模型参数），⼀个迭代周期⾥会对⾃变量进⾏1,500次更新。可
+以看到，⽬标函数值的下降在1个迭代周期后就变得较为平缓。
+In [5]: train_sgd(0.005, 1)
+loss: 0.243001, 1.681222 sec per epoch
+虽然随机梯度下降和梯度下降在⼀个迭代周期⾥都处理了1,500个样本，但实验中随机梯度下降
+的⼀个迭代周期耗时更多。这是因为随机梯度下降在⼀个迭代周期⾥做了更多次的⾃变量迭代，
+而且单样本的梯度计算难以有效利⽤⽮量计算。
+7.3. ⼩批量随机梯度下降
+269
+
+当批量⼤小为10时，优化使⽤的是小批量随机梯度下降。它在每个迭代周期的耗时介于梯度下降
+和随机梯度下降的耗时之间。
+In [6]: train_sgd(0.05, 10)
+loss: 0.242492, 0.190521 sec per epoch
+7.3.3 简洁实现
+在Gluon⾥可以通过创建Trainer实例来调⽤优化算法。这能让实现更简洁。下⾯实现⼀个通
+⽤的训练函数，它通过优化算法的名字trainer_name和超参数trainer_hyperparams来创
+建Trainer实例。
+In [7]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def train_gluon_ch7(trainer_name, trainer_hyperparams, features, labels,
+batch_size=10, num_epochs=2):
+# 初始化模型
+net = nn.Sequential()
+net.add(nn.Dense(1))
+net.initialize(init.Normal(sigma=0.01))
+loss = gloss.L2Loss()
+def eval_loss():
+return loss(net(features), labels).mean().asscalar()
+ls = [eval_loss()]
+data_iter = gdata.DataLoader(
+270
+7. 优化算法
+
+gdata.ArrayDataset(features, labels), batch_size, shuffle=True)
+# 创建Trainer实例来迭代模型参数
+trainer = gluon.Trainer(
+net.collect_params(), trainer_name, trainer_hyperparams)
+for _ in range(num_epochs):
+start = time.time()
+for batch_i, (X, y) in enumerate(data_iter):
+with autograd.record():
+l = loss(net(X), y)
+l.backward()
+trainer.step(batch_size)
+# 在Trainer实例⾥做梯度平均
+if (batch_i + 1) * batch_size % 100 == 0:
+ls.append(eval_loss())
+# 打印结果和作图
+print('loss: %f, %f sec per epoch' % (ls[-1], time.time() - start))
+d2l.set_figsize()
+d2l.plt.plot(np.linspace(0, num_epochs, len(ls)), ls)
+d2l.plt.xlabel('epoch')
+d2l.plt.ylabel('loss')
+使⽤Gluon重复上⼀个实验。
+In [8]: train_gluon_ch7('sgd', {'learning_rate': 0.05}, features, labels, 10)
+loss: 0.242901, 0.192262 sec per epoch
+7.3. ⼩批量随机梯度下降
+271
+
+⼩结
+• 小批量随机梯度每次随机均匀采样⼀个小批量的训练样本来计算梯度。
+• 在实际中，（小批量）随机梯度下降的学习率可以在迭代过程中⾃我衰减。
+• 通常，小批量随机梯度在每个迭代周期的耗时介于梯度下降和随机梯度下降的耗时之间。
+练习
+• 修改批量⼤小和学习率，观察⽬标函数值的下降速度和每个迭代周期的耗时。
+• 查阅MXNet⽂档，使⽤Trainer类的set_learning_rate函数，令小批量随机梯度下降
+的学习率每过⼀个迭代周期减小到原值的1/10。
+参考⽂献
+[1] ⻜机机翼噪⾳数据集。https://archive.ics.uci.edu/ml/datasets/Airfoil+Self-Noise
+扫码直达讨论区
+7.4 动量法
+在“梯度下降和随机梯度下降”⼀节中我们提到，⽬标函数有关⾃变量的梯度代表了⽬标函数在
+⾃变量当前位置下降最快的⽅向。因此，梯度下降也叫作最陡下降（steepest descent）。在每次
+迭代中，梯度下降根据⾃变量当前位置，沿着当前位置的梯度更新⾃变量。然而，如果⾃变量的
+迭代⽅向仅仅取决于⾃变量当前位置，这可能会带来⼀些问题。
+272
+7. 优化算法
+
+7.4.1 梯度下降的问题
+让我们考虑⼀个输⼊和输出分别为⼆维向量x = [x1, x2]⊤和标量的⽬标函数f(x) = 0.1x2
+1 + 2x2
+2。
+与“梯度下降和随机梯度下降”⼀节中不同，这⾥将x2
+1系数从1减小到了0.1。下⾯实现基于这个
+⽬标函数的梯度下降，并演⽰使⽤学习率为0.4时⾃变量的迭代轨迹。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import nd
+eta = 0.4
+def f_2d(x1, x2):
+return 0.1 * x1 ** 2 + 2 * x2 ** 2
+def gd_2d(x1, x2, s1, s2):
+return (x1 - eta * 0.2 * x1, x2 - eta * 4 * x2, 0, 0)
+d2l.show_trace_2d(f_2d, d2l.train_2d(gd_2d))
+epoch 20, x1 -0.943467, x2 -0.000073
+可以看到，同⼀位置上，⽬标函数在竖直⽅向（x2轴⽅向）⽐在⽔平⽅向（x1轴⽅向）的斜率的
+绝对值更⼤。因此，给定学习率，梯度下降迭代⾃变量时会使⾃变量在竖直⽅向⽐在⽔平⽅向移
+动幅度更⼤。那么，我们需要⼀个较小的学习率从而避免⾃变量在竖直⽅向上越过⽬标函数最优
+解。然而，这会造成⾃变量在⽔平⽅向上朝最优解移动变慢。
+7.4. 动量法
+273
+
+下⾯我们试着将学习率调得稍⼤⼀点，此时⾃变量在竖直⽅向不断越过最优解并逐渐发散。
+In [2]: eta = 0.6
+d2l.show_trace_2d(f_2d, d2l.train_2d(gd_2d))
+epoch 20, x1 -0.387814, x2 -1673.365109
+7.4.2 动量法
+动量法的提出是为了解决梯度下降的上述问题。由于小批量随机梯度下降⽐梯度下降更为⼴义，
+本章后续讨论将沿⽤“小批量随机梯度下降”⼀节中时间步t的小批量随机梯度gt的定义。设时间
+步t的⾃变量为xt，学习率为ηt。在时间步0，动量法创建速度变量v0，并将其元素初始化成0。在
+时间步t > 0，动量法对每次迭代的步骤做如下修改：
+vt ←γvt−1 + ηtgt,
+xt ←xt−1 −vt,
+其中，动量超参数γ满⾜0 ≤γ < 1。当γ = 0时，动量法等价于小批量随机梯度下降。
+在解释动量法的数学原理前，让我们先从实验中观察梯度下降在使⽤动量法后的迭代轨迹。
+In [3]: def momentum_2d(x1, x2, v1, v2):
+v1 = gamma * v1 + eta * 0.2 * x1
+v2 = gamma * v2 + eta * 4 * x2
+return x1 - v1, x2 - v2, v1, v2
+eta, gamma = 0.4, 0.5
+d2l.show_trace_2d(f_2d, d2l.train_2d(momentum_2d))
+274
+7. 优化算法
+
+epoch 20, x1 -0.062843, x2 0.001202
+可以看到使⽤较小的学习率η = 0.4和动量超参数γ = 0.5时，动量法在竖直⽅向上的移动更加平
+滑，且在⽔平⽅向上更快逼近最优解。下⾯使⽤较⼤的学习率η = 0.6，此时⾃变量也不再发散。
+In [4]: eta = 0.6
+d2l.show_trace_2d(f_2d, d2l.train_2d(momentum_2d))
+epoch 20, x1 0.007188, x2 0.002553
+7.4. 动量法
+275
+
+指数加权移动平均
+为了从数学上理解动量法，让我们先解释⼀下指数加权移动平均（exponentially weighted moving
+average）。给定超参数0 ≤γ < 1，当前时间步t的变量yt是上⼀时间步t −1的变量yt−1和当前时
+间步另⼀变量xt的线性组合：
+yt = γyt−1 + (1 −γ)xt.
+我们可以对yt展开：
+yt = (1 −γ)xt + γyt−1
+= (1 −γ)xt + (1 −γ) · γxt−1 + γ2yt−2
+= (1 −γ)xt + (1 −γ) · γxt−1 + (1 −γ) · γ2xt−2 + γ3yt−3
+. . .
+令n = 1/(1 −γ)，那么(1 −1/n)n = γ1/(1−γ)。因为
+lim
+n→∞
+(
+1 −1
+n
+)n
+= exp(−1) ≈0.3679,
+所以当γ →1时，γ1/(1−γ) = exp(−1)，如0.9520 ≈exp(−1)。如果把exp(−1)当作⼀个⽐较小的
+数，我们可以在近似中忽略所有含γ1/(1−γ)和⽐γ1/(1−γ)更⾼阶的系数的项。例如，当γ = 0.95时，
+yt ≈0.05
+19
+∑
+i=0
+0.95ixt−i.
+因此，在实际中，我们常常将yt看作是对最近1/(1 −γ)个时间步的xt值的加权平均。例如，当γ =
+0.95时，yt可以被看作对最近20个时间步的xt值的加权平均；当γ = 0.9时，yt可以看作是对最
+近10个时间步的xt值的加权平均。而且，离当前时间步t越近的xt值获得的权重越⼤（越接近1）。
+由指数加权移动平均理解动量法
+现在，我们对动量法的速度变量做变形：
+vt ←γvt−1 + (1 −γ)
+(
+ηt
+1 −γ gt
+)
+.
+由指数加权移动平均的形式可得，速度变量vt实际上对序列{ηt−igt−i/(1 −γ) : i = 0, . . . , 1/(1 −
+γ) −1}做了指数加权移动平均。换句话说，相⽐于小批量随机梯度下降，动量法在每个时间步的
+⾃变量更新量近似于将前者对应的最近1/(1 −γ)个时间步的更新量做了指数加权移动平均后再
+276
+7. 优化算法
+
+除以1 −γ。所以，在动量法中，⾃变量在各个⽅向上的移动幅度不仅取决当前梯度，还取决于过
+去的各个梯度在各个⽅向上是否⼀致。在本节之前⽰例的优化问题中，所有梯度在⽔平⽅向上为
+正（向右），而在竖直⽅向上时正（向上）时负（向下）。这样，我们就可以使⽤较⼤的学习率，从
+而使⾃变量向最优解更快移动。
+7.4.3 从零开始实现
+相对于小批量随机梯度下降，动量法需要对每⼀个⾃变量维护⼀个同它⼀样形状的速度变量，且
+超参数⾥多了动量超参数。实现中，我们将速度变量⽤更⼴义的状态变量states表⽰。
+In [5]: features, labels = d2l.get_data_ch7()
+def init_momentum_states():
+v_w = nd.zeros((features.shape[1], 1))
+v_b = nd.zeros(1)
+return (v_w, v_b)
+def sgd_momentum(params, states, hyperparams):
+for p, v in zip(params, states):
+v[:] = hyperparams['momentum'] * v + hyperparams['lr'] * p.grad
+p[:] -= v
+我们先将动量超参数momentum设0.5，这时可以看成是特殊的小批量随机梯度下降：其小批量随
+机梯度为最近2个时间步的2倍小批量梯度的加权平均。
+In [6]: d2l.train_ch7(sgd_momentum, init_momentum_states(),
+{'lr': 0.02, 'momentum': 0.5}, features, labels)
+loss: 0.244630, 0.296148 sec per epoch
+7.4. 动量法
+277
+
+将动量超参数momentum增⼤到0.9，这时依然可以看成是特殊的小批量随机梯度下降：其小批量
+随机梯度为最近10个时间步的10倍小批量梯度的加权平均。我们先保持学习率0.02不变。
+In [7]: d2l.train_ch7(sgd_momentum, init_momentum_states(),
+{'lr': 0.02, 'momentum': 0.9}, features, labels)
+loss: 0.244911, 0.218726 sec per epoch
+可⻅⽬标函数值在后期迭代过程中的变化不够平滑。直觉上，10倍小批量梯度⽐2倍小批量梯度
+⼤了5倍，我们可以试着将学习率减小到原来的1/5。此时⽬标函数值在下降了⼀段时间后变化更
+加平滑。
+In [8]: d2l.train_ch7(sgd_momentum, init_momentum_states(),
+278
+7. 优化算法
+
+{'lr': 0.004, 'momentum': 0.9}, features, labels)
+loss: 0.243386, 0.219983 sec per epoch
+7.4.4 简洁实现
+在Gluon中，只需要在Trainer实例中通过momentum来指定动量超参数即可使⽤动量法。
+In [9]: d2l.train_gluon_ch7('sgd', {'learning_rate': 0.004, 'momentum': 0.9},
+features, labels)
+loss: 0.243465, 0.243837 sec per epoch
+7.4. 动量法
+279
+
+⼩结
+• 动量法使⽤了指数加权移动平均的思想。它将过去时间步的梯度做了加权平均，且权重按
+时间步指数衰减。
+• 动量法使得相邻时间步的⾃变量更新在⽅向上更加⼀致。
+练习
+• 使⽤其他动量超参数和学习率的组合，观察并分析实验结果。
+扫码直达讨论区
+7.5 AdaGrad算法
+在之前介绍过的优化算法中，⽬标函数⾃变量的每⼀个元素在相同时间步都使⽤同⼀个学习率来
+⾃我迭代。举个例⼦，假设⽬标函数为f，⾃变量为⼀个⼆维向量[x1, x2]⊤，该向量中每⼀个元素
+在迭代时都使⽤相同的学习率。例如，在学习率为η的梯度下降中，元素x1和x2都使⽤相同的学
+习率η来⾃我迭代：
+x1 ←x1 −η ∂f
+∂x1
+,
+x2 ←x2 −η ∂f
+∂x2
+.
+在“动量法”⼀节⾥我们看到当x1和x2的梯度值有较⼤差别时，需要选择⾜够小的学习率使得⾃
+变量在梯度值较⼤的维度上不发散。但这样会导致⾃变量在梯度值较小的维度上迭代过慢。动量
+法依赖指数加权移动平均使得⾃变量的更新⽅向更加⼀致，从而降低发散的可能。本节我们介
+绍AdaGrad算法，它根据⾃变量在每个维度的梯度值的⼤小来调整各个维度上的学习率，从而避
+免统⼀的学习率难以适应所有维度的问题[1]。
+280
+7. 优化算法
+
+7.5.1 算法
+AdaGrad算法会使⽤⼀个小批量随机梯度gt按元素平⽅的累加变量st。在时间步0，AdaGrad将s0中
+每个元素初始化为0。在时间步t，⾸先将小批量随机梯度gt按元素平⽅后累加到变量st：
+st ←st−1 + gt ⊙gt,
+其中⊙是按元素相乘。接着，我们将⽬标函数⾃变量中每个元素的学习率通过按元素运算重新调
+整⼀下：
+xt ←xt−1 −
+η
+√st + ϵ ⊙gt,
+其中η是学习率，ϵ是为了维持数值稳定性而添加的常数，如10−6。这⾥开⽅、除法和乘法的运算
+都是按元素运算的。这些按元素运算使得⽬标函数⾃变量中每个元素都分别拥有⾃⼰的学习率。
+7.5.2 特点
+需要强调的是，小批量随机梯度按元素平⽅的累加变量st出现在学习率的分⺟项中。因此，如果
+⽬标函数有关⾃变量中某个元素的偏导数⼀直都较⼤，那么该元素的学习率将下降较快；反之，
+如果⽬标函数有关⾃变量中某个元素的偏导数⼀直都较小，那么该元素的学习率将下降较慢。然
+而，由于st⼀直在累加按元素平⽅的梯度，⾃变量中每个元素的学习率在迭代过程中⼀直在降低
+（或不变）。所以，当学习率在迭代早期降得较快且当前解依然不佳时，AdaGrad算法在迭代后期
+由于学习率过小，可能较难找到⼀个有⽤的解。
+下⾯我们仍然以⽬标函数f(x) = 0.1x2
+1 +2x2
+2为例观察AdaGrad算法对⾃变量的迭代轨迹。我们实
+现AdaGrad算法并使⽤和上⼀节实验中相同的学习率0.4。可以看到，⾃变量的迭代轨迹较平滑。
+但由于st的累加效果使学习率不断衰减，⾃变量在迭代后期的移动幅度较小。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+import math
+from mxnet import nd
+def adagrad_2d(x1, x2, s1, s2):
+g1, g2, eps = 0.2 * x1, 4 * x2, 1e-6
+# 前两项为⾃变量梯度
+s1 += g1 ** 2
+s2 += g2 ** 2
+x1 -= eta / math.sqrt(s1 + eps) * g1
+x2 -= eta / math.sqrt(s2 + eps) * g2
+7.5. AdaGrad算法
+281
+
+return x1, x2, s1, s2
+def f_2d(x1, x2):
+return 0.1 * x1 ** 2 + 2 * x2 ** 2
+eta = 0.4
+d2l.show_trace_2d(f_2d, d2l.train_2d(adagrad_2d))
+epoch 20, x1 -2.382563, x2 -0.158591
+下⾯将学习率增⼤到2。可以看到⾃变量更为迅速地逼近了最优解。
+In [2]: eta = 2
+d2l.show_trace_2d(f_2d, d2l.train_2d(adagrad_2d))
+epoch 20, x1 -0.002295, x2 -0.000000
+282
+7. 优化算法
+
+7.5.3 从零开始实现
+同动量法⼀样，AdaGrad算法需要对每个⾃变量维护同它⼀样形状的状态变量。我们根
+据AdaGrad算法中的公式实现该算法。
+In [3]: features, labels = d2l.get_data_ch7()
+def init_adagrad_states():
+s_w = nd.zeros((features.shape[1], 1))
+s_b = nd.zeros(1)
+return (s_w, s_b)
+def adagrad(params, states, hyperparams):
+eps = 1e-6
+for p, s in zip(params, states):
+s[:] += p.grad.square()
+p[:] -= hyperparams['lr'] * p.grad / (s + eps).sqrt()
+与“小批量随机梯度下降”⼀节中的实验相⽐，这⾥使⽤更⼤的学习率来训练模型。
+In [4]: d2l.train_ch7(adagrad, init_adagrad_states(), {'lr': 0.1}, features, labels)
+loss: 0.243168, 0.342836 sec per epoch
+7.5. AdaGrad算法
+283
+
+7.5.4 简洁实现
+通过名称为“adagrad”的Trainer实例，我们便可使⽤Gluon提供的AdaGrad算法来训练模型。
+In [5]: d2l.train_gluon_ch7('adagrad', {'learning_rate': 0.1}, features, labels)
+loss: 0.244961, 0.310884 sec per epoch
+284
+7. 优化算法
+
+⼩结
+• AdaGrad算法在迭代过程中不断调整学习率，并让⽬标函数⾃变量中每个元素都分别拥有
+⾃⼰的学习率。
+• 使⽤AdaGrad算法时，⾃变量中每个元素的学习率在迭代过程中⼀直在降低（或不变）。
+练习
+• 在介绍AdaGrad算法的特点时，我们提到了它可能存在的问题。你能想到什么办法来解决
+这个问题？
+• 在实验中尝试使⽤其他的初始学习率，结果有什么变化？
+参考⽂献
+[1] Duchi, J., Hazan, E., & Singer, Y. (2011). Adaptive subgradient methods for online learning
+and stochastic optimization. Journal of Machine Learning Research, 12(Jul), 2121-2159.
+扫码直达讨论区
+7.6 RMSProp算法
+我们在“AdaGrad算法”⼀节中提到，因为调整学习率时分⺟上的变量st⼀直在累加按元素平⽅
+的小批量随机梯度，所以⽬标函数⾃变量每个元素的学习率在迭代过程中⼀直在降低（或不变）。
+因此，当学习率在迭代早期降得较快且当前解依然不佳时，AdaGrad算法在迭代后期由于学习率
+过小，可能较难找到⼀个有⽤的解。为了解决这⼀问题，RMSProp算法对AdaGrad算法做了⼀点
+小小的修改。该算法源⾃Coursera上的⼀⻔课程，即“机器学习的神经⽹络”[1]。
+7.6. RMSProp算法
+285
+
+7.6.1 算法
+我们在“动量法”⼀节⾥介绍过指数加权移动平均。不同于AdaGrad算法⾥状态变量st是截⾄时
+间步t所有小批量随机梯度gt按元素平⽅和，RMSProp算法将这些梯度按元素平⽅做指数加权移
+动平均。具体来说，给定超参数0 ≤γ < 1，RMSProp算法在时间步t > 0计算
+st ←γst−1 + (1 −γ)gt ⊙gt.
+和AdaGrad算法⼀样，RMSProp算法将⽬标函数⾃变量中每个元素的学习率通过按元素运算重新
+调整，然后更新⾃变量
+xt ←xt−1 −
+η
+√st + ϵ ⊙gt,
+其中η是学习率，ϵ是为了维持数值稳定性而添加的常数，如10−6。因为RMSProp算法的状态变
+量st是对平⽅项gt ⊙gt的指数加权移动平均，所以可以看作是最近1/(1 −γ)个时间步的小批量
+随机梯度平⽅项的加权平均。如此⼀来，⾃变量每个元素的学习率在迭代过程中就不再⼀直降低
+（或不变）。
+照例，让我们先观察RMSProp算法对⽬标函数f(x) = 0.1x2
+1 + 2x2
+2中⾃变量的迭代轨迹。回忆在
+“AdaGrad算法”⼀节使⽤的学习率为0.4的AdaGrad算法，⾃变量在迭代后期的移动幅度较小。但
+在同样的学习率下，RMSProp算法可以更快逼近最优解。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+import math
+from mxnet import nd
+def rmsprop_2d(x1, x2, s1, s2):
+g1, g2, eps = 0.2 * x1, 4 * x2, 1e-6
+s1 = gamma * s1 + (1 - gamma) * g1 ** 2
+s2 = gamma * s2 + (1 - gamma) * g2 ** 2
+x1 -= eta / math.sqrt(s1 + eps) * g1
+x2 -= eta / math.sqrt(s2 + eps) * g2
+return x1, x2, s1, s2
+def f_2d(x1, x2):
+return 0.1 * x1 ** 2 + 2 * x2 ** 2
+eta, gamma = 0.4, 0.9
+d2l.show_trace_2d(f_2d, d2l.train_2d(rmsprop_2d))
+epoch 20, x1 -0.010599, x2 0.000000
+286
+7. 优化算法
+
+7.6.2 从零开始实现
+接下来按照RMSProp算法中的公式实现该算法。
+In [2]: features, labels = d2l.get_data_ch7()
+def init_rmsprop_states():
+s_w = nd.zeros((features.shape[1], 1))
+s_b = nd.zeros(1)
+return (s_w, s_b)
+def rmsprop(params, states, hyperparams):
+gamma, eps = hyperparams['gamma'], 1e-6
+for p, s in zip(params, states):
+s[:] = gamma * s + (1 - gamma) * p.grad.square()
+p[:] -= hyperparams['lr'] * p.grad / (s + eps).sqrt()
+我们将初始学习率设为0.01，并将超参数γ设为0.9。此时，变量st可看作是最近1/(1−0.9) = 10个
+时间步的平⽅项gt ⊙gt的加权平均。
+In [3]: d2l.train_ch7(rmsprop, init_rmsprop_states(), {'lr': 0.01, 'gamma': 0.9},
+features, labels)
+loss: 0.243790, 0.360717 sec per epoch
+7.6. RMSProp算法
+287
+
+7.6.3 简洁实现
+通过名称为“rmsprop”的Trainer实例，我们便可使⽤Gluon提供的RMSProp算法来训练模型。
+注意，超参数γ通过gamma1指定。
+In [4]: d2l.train_gluon_ch7('rmsprop', {'learning_rate': 0.01, 'gamma1': 0.9},
+features, labels)
+loss: 0.245736, 0.245414 sec per epoch
+288
+7. 优化算法
+
+⼩结
+• RMSProp算法和AdaGrad算法的不同在于，RMSProp算法使⽤了小批量随机梯度按元素平
+⽅的指数加权移动平均来调整学习率。
+练习
+• 把γ的值设为1，实验结果有什么变化？为什么？
+• 试着使⽤其他的初始学习率和γ超参数的组合，观察并分析实验结果。
+参考⽂献
+[1] Tieleman, T., & Hinton, G. (2012). Lecture 6.5-rmsprop: Divide the gradient by a running
+average of its recent magnitude. COURSERA: Neural networks for machine learning, 4(2), 26-
+31.
+扫码直达讨论区
+7.7 AdaDelta算法
+除了RMSProp算法以外，另⼀个常⽤优化算法AdaDelta算法也针对AdaGrad算法在迭代后期可能
+较难找到有⽤解的问题做了改进[1]。有意思的是，AdaDelta算法没有学习率这⼀超参数。
+7.7.1 算法
+AdaDelta算法也像RMSProp算法⼀样，使⽤了小批量随机梯度gt按元素平⽅的指数加权移动平均
+变量st。在时间步0，它的所有元素被初始化为0。给定超参数0 ≤ρ < 1（对应RMSProp算法中
+7.7. AdaDelta算法
+289
+
+的γ），在时间步t > 0，同RMSProp算法⼀样计算
+st ←ρst−1 + (1 −ρ)gt ⊙gt.
+与RMSProp算法不同的是，AdaDelta算法还维护⼀个额外的状态变量∆xt，其元素同样在时间
+步0时被初始化为0。我们使⽤∆xt−1来计算⾃变量的变化量：
+g′
+t ←
+√
+∆xt−1 + ϵ
+st + ϵ
+⊙gt,
+其中ϵ是为了维持数值稳定性而添加的常数，如10−5。接着更新⾃变量：
+xt ←xt−1 −g′
+t.
+最后，我们使⽤∆xt来记录⾃变量变化量g′
+t按元素平⽅的指数加权移动平均：
+∆xt ←ρ∆xt−1 + (1 −ρ)g′
+t ⊙g′
+t.
+可以看到，如不考虑ϵ的影响，AdaDelta算法与RMSProp算法的不同之处在于使⽤
+√
+∆xt−1来替
+代超参数η。
+7.7.2 从零开始实现
+AdaDelta算法需要对每个⾃变量维护两个状态变量，即st和∆xt。我们按AdaDelta算法中的公式
+实现该算法。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import nd
+features, labels = d2l.get_data_ch7()
+def init_adadelta_states():
+s_w, s_b = nd.zeros((features.shape[1], 1)), nd.zeros(1)
+delta_w, delta_b = nd.zeros((features.shape[1], 1)), nd.zeros(1)
+return ((s_w, delta_w), (s_b, delta_b))
+def adadelta(params, states, hyperparams):
+rho, eps = hyperparams['rho'], 1e-5
+for p, (s, delta) in zip(params, states):
+s[:] = rho * s + (1 - rho) * p.grad.square()
+g = ((delta + eps).sqrt() / (s + eps).sqrt()) * p.grad
+p[:] -= g
+delta[:] = rho * delta + (1 - rho) * g * g
+290
+7. 优化算法
+
+使⽤超参数ρ = 0.9来训练模型。
+In [2]: d2l.train_ch7(adadelta, init_adadelta_states(), {'rho': 0.9}, features,
+labels)
+loss: 0.242859, 0.365652 sec per epoch
+7.7.3 简洁实现
+通过名称为“adadelta”的Trainer实例，我们便可使⽤Gluon提供的AdaDelta算法。它的超参
+数可以通过rho来指定。
+In [3]: d2l.train_gluon_ch7('adadelta', {'rho': 0.9}, features, labels)
+loss: 0.243492, 0.405834 sec per epoch
+7.7. AdaDelta算法
+291
+
+⼩结
+• AdaDelta算法没有学习率超参数，它通过使⽤有关⾃变量更新量平⽅的指数加权移动平均
+的项来替代RMSProp算法中的学习率。
+练习
+• 调节AdaDelta算法中超参数ρ的值，观察实验结果。
+参考⽂献
+[1] Zeiler, M. D. (2012).
+ADADELTA: an adaptive learning rate method.
+arXiv preprint
+arXiv:1212.5701.
+扫码直达讨论区
+292
+7. 优化算法
+
+7.8 Adam算法
+Adam算法在RMSProp算法基础上对小批量随机梯度也做了指数加权移动平均[1]。下⾯我们来介
+绍这个算法。
+7.8.1 算法
+Adam算法使⽤了动量变量vt和RMSProp算法中小批量随机梯度按元素平⽅的指数加权移动平均
+变量st，并在时间步0将它们中每个元素初始化为0。给定超参数0 ≤β1 < 1（算法作者建议设
+为0.9），时间步t的动量变量vt即小批量随机梯度gt的指数加权移动平均：
+vt ←β1vt−1 + (1 −β1)gt.
+和RMSProp算法中⼀样，给定超参数0 ≤β2 < 1（算法作者建议设为0.999），将小批量随机梯度
+按元素平⽅后的项gt ⊙gt做指数加权移动平均得到st：
+st ←β2st−1 + (1 −β2)gt ⊙gt.
+由于我们将v0和s0中的元素都初始化为0，在时间步t我们得到vt = (1 −β1) ∑t
+i=1 βt−i
+1
+gi。将过去
+各时间步小批量随机梯度的权值相加，得到(1 −β1) ∑t
+i=1 βt−i
+1
+= 1 −βt
+1。需要注意的是，当t较
+小时，过去各时间步小批量随机梯度权值之和会较小。例如，当β1 = 0.9时，v1 = 0.1g1。为了消
+除这样的影响，对于任意时间步t，我们可以将vt再除以1 −βt
+1，从而使过去各时间步小批量随机
+梯度权值之和为1。这也叫作偏差修正。在Adam算法中，我们对变量vt和st均作偏差修正：
+ˆvt ←
+vt
+1 −βt
+1
+,
+ˆst ←
+st
+1 −βt
+2
+.
+接下来，Adam算法使⽤以上偏差修正后的变量ˆvt和ˆst，将模型参数中每个元素的学习率通过按
+元素运算重新调整：
+g′
+t ←
+ηˆvt
+√ˆst + ϵ,
+其中η是学习率，ϵ是为了维持数值稳定性而添加的常数，如10−8。和AdaGrad算法、RMSProp算法
+以及AdaDelta算法⼀样，⽬标函数⾃变量中每个元素都分别拥有⾃⼰的学习率。最后，使⽤g′
+t迭
+代⾃变量：
+xt ←xt−1 −g′
+t.
+7.8. Adam算法
+293
+
+7.8.2 从零开始实现
+我们按照Adam算法中的公式实现该算法。其中时间步t通过hyperparams参数传⼊adam函数。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import nd
+features, labels = d2l.get_data_ch7()
+def init_adam_states():
+v_w, v_b = nd.zeros((features.shape[1], 1)), nd.zeros(1)
+s_w, s_b = nd.zeros((features.shape[1], 1)), nd.zeros(1)
+return ((v_w, s_w), (v_b, s_b))
+def adam(params, states, hyperparams):
+beta1, beta2, eps = 0.9, 0.999, 1e-6
+for p, (v, s) in zip(params, states):
+v[:] = beta1 * v + (1 - beta1) * p.grad
+s[:] = beta2 * s + (1 - beta2) * p.grad.square()
+v_bias_corr = v / (1 - beta1 ** hyperparams['t'])
+s_bias_corr = s / (1 - beta2 ** hyperparams['t'])
+p[:] -= hyperparams['lr'] * v_bias_corr / (s_bias_corr.sqrt() + eps)
+hyperparams['t'] += 1
+使⽤学习率为0.01的Adam算法来训练模型。
+In [2]: d2l.train_ch7(adam, init_adam_states(), {'lr': 0.01, 't': 1}, features,
+labels)
+loss: 0.243572, 0.407001 sec per epoch
+294
+7. 优化算法
+
+7.8.3 简洁实现
+通过名称为“adam”的Trainer实例，我们便可使⽤Gluon提供的Adam算法。
+In [3]: d2l.train_gluon_ch7('adam', {'learning_rate': 0.01}, features, labels)
+loss: 0.242886, 0.253429 sec per epoch
+7.8. Adam算法
+295
+
+⼩结
+• Adam算法在RMSProp算法的基础上对小批量随机梯度也做了指数加权移动平均。
+• Adam算法使⽤了偏差修正。
+练习
+• 调节学习率，观察并分析实验结果。
+• 有⼈说Adam算法是RMSProp算法与动量法的结合。想⼀想，这是为什么？
+参考⽂献
+[1] Kingma, D. P., & Ba, J. (2014). Adam: A method for stochastic optimization. arXiv preprint
+arXiv:1412.6980.
+扫码直达讨论区
+296
+7. 优化算法

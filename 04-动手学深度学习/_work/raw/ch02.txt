@@ -1,0 +1,669 @@
+2
+预备知识
+在动⼿学习之前，我们需要获取本书的代码，并安装运⾏本书的代码所需要的软件。作为动⼿学
+深度学习的基础，我们还需要了解如何对内存中的数据进⾏操作，以及对函数求梯度的⽅法。最
+后，我们应养成主动查阅⽂档来学习代码的良好习惯。
+2.1 获取和运⾏本书的代码
+本节将介绍如何获取本书的代码和安装运⾏代码所依赖的软件。虽然跳过本节不会影响后⾯的阅
+读，但我们还是强烈建议读者按照下⾯的步骤来动⼿操作⼀遍。本书⼤部分章节的练习都涉及改
+动代码并观察运⾏结果。因此，本节是完成这些练习的基础。
+2.1.1 获取代码并安装运⾏环境
+本书的内容和代码均可在⽹上免费获取。我们推荐使⽤conda来安装运⾏代码所依赖的软件。
+conda是⼀个流⾏的Python包管理软件。Windows和Linux/macOS⽤⼾可分别参照以下步骤。
+25
+
+Windows⽤⼾
+第⼀次运⾏需要完整完成下⾯5个步骤。如果是再次运⾏，可以忽略前⾯3步的下载和安装，直接
+跳转到第四步和第五步。
+第⼀步是根据操作系统下载并安装Miniconda，在安装过程中需要勾选“Add Anaconda to the
+system PATH environment variable”选项（如当conda版本为4.6.14时）。
+第⼆步是下载包含本书全部代码的压缩包。我们可以在浏览器的地址栏中输⼊https://zh.d2l.ai/
+d2l-zh-1.0.zip 并按回⻋键进⾏下载。下载完成后，创建⽂件夹“d2l-zh”并将以上压缩包解压到
+这个⽂件夹。在该⽬录⽂件资源管理器的地址栏输⼊cmd进⼊命令⾏模式。
+第三步是使⽤conda创建虚拟（运⾏）环境。conda和pip默认使⽤国外站点来下载软件，我们可
+以配置国内镜像来加速下载（国外⽤⼾⽆须此操作）。
+# 配置清华PyPI镜像（如⽆法运⾏，将pip版本升级到>=10.0.0）
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+接下来使⽤conda创建虚拟环境并安装本书需要的软件。这⾥environment.yml是放置在代码
+压缩包中的⽂件。使⽤⽂本编辑器打开该⽂件，即可查看运⾏压缩包中本书的代码所依赖的软件
+（如MXNet和d2lzh包）及版本号。
+conda env create -f environment.yml
+若使⽤国内镜像后出现安装错误，⾸先取消PyPI镜像配置，即执⾏命令pip config unset
+global.index-url。然后重试命令conda env create -f environment.yml。
+第四步是激活之前创建的环境。激活该环境是能够运⾏本书的代码的前提。如需退出虚拟环境，
+可使⽤命令conda deactivate（若conda版本低于4.4，使⽤命令deactivate）。
+conda activate gluon
+# 若conda版本低于4.4，使⽤命令activate gluon
+第五步是打开Jupyter记事本。
+jupyter notebook
+这时在浏览器打开http://localhost:8888 （通常会⾃动打开）就可以查看和运⾏本书中每⼀节的
+代码了。
+26
+2. 预备知识
+
+本书中若⼲章节的代码会⾃动下载数据集和预训练模型，并默认使⽤美国站点下载。我们可以在
+运⾏Jupyter前指定MXNet使⽤国内站点下载书中的数据和模型（国外⽤⼾⽆须此操作）。
+set MXNET_GLUON_REPO=https://apache-mxnet.s3.cn-north-1.amazonaws.com.cn/ jupyter
+,→notebook
+Linux/macOS⽤⼾
+第⼀步是根据操作系统下载Miniconda，它是⼀个sh⽂件。打开Terminal应⽤进⼊命令⾏来执⾏
+这个sh⽂件，例如：
+# 以Miniconda官⽅⽹站上的安装⽂件名为准
+sh Miniconda3-latest-Linux-x86_64.sh
+安装时会显⽰使⽤条款，按“↓”继续阅读，按“Q”退出阅读。之后需要回答下⾯⼏个问题（如
+当conda版本为4.6.14时）：
+Do you accept the license terms? [yes|no]
+[no] >>> yes
+Do you wish the installer to initialize Miniconda3
+by running conda init? [yes|no]
+[no] >>> yes
+安装完成后，需要让conda⽣效。Linux⽤⼾需要运⾏⼀次source ~/.bashrc或重启命令⾏应
+⽤；macOS⽤⼾需要运⾏⼀次source ~/.bash_profile或重启命令⾏应⽤。
+第⼆步是下载包含本书全部代码的压缩包，解压后进⼊⽂件夹。运⾏以下命令。Linux⽤⼾如未
+安装unzip，可运⾏命令sudo apt install unzip安装。
+mkdir d2l-zh && cd d2l-zh
+curl https://zh.d2l.ai/d2l-zh-1.0.zip -o d2l-zh.zip
+unzip d2l-zh.zip && rm d2l-zh.zip
+第三步⾄第五步可参考前⾯Windows下的安装步骤。若conda版本低于4.4，其中第四步需将命令
+替换为source activate gluon，并使⽤命令source deactivate退出虚拟环境。
+2.1. 获取和运⾏本书的代码
+27
+
+2.1.2 更新代码和运⾏环境
+为了适应深度学习和MXNet的快速发展，本书的开源内容将定期发布新版本。我们推荐⼤家定期
+更新本书的开源内容（如代码）和相应的运⾏环境（如新版MXNet）。以下是更新的具体步骤。
+第⼀步是重新下载最新的包含本书全部代码的压缩包。下载地址为https://zh.d2l.ai/d2l-zh.zip 。
+解压后进⼊⽂件夹“d2l-zh”。
+第⼆步是使⽤下⾯的命令更新运⾏环境：
+conda env update -f environment.yml
+之后的激活环境和运⾏Jupyter步骤跟本节前⾯介绍的⼀致。
+2.1.3 使⽤GPU版的MXNet
+通过前⾯介绍的⽅式安装的MXNet只⽀持CPU计算。本书中部分章节需要或推荐使⽤GPU来运
+⾏。如果你的计算机上有NVIDIA显卡并安装了CUDA，建议使⽤GPU版的MXNet。
+第⼀步是卸载CPU版本MXNet。如果没有安装虚拟环境，可以跳过此步。如果已安装虚拟环境，
+需要先激活该环境，再卸载CPU版本的MXNet。
+pip uninstall mxnet
+然后退出虚拟环境。
+第⼆步是更新依赖为GPU版本的MXNet。使⽤⽂本编辑器打开本书的代码所在根⽬录下的⽂
+件environment.yml，将⾥⾯的字符串“mxnet”替换成对应的GPU版本。例如，如果计算机
+上装的是8.0版本的CUDA，将该⽂件中的字符串“mxnet”改为“mxnet-cu80”。如果计算机上
+安装了其他版本的CUDA（如7.5、9.0、9.2等），对该⽂件中的字符串“mxnet”做类似修改（如
+改为“mxnet-cu75”“mxnet-cu90”“mxnet-cu92”等）。保存⽂件后退出。
+第三步是更新虚拟环境，执⾏命令
+conda env update -f environment.yml
+之后，我们只需要再激活安装环境就可以使⽤GPU版的MXNet运⾏本书中的代码了。需要提醒的
+是，如果之后下载了新代码，那么还需要重复这3步操作以使⽤GPU版的MXNet。
+28
+2. 预备知识
+
+⼩结
+• 为了能够动⼿学深度学习，需要获取本书的代码并安装运⾏环境。
+• 建议⼤家定期更新代码和运⾏环境。
+练习
+• 获取本书的代码并安装运⾏环境。如果你在安装时遇到任何问题，请扫⼀扫本节末尾的⼆
+维码。在讨论区，你可以查阅疑难问题汇总或者提问。
+扫码直达讨论区
+2.2 数据操作
+在深度学习中，我们通常会频繁地对数据进⾏操作。作为动⼿学深度学习的基础，本节将介绍如
+何对内存中的数据进⾏操作。
+在MXNet中，NDArray是⼀个类，也是存储和变换数据的主要⼯具。为了简洁，本书常将NDArray实
+例直接称作NDArray。如果你之前⽤过NumPy，你会发现NDArray和NumPy的多维数组⾮常类
+似。然而，NDArray提供GPU计算和⾃动求梯度等更多功能，这些使NDArray更加适合深度学习。
+2.2.1 创建NDArray
+我们先介绍NDArray的最基本功能。如果对这⾥⽤到的数学操作不是很熟悉，可以参阅附录中
+“数学基础”⼀节。
+⾸先从MXNet导⼊ndarray模块。这⾥的nd是ndarray的缩写形式。
+In [1]: from mxnet import nd
+2.2. 数据操作
+29
+
+然后我们⽤arange函数创建⼀个⾏向量。
+In [2]: x = nd.arange(12)
+x
+Out[2]:
+[ 0.
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+9. 10. 11.]
+<NDArray 12 @cpu(0)>
+这时返回了⼀个NDArray实例，其中包含了从0开始的12个连续整数。从打印x时显⽰的属
+性<NDArray 12 @cpu(0)>可以看出，它是⻓度为12的⼀维数组，且被创建在CPU使⽤的内
+存上。其中“@cpu(0)”⾥的0没有特别的意义，并不代表特定的核。
+我们可以通过shape属性来获取NDArray实例的形状。
+In [3]: x.shape
+Out[3]: (12,)
+我们也能够通过size属性得到NDArray实例中元素（element）的总数。
+In [4]: x.size
+Out[4]: 12
+下⾯使⽤reshape函数把⾏向量x的形状改为(3, 4)，也就是⼀个3⾏4列的矩阵，并记作X。除了
+形状改变之外，X中的元素保持不变。
+In [5]: X = x.reshape((3, 4))
+X
+Out[5]:
+[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11.]]
+<NDArray 3x4 @cpu(0)>
+注意X属性中的形状发⽣了变化。上⾯x.reshape((3, 4))也可写成x.reshape((-1,
+4))或x.reshape((3, -1))。由于x的元素个数是已知的，这⾥的-1是能够通过元素个数和
+其他维度的⼤小推断出来的。
+接下来，我们创建⼀个各元素为0，形状为(2, 3, 4)的张量。实际上，之前创建的向量和矩阵都是
+特殊的张量。
+In [6]: nd.zeros((2, 3, 4))
+Out[6]:
+[[[0. 0. 0. 0.]
+30
+2. 预备知识
+
+[0. 0. 0. 0.]
+[0. 0. 0. 0.]]
+[[0. 0. 0. 0.]
+[0. 0. 0. 0.]
+[0. 0. 0. 0.]]]
+<NDArray 2x3x4 @cpu(0)>
+类似地，我们可以创建各元素为1的张量。
+In [7]: nd.ones((3, 4))
+Out[7]:
+[[1. 1. 1. 1.]
+[1. 1. 1. 1.]
+[1. 1. 1. 1.]]
+<NDArray 3x4 @cpu(0)>
+我们也可以通过Python的列表（list）指定需要创建的NDArray中每个元素的值。
+In [8]: Y = nd.array([[2, 1, 4, 3], [1, 2, 3, 4], [4, 3, 2, 1]])
+Y
+Out[8]:
+[[2. 1. 4. 3.]
+[1. 2. 3. 4.]
+[4. 3. 2. 1.]]
+<NDArray 3x4 @cpu(0)>
+有些情况下，我们需要随机⽣成NDArray中每个元素的值。下⾯我们创建⼀个形状为(3,
+4)的NDArray。它的每个元素都随机采样于均值为0、标准差为1的正态分布。
+In [9]: nd.random.normal(0, 1, shape=(3, 4))
+Out[9]:
+[[ 2.2122064
+0.7740038
+1.0434405
+1.1839255 ]
+[ 1.8917114
+-1.2347414
+-1.771029
+-0.45138445]
+[ 0.57938355 -1.856082
+-1.9768796
+-0.20801921]]
+<NDArray 3x4 @cpu(0)>
+2.2.2 运算
+NDArray⽀持⼤量的运算符（operator）。例如，我们可以对之前创建的两个形状为(3,
+4)的NDArray做按元素加法。所得结果形状不变。
+In [10]: X + Y
+2.2. 数据操作
+31
+
+Out[10]:
+[[ 2.
+2.
+6.
+6.]
+[ 5.
+7.
+9. 11.]
+[12. 12. 12. 12.]]
+<NDArray 3x4 @cpu(0)>
+按元素乘法：
+In [11]: X * Y
+Out[11]:
+[[ 0.
+1.
+8.
+9.]
+[ 4. 10. 18. 28.]
+[32. 27. 20. 11.]]
+<NDArray 3x4 @cpu(0)>
+按元素除法：
+In [12]: X / Y
+Out[12]:
+[[ 0.
+1.
+0.5
+1.
+]
+[ 4.
+2.5
+2.
+1.75]
+[ 2.
+3.
+5.
+11.
+]]
+<NDArray 3x4 @cpu(0)>
+按元素做指数运算：
+In [13]: Y.exp()
+Out[13]:
+[[ 7.389056
+2.7182817 54.59815
+20.085537 ]
+[ 2.7182817
+7.389056
+20.085537
+54.59815
+]
+[54.59815
+20.085537
+7.389056
+2.7182817]]
+<NDArray 3x4 @cpu(0)>
+除了按元素计算外，我们还可以使⽤dot函数做矩阵乘法。下⾯将X与Y的转置做矩阵乘法。由
+于X是3⾏4列的矩阵，Y转置为4⾏3列的矩阵，因此两个矩阵相乘得到3⾏3列的矩阵。
+In [14]: nd.dot(X, Y.T)
+Out[14]:
+[[ 18.
+20.
+10.]
+[ 58.
+60.
+50.]
+[ 98. 100.
+90.]]
+<NDArray 3x3 @cpu(0)>
+我们也可以将多个NDArray连结（concatenate）。下⾯分别在⾏上（维度0，即形状中的最左边元
+32
+2. 预备知识
+
+素）和列上（维度1，即形状中左起第⼆个元素）连结两个矩阵。可以看到，输出的第⼀个NDArray在
+维度0的⻓度（6）为两个输⼊矩阵在维度0的⻓度之和（3 + 3），而输出的第⼆个NDArray在维
+度1的⻓度（8）为两个输⼊矩阵在维度1的⻓度之和（4 + 4）。
+In [15]: nd.concat(X, Y, dim=0), nd.concat(X, Y, dim=1)
+Out[15]: (
+[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11.]
+[ 2.
+1.
+4.
+3.]
+[ 1.
+2.
+3.
+4.]
+[ 4.
+3.
+2.
+1.]]
+<NDArray 6x4 @cpu(0)>,
+[[ 0.
+1.
+2.
+3.
+2.
+1.
+4.
+3.]
+[ 4.
+5.
+6.
+7.
+1.
+2.
+3.
+4.]
+[ 8.
+9. 10. 11.
+4.
+3.
+2.
+1.]]
+<NDArray 3x8 @cpu(0)>)
+使⽤条件判断式可以得到元素为0或1的新的NDArray。以X == Y为例，如果X和Y在相同位置的
+条件判断为真（值相等），那么新的NDArray在相同位置的值为1；反之为0。
+In [16]: X == Y
+Out[16]:
+[[0. 1. 0. 1.]
+[0. 0. 0. 0.]
+[0. 0. 0. 0.]]
+<NDArray 3x4 @cpu(0)>
+对NDArray中的所有元素求和得到只有⼀个元素的NDArray。
+In [17]: X.sum()
+Out[17]:
+[66.]
+<NDArray 1 @cpu(0)>
+我们可以通过asscalar函数将结果变换为Python中的标量。下⾯例⼦中X的L2范数结果同上例
+⼀样是单元素NDArray，但最后结果变换成了Python中的标量。
+In [18]: X.norm().asscalar()
+Out[18]: 22.494442
+我们也可以把Y.exp()、X.sum()、X.norm()等分别改写为nd.exp(Y)、nd.sum(X)、nd.
+norm(X)等。
+2.2. 数据操作
+33
+
+2.2.3 ⼴播机制
+前⾯我们看到如何对两个形状相同的NDArray做按元素运算。当对两个形状不同的NDArray按
+元素运算时，可能会触发⼴播（broadcasting）机制：先适当复制元素使这两个NDArray形状相
+同后再按元素运算。
+定义两个NDArray：
+In [19]: A = nd.arange(3).reshape((3, 1))
+B = nd.arange(2).reshape((1, 2))
+A, B
+Out[19]: (
+[[0.]
+[1.]
+[2.]]
+<NDArray 3x1 @cpu(0)>,
+[[0. 1.]]
+<NDArray 1x2 @cpu(0)>)
+由于A和B分别是3⾏1列和1⾏2列的矩阵，如果要计算A + B，那么A中第⼀列的3个元素被⼴播
+（复制）到了第⼆列，而B中第⼀⾏的2个元素被⼴播（复制）到了第⼆⾏和第三⾏。如此，就可以
+对2个3⾏2列的矩阵按元素相加。
+In [20]: A + B
+Out[20]:
+[[0. 1.]
+[1. 2.]
+[2. 3.]]
+<NDArray 3x2 @cpu(0)>
+2.2.4 索引
+在NDArray中，索引（index）代表了元素的位置。NDArray的索引从0开始逐⼀递增。例如，⼀
+个3⾏2列的矩阵的⾏索引分别为0、1和2，列索引分别为0和1。
+在下⾯的例⼦中，我们指定了NDArray的⾏索引截取范围[1:3]。依据左闭右开指定范围的惯例，
+它截取了矩阵X中⾏索引为1和2的两⾏。
+In [21]: X[1:3]
+Out[21]:
+[[ 4.
+5.
+6.
+7.]
+34
+2. 预备知识
+
+[ 8.
+9. 10. 11.]]
+<NDArray 2x4 @cpu(0)>
+我们可以指定NDArray中需要访问的单个元素的位置，如矩阵中⾏和列的索引，并为该元素重新
+赋值。
+In [22]: X[1, 2] = 9
+X
+Out[22]:
+[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+9.
+7.]
+[ 8.
+9. 10. 11.]]
+<NDArray 3x4 @cpu(0)>
+当然，我们也可以截取⼀部分元素，并为它们重新赋值。在下⾯的例⼦中，我们为⾏索引为1的每
+⼀列元素重新赋值。
+In [23]: X[1:2, :] = 12
+X
+Out[23]:
+[[ 0.
+1.
+2.
+3.]
+[12. 12. 12. 12.]
+[ 8.
+9. 10. 11.]]
+<NDArray 3x4 @cpu(0)>
+2.2.5 运算的内存开销
+在前⾯的例⼦⾥我们对每个操作新开内存来存储运算结果。举个例⼦，即使像Y = X + Y这样
+的运算，我们也会新开内存，然后将Y指向新内存。为了演⽰这⼀点，我们可以使⽤Python⾃带
+的id函数：如果两个实例的ID⼀致，那么它们所对应的内存地址相同；反之则不同。
+In [24]: before = id(Y)
+Y = Y + X
+id(Y) == before
+Out[24]: False
+如果想指定结果到特定内存，我们可以使⽤前⾯介绍的索引来进⾏替换操作。在下⾯的例⼦中，
+我们先通过zeros_like创建和Y形状相同且元素为0的NDArray，记为Z。接下来，我们把X +
+Y的结果通过[:]写进Z对应的内存中。
+In [25]: Z = Y.zeros_like()
+before = id(Z)
+2.2. 数据操作
+35
+
+Z[:] = X + Y
+id(Z) == before
+Out[25]: True
+实际上，上例中我们还是为X + Y开了临时内存来存储计算结果，再复制到Z对应的内存。如果
+想避免这个临时内存开销，我们可以使⽤运算符全名函数中的out参数。
+In [26]: nd.elemwise_add(X, Y, out=Z)
+id(Z) == before
+Out[26]: True
+如果X的值在之后的程序中不会复⽤，我们也可以⽤X[:] = X + Y 或者X += Y 来减少运算
+的内存开销。
+In [27]: before = id(X)
+X += Y
+id(X) == before
+Out[27]: True
+2.2.6 NDArray和NumPy相互变换
+我们可以通过array函数和asnumpy函数令数据在NDArray和NumPy格式之间相互变换。下⾯
+将NumPy实例变换成NDArray实例。
+In [28]: import numpy as np
+P = np.ones((2, 3))
+D = nd.array(P)
+D
+Out[28]:
+[[1. 1. 1.]
+[1. 1. 1.]]
+<NDArray 2x3 @cpu(0)>
+再将NDArray实例变换成NumPy实例。
+In [29]: D.asnumpy()
+Out[29]: array([[1., 1., 1.],
+[1., 1., 1.]], dtype=float32)
+36
+2. 预备知识
+
+⼩结
+• NDArray是MXNet中存储和变换数据的主要⼯具。
+• 可以轻松地对NDArray创建、运算、指定索引，并与NumPy之间相互变换。
+练习
+• 运⾏本节中的代码。将本节中条件判断式X == Y改为X < Y或X > Y，看看能够得到什么
+样的NDArray。
+• 将⼴播机制中按元素运算的两个NDArray替换成其他形状，结果是否和预期⼀样？
+扫码直达讨论区
+2.3 ⾃动求梯度
+在深度学习中，我们经常需要对函数求梯度（gradient）。本节将介绍如何使⽤MXNet提供
+的autograd模块来⾃动求梯度。如果对本节中的数学概念（如梯度）不是很熟悉，可以参阅
+附录中“数学基础”⼀节。
+In [1]: from mxnet import autograd, nd
+2.3.1 简单例⼦
+我们先看⼀个简单例⼦：对函数y = 2x⊤x 求关于列向量x 的梯度。我们先创建变量x，并赋初
+值。
+In [2]: x = nd.arange(4).reshape((4, 1))
+x
+2.3. ⾃动求梯度
+37
+
+Out[2]:
+[[0.]
+[1.]
+[2.]
+[3.]]
+<NDArray 4x1 @cpu(0)>
+为了求有关变量x的梯度，我们需要先调⽤attach_grad函数来申请存储梯度所需要的内存。
+In [3]: x.attach_grad()
+下⾯定义有关变量x的函数。为了减少计算和内存开销，默认条件下MXNet不会记录⽤于求梯度
+的计算。我们需要调⽤record函数来要求MXNet记录与求梯度有关的计算。
+In [4]: with autograd.record():
+y = 2 * nd.dot(x.T, x)
+由于x的形状为（4, 1），y是⼀个标量。接下来我们可以通过调⽤backward函数⾃动求梯度。需
+要注意的是，如果y不是⼀个标量，MXNet将默认先对y中元素求和得到新的变量，再求该变量有
+关x的梯度。
+In [5]: y.backward()
+函数y = 2x⊤x 关于x 的梯度应为4x。现在我们来验证⼀下求出来的梯度是正确的。
+In [6]: assert (x.grad - 4 * x).norm().asscalar() == 0
+x.grad
+Out[6]:
+[[ 0.]
+[ 4.]
+[ 8.]
+[12.]]
+<NDArray 4x1 @cpu(0)>
+2.3.2 训练模式和预测模式
+从上⾯可以看出，在调⽤record函数后，MXNet会记录并计算梯度。此外，默认情况下autograd还
+会将运⾏模式从预测模式转为训练模式。这可以通过调⽤is_training函数来查看。
+In [7]: print(autograd.is_training())
+with autograd.record():
+print(autograd.is_training())
+False
+True
+38
+2. 预备知识
+
+在有些情况下，同⼀个模型在训练模式和预测模式下的⾏为并不相同。我们会在后⾯的章节详细
+介绍这些区别。
+2.3.3 对Python控制流求梯度
+使⽤MXNet的⼀个便利之处是，即使函数的计算图包含了Python的控制流（如条件和循环控制），
+我们也有可能对变量求梯度。
+考虑下⾯程序，其中包含Python的条件和循环控制。需要强调的是，这⾥循环（while循环）迭
+代的次数和条件判断（if语句）的执⾏都取决于输⼊a的值。
+In [8]: def f(a):
+b = a * 2
+while b.norm().asscalar() < 1000:
+b = b * 2
+if b.sum().asscalar() > 0:
+c = b
+else:
+c = 100 * b
+return c
+我们像之前⼀样使⽤record函数记录计算，并调⽤backward函数求梯度。
+In [9]: a = nd.random.normal(shape=1)
+a.attach_grad()
+with autograd.record():
+c = f(a)
+c.backward()
+我们来分析⼀下上⾯定义的f函数。事实上，给定任意输⼊a，其输出必然是f(a) = x * a的
+形式，其中标量系数x的值取决于输⼊a。由于c = f(a)有关a的梯度为x，且值为c / a，我们
+可以像下⾯这样验证对本例中控制流求梯度的结果的正确性。
+In [10]: a.grad == c / a
+Out[10]:
+[1.]
+<NDArray 1 @cpu(0)>
+⼩结
+• MXNet提供autograd模块来⾃动化求导过程。
+2.3. ⾃动求梯度
+39
+
+• MXNet的autograd模块可以对⼀般的命令式程序进⾏求导。
+• MXNet的运⾏模式包括训练模式和预测模式。我们可以通过autograd.
+is_training()来判断运⾏模式。
+练习
+• 在本节对控制流求梯度的例⼦中，把变量a改成⼀个随机向量或矩阵。此时计算结果c不再
+是标量，运⾏结果将有何变化？该如何分析该结果？
+• 重新设计⼀个对控制流求梯度的例⼦。运⾏并分析结果。
+扫码直达讨论区
+2.4 查阅⽂档
+受篇幅所限，本书⽆法对所有⽤到的MXNet函数和类⼀⼀详细介绍。读者可以查阅相关⽂档来做
+更深⼊的了解。
+2.4.1 查找模块⾥的所有函数和类
+当我们想知道⼀个模块⾥⾯提供了哪些可以调⽤的函数和类的时候，可以使⽤dir函数。下⾯我
+们打印nd.random模块中所有的成员或属性。
+In [1]: from mxnet import nd
+print(dir(nd.random))
+40
+2. 预备知识
+
+['NDArray', '_Null', '__all__', '__builtins__', '__cached__', '__doc__', '__file__',
+'__loader__', '__name__', '__package__', '__spec__', '_internal',
+'_random_helper', 'current_context', 'exponential', 'exponential_like', 'gamma',
+'gamma_like', 'generalized_negative_binomial',
+'generalized_negative_binomial_like', 'multinomial', 'negative_binomial',
+'negative_binomial_like', 'normal', 'normal_like', 'numeric_types', 'poisson',
+'poisson_like', 'randint', 'randn', 'shuffle', 'uniform', 'uniform_like']
+,→
+,→
+,→
+,→
+,→
+,→
+通常我们可以忽略掉由__开头和结尾的函数（Python的特别对象）或者由_开头的函数（⼀般为
+内部函数）。通过其余成员的名字我们⼤致猜测出这个模块提供了各种随机数的⽣成⽅法，包括
+从均匀分布采样（uniform）、从正态分布采样（normal）、从泊松分布采样（poisson）等。
+2.4.2 查找特定函数和类的使⽤
+想了解某个函数或者类的具体⽤法时，可以使⽤help函数。让我们以NDArray中的ones_like函
+数为例，查阅它的⽤法。
+In [2]: help(nd.ones_like)
+Help on function ones_like:
+ones_like(data=None, out=None, name=None, **kwargs)
+Return an array of ones with the same shape and type
+as the input array.
+Examples::
+x = [[ 0.,
+0.,
+0.],
+[ 0.,
+0.,
+0.]]
+ones_like(x) = [[ 1.,
+1.,
+1.],
+[ 1.,
+1.,
+1.]]
+Parameters
+----------
+data : NDArray
+The input
+out : NDArray, optional
+The output NDArray to hold the result.
+2.4. 查阅⽂档
+41
+
+Returns
+-------
+out : NDArray or list of NDArrays
+The output of this function.
+从⽂档信息我们了解到，ones_like函数会创建和输⼊NDArray形状相同且元素为1的
+新NDArray。我们可以验证⼀下：
+In [3]: x = nd.array([[0, 0, 0], [2, 2, 2]])
+y = x.ones_like()
+y
+Out[3]:
+[[1. 1. 1.]
+[1. 1. 1.]]
+<NDArray 2x3 @cpu(0)>
+在Jupyter记事本⾥，我们可以使⽤?来将⽂档显⽰在另外⼀个窗口中。例如，使⽤nd.random.
+uniform?将得到与help(nd.random.uniform)⼏乎⼀样的内容，但会显⽰在额外窗口⾥。此
+外，如果使⽤nd.random.uniform??，那么会额外显⽰该函数实现的代码。
+2.4.3 在MXNet⽹站上查阅
+读者也可以在MXNet的⽹站上查阅相关⽂档。访问MXNet⽹站http://mxnet.apache.org/ （如
+图2.1所⽰），点击⽹⻚顶部的下拉菜单“API”可查阅各个前端语⾔的接口。此外，也可以在⽹⻚
+右上⽅含“Search”字样的搜索框中直接搜索函数或类名称。
+42
+2. 预备知识
+
+图2.1: MXNet官⽅⽹站
+图2.2展⽰了MXNet⽹站上有关ones_like函数的⽂档。
+图2.2: MXNet⽹站上有关ones_like函数的⽂档
+⼩结
+• 遇到不熟悉的MXNet API时，可以主动查阅它的相关⽂档。
+• 查阅MXNet⽂档可以使⽤dir和help函数，或访问MXNet官⽅⽹站。
+2.4. 查阅⽂档
+43
+
+练习
+• 查阅NDArray⽀持的其他操作。
+扫码直达讨论区
+44
+2. 预备知识

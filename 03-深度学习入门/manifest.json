@@ -1,0 +1,997 @@
+{
+  "slug": "dl-scratch",
+  "title": "深度学习入门：基于 Python 的理论与实现",
+  "subtitle": "从零手写一个能识别手写数字的网络，不依赖框架",
+  "book": {
+    "title": "深度学习入门：基于Python的理论与实现",
+    "author": "斋藤康毅（斋藤康毅）",
+    "source": [
+      "深度学习入门：基于Python的理论与实现 (斋藤康毅).pdf"
+    ]
+  },
+  "audience": "大一：会微积分与概率基础，线性代数需现场补",
+  "goal": "能不查资料手写一遍两层网络的前向与反向，并解释每个超参数在干什么",
+  "learningPath": [
+    {
+      "step": "01",
+      "title": "数组与矩阵：把数据摆成正确的形状",
+      "chapterIds": [
+        "ch01"
+      ],
+      "prereq": "无",
+      "checkpoint": "能手算 2×3 与 3×2 的矩阵乘法，并说明广播从哪一维开始对齐",
+      "goal": "看到 shape 就能判断两个数组能不能运算"
+    },
+    {
+      "step": "02",
+      "title": "感知机与线性可分",
+      "chapterIds": [
+        "ch02"
+      ],
+      "prereq": "ch01",
+      "checkpoint": "能自己配出一组解异或的两层权重并逐点验算",
+      "goal": "理解“一层只能画一条线”这个根本限制"
+    },
+    {
+      "step": "03",
+      "title": "神经网络前向传播",
+      "chapterIds": [
+        "ch03"
+      ],
+      "prereq": "ch01、ch02",
+      "checkpoint": "写出 2→3→2 网络每一层的形状变化与参数量",
+      "goal": "能独立完成一次手算前向"
+    },
+    {
+      "step": "04",
+      "title": "损失、梯度与学习",
+      "chapterIds": [
+        "ch04"
+      ],
+      "prereq": "ch03、导数基础",
+      "checkpoint": "算出一个具体样本的交叉熵，并用中心差分校验梯度",
+      "goal": "把训练循环的每一步都说清楚"
+    },
+    {
+      "step": "05",
+      "title": "反向传播",
+      "chapterIds": [
+        "ch05"
+      ],
+      "prereq": "ch04、链式法则",
+      "checkpoint": "手算苹果例子的全部反向梯度，并解释乘法节点为何乘“另一个输入”",
+      "goal": "能自己推导任意简单计算图的梯度"
+    },
+    {
+      "step": "06",
+      "title": "训练技巧",
+      "chapterIds": [
+        "ch06"
+      ],
+      "prereq": "ch05",
+      "checkpoint": "针对“损失震荡”“泛化差”“神经元大量死亡”三种症状各给两条对策",
+      "goal": "拿到一个训不动的网络能按顺序排查"
+    },
+    {
+      "step": "07",
+      "title": "卷积神经网络",
+      "chapterIds": [
+        "ch07"
+      ],
+      "prereq": "ch05、ch06",
+      "checkpoint": "手算三种 padding/stride 组合的输出尺寸与参数量",
+      "goal": "理解参数共享与局部连接这两个先验"
+    },
+    {
+      "step": "08",
+      "title": "深度学习与迁移学习",
+      "chapterIds": [
+        "ch08"
+      ],
+      "prereq": "ch07",
+      "checkpoint": "为一个只有几百张图的任务写出完整的迁移学习配置",
+      "goal": "能把预训练模型落到真实小数据集上"
+    }
+  ],
+  "chapters": [
+    {
+      "id": "ch01",
+      "title": "第 1 章：Python 入门",
+      "file": "chapters/ch01.md",
+      "difficulty": 1
+    },
+    {
+      "id": "ch02",
+      "title": "第 2 章：感知机",
+      "file": "chapters/ch02.md",
+      "difficulty": 1
+    },
+    {
+      "id": "ch03",
+      "title": "第 3 章：神经网络",
+      "file": "chapters/ch03.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch04",
+      "title": "第 4 章：神经网络的学习",
+      "file": "chapters/ch04.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch05",
+      "title": "第 5 章：误差反向传播法",
+      "file": "chapters/ch05.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch06",
+      "title": "第 6 章：与学习相关的技巧",
+      "file": "chapters/ch06.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch07",
+      "title": "第 7 章：卷积神经网络",
+      "file": "chapters/ch07.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch08",
+      "title": "第 8 章：深度学习",
+      "file": "chapters/ch08.md",
+      "difficulty": 2
+    }
+  ],
+  "concepts": [
+    {
+      "id": "c01",
+      "title": "计算图与反向传播",
+      "file": "concepts/c01.md",
+      "chapterIds": [
+        "ch05"
+      ]
+    },
+    {
+      "id": "c02",
+      "title": "过拟合与正则化",
+      "file": "concepts/c02.md",
+      "chapterIds": [
+        "ch06"
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "广播",
+      "def": "形状不同的数组相加时，按右对齐规则把长度为 1 的维扩展后再逐元素运算。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "形状",
+      "def": "数组每一维的长度组成的元组，用 .shape 查看。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "批量",
+      "def": "一次把多条样本拼成一个矩阵送进网络，用矩阵乘法同时算完。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "感知机",
+      "def": "对输入加权求和再与阈值比较输出 0/1 的最简单神经元模型。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "偏置",
+      "def": "加权和里那个不乘输入的常数项，作用是平移决策边界。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "线性可分",
+      "def": "存在一条直线（或超平面）能把两类样本完全分开。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "异或",
+      "def": "两个输入相同输出 0、不同输出 1的逻辑运算，线性不可分的经典例子。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "激活函数",
+      "def": "对加权和做非线性变换的函数，常见 sigmoid、ReLU、阶跃。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "隐藏层",
+      "def": "输入与输出之间的层，负责把输入变换成更容易分类的表示。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "softmax",
+      "def": "先取指数再归一化，把一组实数变成和为 1 的概率分布。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "神经元死亡",
+      "def": "ReLU 输入长期为负导致梯度恒 0、参数不再更新的现象。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "损失函数",
+      "def": "衡量网络输出与正确标签差距的函数，训练的目标就是让它变小。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "交叉熵",
+      "def": "分类常用的损失，等于正确类输出概率的负对数。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "one-hot",
+      "def": "标签表示法，正确类位置为 1、其余为 0。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "梯度",
+      "def": "损失对每个参数的偏导数排成的向量，指向损失上升最快方向。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "中心差分",
+      "def": "用 f(x+h) 与 f(x-h) 的差除以 2h 近似导数，误差更小。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "mini-batch",
+      "def": "从训练集随机抽取的一小批样本，用于一次参数更新。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "epoch",
+      "def": "把训练集所有样本完整过一遍。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "链式法则",
+      "def": "复合函数求导法则：总导数等于各层局部导数连乘。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "计算图",
+      "def": "把运算步骤画成节点与箭头的图，正向算值、反向算梯度。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "反向传播",
+      "def": "从损失出发按链式法则逆序计算所有参数梯度的算法。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "梯度消失",
+      "def": "深层网络中梯度逐层相乘后趋近于 0，导致浅层参数几乎不更新。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "优化器",
+      "def": "根据梯度决定参数如何更新的算法，如 SGD、Momentum、Adam。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "Xavier 初始化",
+      "def": "按 1/√n 缩放权重的初始化方法，适合 sigmoid 类激活。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "He 初始化",
+      "def": "按 √(2/n) 缩放权重的初始化方法，适合 ReLU。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "Batch Norm",
+      "def": "按 mini-batch 统计量标准化每层输入，再用可学习的 γ、β 缩放平移。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "Dropout",
+      "def": "训练时随机丢弃部分神经元输出，逼网络学冗余表示。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "权值衰减",
+      "def": "在损失中加入权重平方项以压制过大权重，等价 L2 正则。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "卷积",
+      "def": "用小窗口在输入上滑动做加权求和，得到特征图。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "padding",
+      "def": "在输入四周补零，控制输出尺寸与边缘覆盖。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "步长",
+      "def": "滑窗每次移动的格数，越大输出越小。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "池化",
+      "def": "在局部区域取最大或平均来降采样，无参数。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "im2col",
+      "def": "把卷积窗口展开成矩阵以复用矩阵乘法加速的实现技巧。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "参数共享",
+      "def": "同一组权重在整个空间位置上复用，是卷积省参数的原因。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "层级特征",
+      "def": "网络浅层到深层逐级组合出的由简单到复杂的表示。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "迁移学习",
+      "def": "把在大数据集上训练好的网络参数迁移到新任务上。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "微调",
+      "def": "在预训练模型基础上用较小学习率继续训练部分或全部层。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "退化问题",
+      "def": "网络加深后训练误差反而上升的现象，残差连接可缓解。",
+      "chapterId": "ch08"
+    }
+  ],
+  "patterns": {
+    "file": "patterns.md"
+  },
+  "cheatsheet": {
+    "file": "cheatsheet.md"
+  },
+  "quizzes": [
+    {
+      "id": "q01",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "形状 (2,3) 与形状 (3,) 相加，结果形状是？",
+      "explain": "从最右维对齐：3 与 3 相等，左侧 2 保留，得 (2,3)。",
+      "options": [
+        "(3,)",
+        "(2,3)",
+        "(2,)",
+        "报错"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q02",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "(4,2) 与 (2,5) 做矩阵乘法，结果形状是？",
+      "explain": "内维 2=2 通过，外侧 4 与 5 组成 (4,5)。",
+      "options": [
+        "(4,5)",
+        "(2,5)",
+        "(4,2)",
+        "报错"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q03",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "单层感知机无法实现异或，根本原因是？",
+      "explain": "单层只能产生一条线性决策边界；异或两类点在同一条对角线上，线性不可分。",
+      "options": [
+        "输入只有两个",
+        "阶跃函数不可导",
+        "决策边界只能是直线",
+        "偏置取值不对"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q04",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "与门 w=(0.5,0.5)、b 由 -0.7 改为 -1.5，输出会怎样？",
+      "explain": "(1,1) 时 0.5+0.5-1.5=-0.5 不大于 0，输出变 0，门失效。",
+      "options": [
+        "变成或门",
+        "变成与非门",
+        "没有变化",
+        "四种输入全部输出 0"
+      ],
+      "answer": 3
+    },
+    {
+      "id": "q05",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "2→3→2 的全连接网络，权重与偏置共多少个参数？",
+      "explain": "W1 6 + b1 3 + W2 6 + b2 2 = 17。",
+      "options": [
+        "12",
+        "14",
+        "17",
+        "20"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q06",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "softmax 输出和为 1 主要由哪一步保证？",
+      "explain": "分子除以分子之和，必然归一化。",
+      "options": [
+        "取指数",
+        "除以总和",
+        "减去最大值",
+        "激活函数"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q07",
+      "chapterId": "ch04",
+      "type": "single",
+      "question": "正确类概率分别为 0.1 和 0.9 时，交叉熵相差约多少倍？",
+      "explain": "-log0.1=2.303，-log0.9=0.105，约 22 倍。",
+      "options": [
+        "1.5 倍",
+        "9 倍",
+        "22 倍",
+        "相同"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q08",
+      "chapterId": "ch04",
+      "type": "multi",
+      "question": "关于梯度下降，下列说法正确的是？（多选）",
+      "explain": "学习率过大会震荡甚至发散，不是越大越好，B 错。",
+      "options": [
+        "梯度方向是损失上升最快的方向",
+        "学习率越大收敛越快",
+        "参数沿梯度反方向更新",
+        "学习率过大会震荡"
+      ],
+      "answer": [
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "q09",
+      "chapterId": "ch04",
+      "type": "blank",
+      "question": "一批 100 条样本走完一次前向+反向叫一次 ____。（填两个字）",
+      "explain": "一次参数更新叫一次迭代；把所有样本走完叫一个 epoch，两者不同。",
+      "options": [],
+      "answer": "迭代"
+    },
+    {
+      "id": "q10",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "加法节点反向传播时，对两个输入的梯度是？",
+      "explain": "∂(x+y)/∂x=1，梯度原样分发。",
+      "options": [
+        "都是上游梯度本身",
+        "都是 0",
+        "分别是两个输入的值",
+        "相加后平分"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q11",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "z=x×y，x=3、y=5，上游梯度 2，则对 x 的梯度是？",
+      "explain": "∂z/∂x=y=5，5×2=10。",
+      "options": [
+        "2",
+        "3",
+        "10",
+        "15"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q12",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "深层 sigmoid 网络训不动的直接原因是？",
+      "explain": "sigmoid 导数上界 0.25，多层连乘导致梯度消失。",
+      "options": [
+        "参数太多",
+        "梯度逐层被压到极小",
+        "损失函数选错",
+        "学习率太大"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q13",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "Momentum 主要缓解 SGD 的什么问题？",
+      "explain": "惯性让一致方向加速、震荡方向被平均。",
+      "options": [
+        "梯度消失",
+        "震荡与收敛慢",
+        "过拟合",
+        "显存不足"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q14",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "ReLU 网络优先用哪种初始化？",
+      "explain": "He 按 √(2/n) 放大，补偿 ReLU 砍掉的方差。",
+      "options": [
+        "全 0",
+        "Xavier",
+        "He",
+        "固定 0.01"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q15",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "用测试集反复挑超参数的后果是？",
+      "explain": "测试信息泄露进模型选择，最终数字不再代表泛化能力。",
+      "options": [
+        "评估结果偏乐观",
+        "训练更慢",
+        "梯度消失",
+        "显存溢出"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q16",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "输入 7×7、3×3 核、padding=1、stride=1，输出尺寸？",
+      "explain": "(7-3+2)/1+1=7。",
+      "options": [
+        "5×5",
+        "6×6",
+        "7×7",
+        "9×9"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q17",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "卷积层参数远少于全连接层，根本原因是？",
+      "explain": "同一个核在所有位置复用。",
+      "options": [
+        "卷积核更小",
+        "权重在空间上共享",
+        "用了池化",
+        "输入通道少"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q18",
+      "chapterId": "ch07",
+      "type": "blank",
+      "question": "卷积输出尺寸公式中，控制滑窗每次移动几格的是____。",
+      "explain": "步长 stride，公式里记为 S。",
+      "options": [],
+      "answer": "步长"
+    },
+    {
+      "id": "q19",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "数据很少时做迁移学习，最稳妥的做法是？",
+      "explain": "冻结可避免少量数据破坏通用特征。",
+      "options": [
+        "冻结卷积层只训分类头",
+        "全部层用大学习率微调",
+        "从零训练",
+        "只改输入尺寸"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q20",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "微调时学习率要设小的原因是？",
+      "explain": "大学习率几步就会冲掉预训练特征。",
+      "options": [
+        "显存不够",
+        "防止过拟合",
+        "避免破坏预训练权重",
+        "加快收敛"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q21",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "深层网络相对浅层网络的核心优势？",
+      "explain": "复杂函数被拆成多层简单变换的组合。",
+      "options": [
+        "参数更少",
+        "能学出层级化的特征表示",
+        "不需要激活函数",
+        "一定不过拟合"
+      ],
+      "answer": 1
+    }
+  ],
+  "flashcards": [
+    {
+      "id": "f01",
+      "chapterId": "ch01",
+      "front": "`A * B` 与 `A @ B` 的区别？",
+      "back": "`*` 逐元素相乘，要求形状一致或可广播；`@` 是矩阵乘法，要求内维相等。",
+      "tags": [
+        "numpy"
+      ]
+    },
+    {
+      "id": "f02",
+      "chapterId": "ch01",
+      "front": "广播从哪里开始对齐？",
+      "back": "从最右边的维度开始，长度 1 或缺失的维可被扩展。",
+      "tags": [
+        "numpy"
+      ]
+    },
+    {
+      "id": "f03",
+      "chapterId": "ch01",
+      "front": "矩阵乘法 (m,n)@(n,p) 的结果形状？",
+      "back": "(m,p)。",
+      "tags": [
+        "numpy"
+      ]
+    },
+    {
+      "id": "f04",
+      "chapterId": "ch02",
+      "front": "感知机的计算式？",
+      "back": "a=w1x1+w2x2+b，a>0 输出 1，否则 0。",
+      "tags": [
+        "perceptron"
+      ]
+    },
+    {
+      "id": "f05",
+      "chapterId": "ch02",
+      "front": "偏置 b 的作用？",
+      "back": "平移阈值，让决策直线不必过原点。",
+      "tags": [
+        "perceptron"
+      ]
+    },
+    {
+      "id": "f06",
+      "chapterId": "ch02",
+      "front": "异或为什么不能用单层感知机？",
+      "back": "异或的正负样例在同一条对角线上，线性不可分。",
+      "tags": [
+        "xor"
+      ]
+    },
+    {
+      "id": "f07",
+      "chapterId": "ch02",
+      "front": "两层解异或的三个门怎么配？",
+      "back": "第一层：与非门 + 或门；第二层：与门。",
+      "tags": [
+        "xor"
+      ]
+    },
+    {
+      "id": "f08",
+      "chapterId": "ch03",
+      "front": "为什么激活函数必须非线性？",
+      "back": "否则多层线性变换等价于一次线性变换，加深没有意义。",
+      "tags": [
+        "activation"
+      ]
+    },
+    {
+      "id": "f09",
+      "chapterId": "ch03",
+      "front": "sigmoid 的导数怎么用函数值表示？",
+      "back": "σ'(x)=σ(x)(1-σ(x))。",
+      "tags": [
+        "activation"
+      ]
+    },
+    {
+      "id": "f10",
+      "chapterId": "ch03",
+      "front": "ReLU 的定义与风险？",
+      "back": "max(0,x)；输入长期为负会让梯度恒 0，神经元死亡。",
+      "tags": [
+        "activation"
+      ]
+    },
+    {
+      "id": "f11",
+      "chapterId": "ch03",
+      "front": "全连接层权重形状规则？",
+      "back": "前一层神经元数 × 本层神经元数。",
+      "tags": [
+        "layer"
+      ]
+    },
+    {
+      "id": "f12",
+      "chapterId": "ch04",
+      "front": "交叉熵损失公式？",
+      "back": "E=-Σ t_k log y_k，t 为 one-hot 标签。",
+      "tags": [
+        "loss"
+      ]
+    },
+    {
+      "id": "f13",
+      "chapterId": "ch04",
+      "front": "为什么分类用交叉熵而不用均方误差？",
+      "back": "配 softmax 时梯度是 y-t，不会因饱和而消失。",
+      "tags": [
+        "loss"
+      ]
+    },
+    {
+      "id": "f14",
+      "chapterId": "ch04",
+      "front": "中心差分公式与误差阶？",
+      "back": "f'(x)≈[f(x+h)-f(x-h)]/(2h)，误差 O(h²)。",
+      "tags": [
+        "gradient"
+      ]
+    },
+    {
+      "id": "f15",
+      "chapterId": "ch04",
+      "front": "梯度方向与更新方向的关系？",
+      "back": "梯度指向损失上升最快方向，更新要取反方向。",
+      "tags": [
+        "gradient"
+      ]
+    },
+    {
+      "id": "f16",
+      "chapterId": "ch04",
+      "front": "学习率过大会出现什么现象？",
+      "back": "损失震荡甚至发散。",
+      "tags": [
+        "hyperparameter"
+      ]
+    },
+    {
+      "id": "f17",
+      "chapterId": "ch04",
+      "front": "mini-batch 与 epoch 的关系？",
+      "back": "每次抽一小批更新一次参数，遍历全部样本算一个 epoch。",
+      "tags": [
+        "training"
+      ]
+    },
+    {
+      "id": "f18",
+      "chapterId": "ch05",
+      "front": "链式法则一句话？",
+      "back": "复合函数的导数是各段导数的乘积。",
+      "tags": [
+        "backprop"
+      ]
+    },
+    {
+      "id": "f19",
+      "chapterId": "ch05",
+      "front": "加法节点反向规则？",
+      "back": "上游梯度原样分发给每个输入。",
+      "tags": [
+        "backprop"
+      ]
+    },
+    {
+      "id": "f20",
+      "chapterId": "ch05",
+      "front": "乘法节点反向规则？",
+      "back": "对某个输入的梯度 = 上游梯度 × 另一个输入的值。",
+      "tags": [
+        "backprop"
+      ]
+    },
+    {
+      "id": "f21",
+      "chapterId": "ch05",
+      "front": "反向传播相对数值微分的优势？",
+      "back": "一次前向+反向得到全部参数梯度，数值微分每个参数要两次前向。",
+      "tags": [
+        "backprop"
+      ]
+    },
+    {
+      "id": "f22",
+      "chapterId": "ch05",
+      "front": "sigmoid 导数上界与后果？",
+      "back": "0.25；多层连乘导致梯度消失。",
+      "tags": [
+        "vanishing"
+      ]
+    },
+    {
+      "id": "f23",
+      "chapterId": "ch05",
+      "front": "层实现里 forward/backward 各做什么？",
+      "back": "forward 算输出并缓存输入；backward 接收上游梯度并返回对输入的梯度。",
+      "tags": [
+        "layer"
+      ]
+    },
+    {
+      "id": "f24",
+      "chapterId": "ch06",
+      "front": "四种优化器的核心差别？",
+      "back": "SGD 沿当前梯度；Momentum 加惯性；AdaGrad 按历史梯度缩放步长；Adam 两者合体。",
+      "tags": [
+        "optimizer"
+      ]
+    },
+    {
+      "id": "f25",
+      "chapterId": "ch06",
+      "front": "为什么权重不能全初始化为 0？",
+      "back": "对称性未打破，同层神经元输出与梯度完全相同，等价于一个神经元。",
+      "tags": [
+        "init"
+      ]
+    },
+    {
+      "id": "f26",
+      "chapterId": "ch06",
+      "front": "Xavier 与 He 分别适合什么激活？",
+      "back": "Xavier 适合 sigmoid/tanh；He 适合 ReLU。",
+      "tags": [
+        "init"
+      ]
+    },
+    {
+      "id": "f27",
+      "chapterId": "ch06",
+      "front": "Batch Norm 训练与推理的统计量差异？",
+      "back": "训练用当前批的均值方差，推理用滑动平均。",
+      "tags": [
+        "batchnorm"
+      ]
+    },
+    {
+      "id": "f28",
+      "chapterId": "ch06",
+      "front": "Dropout 的倒置缩放为什么除以 1-p？",
+      "back": "保持训练与推理的输出期望一致。",
+      "tags": [
+        "dropout"
+      ]
+    },
+    {
+      "id": "f29",
+      "chapterId": "ch06",
+      "front": "验证集与测试集的分工？",
+      "back": "验证集挑超参数，测试集只在最后评估一次。",
+      "tags": [
+        "dataset"
+      ]
+    },
+    {
+      "id": "f30",
+      "chapterId": "ch07",
+      "front": "卷积输出尺寸公式？",
+      "back": "(H-KH+2P)/S+1，P 为 padding，S 为步长。",
+      "tags": [
+        "cnn"
+      ]
+    },
+    {
+      "id": "f31",
+      "chapterId": "ch07",
+      "front": "padding 的常用目的是什么？",
+      "back": "保住特征图尺寸，并让边缘被完整覆盖。",
+      "tags": [
+        "cnn"
+      ]
+    },
+    {
+      "id": "f32",
+      "chapterId": "ch07",
+      "front": "池化层有参数吗？",
+      "back": "Max/Average 池化都没有可训练参数。",
+      "tags": [
+        "pooling"
+      ]
+    },
+    {
+      "id": "f33",
+      "chapterId": "ch07",
+      "front": "im2col 的思路？",
+      "back": "把每个滑动窗口展成一列拼成大矩阵，用一次矩阵乘法完成卷积。",
+      "tags": [
+        "im2col"
+      ]
+    },
+    {
+      "id": "f34",
+      "chapterId": "ch07",
+      "front": "3→64 通道 3×3 卷积层的参数量？",
+      "back": "3×3×3×64+64=1792。",
+      "tags": [
+        "cnn"
+      ]
+    },
+    {
+      "id": "f35",
+      "chapterId": "ch08",
+      "front": "深层网络为什么有效？",
+      "back": "逐层抽象：像素→边缘→纹理→部件→物体。",
+      "tags": [
+        "deep"
+      ]
+    },
+    {
+      "id": "f36",
+      "chapterId": "ch08",
+      "front": "迁移学习两种用法？",
+      "back": "冻结特征只训分类头；或全部微调但用很小学习率。",
+      "tags": [
+        "transfer"
+      ]
+    },
+    {
+      "id": "f37",
+      "chapterId": "ch08",
+      "front": "微调学习率为什么要小？",
+      "back": "避免几步之内破坏预训练学到的通用特征。",
+      "tags": [
+        "transfer"
+      ]
+    },
+    {
+      "id": "f38",
+      "chapterId": "ch08",
+      "front": "GPU 加速深度学习的本质？",
+      "back": "把大量矩阵乘法并行化。",
+      "tags": [
+        "hardware"
+      ]
+    }
+  ],
+  "companion": "dl-scratch学习伴侣.html"
+}

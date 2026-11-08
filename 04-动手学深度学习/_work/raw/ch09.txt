@@ -1,0 +1,2783 @@
+9
+计算机视觉
+⽆论是医疗诊断、⽆⼈⻋、摄像监控，还是智能滤镜，计算机视觉领域的诸多应⽤都与我们当下
+和未来的⽣活息息相关。近年来，深度学习技术深刻推动了计算机视觉系统性能的提升。可以说，
+当下最先进的计算机视觉应⽤⼏乎离不开深度学习。鉴于此，本章将关注计算机视觉领域，并从
+中挑选时下在学术界和⼯业界具有影响⼒的⽅法与应⽤来展⽰深度学习的魅⼒。
+我们在“卷积神经⽹络”⼀章中已经介绍了计算机视觉领域常使⽤的深度学习模型，并实践了简
+单的图像分类任务。在本章的开头，我们介绍两种有助于提升模型的泛化能⼒的⽅法，即图像增
+⼴和微调，并把它们应⽤于图像分类。由于深度神经⽹络能够对图像逐级有效地进⾏表征，这⼀
+特性被⼴泛应⽤在⽬标检测、语义分割和样式迁移这些主流计算机视觉任务中，并取得了成功。
+围绕这⼀核⼼思想，⾸先，我们将描述⽬标检测的⼯作流程与各类⽅法。之后，我们将探究如何
+使⽤全卷积⽹络对图像做语义分割。接下来，我们再解释如何使⽤样式迁移技术⽣成像本书封⾯
+⼀样的图像。最后，我们在两个计算机视觉的重要数据集上实践本章和前⼏章的知识。
+327
+
+9.1 图像增⼴
+在“深度卷积神经⽹络（AlexNet）”小节⾥我们提到过，⼤规模数据集是成功应⽤深度神经⽹络
+的前提。图像增⼴（image augmentation）技术通过对训练图像做⼀系列随机改变，来产⽣相似
+但⼜不同的训练样本，从而扩⼤训练数据集的规模。图像增⼴的另⼀种解释是，随机改变训练样
+本可以降低模型对某些属性的依赖，从而提⾼模型的泛化能⼒。例如，我们可以对图像进⾏不同
+⽅式的裁剪，使感兴趣的物体出现在不同位置，从而减轻模型对物体出现位置的依赖性。我们也
+可以调整亮度、⾊彩等因素来降低模型对⾊彩的敏感度。可以说，在当年AlexNet的成功中，图
+像增⼴技术功不可没。本节我们将讨论这个在计算机视觉⾥被⼴泛使⽤的技术。
+⾸先，导⼊实验所需的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+import mxnet as mx
+from mxnet import autograd, gluon, image, init, nd
+from mxnet.gluon import data as gdata, loss as gloss, utils as gutils
+import sys
+import time
+9.1.1 常⽤的图像增⼴⽅法
+我们来读取⼀张形状为400 × 500（⾼和宽分别为400像素和500像素）的图像作为实验的样例。
+In [2]: d2l.set_figsize()
+img = image.imread('../img/cat1.jpg')
+d2l.plt.imshow(img.asnumpy())
+Out[2]: <matplotlib.image.AxesImage at 0x7f949f2d3860>
+328
+9. 计算机视觉
+
+下⾯定义绘图函数show_images。
+In [3]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def show_images(imgs, num_rows, num_cols, scale=2):
+figsize = (num_cols * scale, num_rows * scale)
+_, axes = d2l.plt.subplots(num_rows, num_cols, figsize=figsize)
+for i in range(num_rows):
+for j in range(num_cols):
+axes[i][j].imshow(imgs[i * num_cols + j].asnumpy())
+axes[i][j].axes.get_xaxis().set_visible(False)
+axes[i][j].axes.get_yaxis().set_visible(False)
+return axes
+⼤部分图像增⼴⽅法都有⼀定的随机性。为了⽅便观察图像增⼴的效果，接下来我们定义⼀个辅
+助函数apply。这个函数对输⼊图像img多次运⾏图像增⼴⽅法aug并展⽰所有的结果。
+In [4]: def apply(img, aug, num_rows=2, num_cols=4, scale=1.5):
+Y = [aug(img) for _ in range(num_rows * num_cols)]
+show_images(Y, num_rows, num_cols, scale)
+翻转和裁剪
+左右翻转图像通常不改变物体的类别。它是最早也是最⼴泛使⽤的⼀种图像增⼴⽅法。下⾯我们
+通过transforms模块创建RandomFlipLeftRight实例来实现⼀半概率的图像左右翻转。
+In [5]: apply(img, gdata.vision.transforms.RandomFlipLeftRight())
+9.1. 图像增⼴
+329
+
+上下翻转不如左右翻转通⽤。但是⾄少对于样例图像，上下翻转不会造成识别障碍。下⾯我们创
+建RandomFlipTopBottom实例来实现⼀半概率的图像上下翻转。
+In [6]: apply(img, gdata.vision.transforms.RandomFlipTopBottom())
+在我们使⽤的样例图像⾥，猫在图像正中间，但⼀般情况下可能不是这样。在“池化层”⼀节⾥
+我们解释了池化层能降低卷积层对⽬标位置的敏感度。除此之外，我们还可以通过对图像随机裁
+剪来让物体以不同的⽐例出现在图像的不同位置，这同样能够降低模型对⽬标位置的敏感性。
+在下⾯的代码⾥，我们每次随机裁剪出⼀块⾯积为原⾯积10% ∼100%的区域，且该区域的宽和
+⾼之⽐随机取⾃0.5 ∼2，然后再将该区域的宽和⾼分别缩放到200像素。若⽆特殊说明，本节
+中a和b之间的随机数指的是从区间[a, b]中随机均匀采样所得到的连续值。
+In [7]: shape_aug = gdata.vision.transforms.RandomResizedCrop(
+330
+9. 计算机视觉
+
+(200, 200), scale=(0.1, 1), ratio=(0.5, 2))
+apply(img, shape_aug)
+变化颜⾊
+另⼀类增⼴⽅法是变化颜⾊。我们可以从4个⽅⾯改变图像的颜⾊：亮度、对⽐度、饱和度和⾊调。
+在下⾯的例⼦⾥，我们将图像的亮度随机变化为原图亮度的50%（即1−0.5）∼150%（即1+0.5）。
+In [8]: apply(img, gdata.vision.transforms.RandomBrightness(0.5))
+类似地，我们也可以随机变化图像的⾊调。
+In [9]: apply(img, gdata.vision.transforms.RandomHue(0.5))
+9.1. 图像增⼴
+331
+
+我们也可以创建RandomColorJitter实例并同时设置如何随机变化图像的亮度（bright-
+ness）、对⽐度（contrast）、饱和度（saturation）和⾊调（hue）。
+In [10]: color_aug = gdata.vision.transforms.RandomColorJitter(
+brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+apply(img, color_aug)
+叠加多个图像增⼴⽅法
+实际应⽤中我们会将多个图像增⼴⽅法叠加使⽤。我们可以通过Compose实例将上⾯定义的多
+个图像增⼴⽅法叠加起来，再应⽤到每张图像之上。
+332
+9. 计算机视觉
+
+In [11]: augs = gdata.vision.transforms.Compose([
+gdata.vision.transforms.RandomFlipLeftRight(), color_aug, shape_aug])
+apply(img, augs)
+9.1.2 使⽤图像增⼴训练模型
+下⾯我们来看⼀个将图像增⼴应⽤在实际训练中的例⼦。这⾥我们使⽤CIFAR-10数据集，而不
+是之前我们⼀直使⽤的Fashion-MNIST数据集。这是因为Fashion-MNIST数据集中物体的位置和
+尺⼨都已经经过归⼀化处理，而CIFAR-10数据集中物体的颜⾊和⼤小区别更加显著。下⾯展⽰
+了CIFAR-10数据集中前32张训练图像。
+In [12]: show_images(gdata.vision.CIFAR10(train=True)[0:32][0], 4, 8, scale=0.8);
+9.1. 图像增⼴
+333
+
+为了在预测时得到确定的结果，我们通常只将图像增⼴应⽤在训练样本上，而不在预测时使⽤含
+随机操作的图像增⼴。在这⾥我们只使⽤最简单的随机左右翻转。此外，我们使⽤ToTensor实
+例将小批量图像转成MXNet需要的格式，即形状为(批量⼤小, 通道数, ⾼, 宽)、值域在0到1之间
+且类型为32位浮点数。
+In [13]: flip_aug = gdata.vision.transforms.Compose([
+gdata.vision.transforms.RandomFlipLeftRight(),
+gdata.vision.transforms.ToTensor()])
+no_aug = gdata.vision.transforms.Compose([
+gdata.vision.transforms.ToTensor()])
+接下来我们定义⼀个辅助函数来⽅便读取图像并应⽤图像增⼴。Gluon的数据集提供
+的transform_first函数将图像增⼴应⽤在每个训练样本（图像和标签）的第⼀个元素，即
+图像之上。有关DataLoader的详细介绍，可参考更早的“图像分类数据集（Fashion-MNIST）”
+⼀节。
+In [14]: num_workers = 0 if sys.platform.startswith('win32') else 4
+def load_cifar10(is_train, augs, batch_size):
+return gdata.DataLoader(
+gdata.vision.CIFAR10(train=is_train).transform_first(augs),
+batch_size=batch_size, shuffle=is_train, num_workers=num_workers)
+334
+9. 计算机视觉
+
+使⽤多GPU训练模型
+我们在CIFAR-10数据集上训练“残差⽹络（ResNet）”⼀节介绍的ResNet-18模型。我们还将应⽤
+“多GPU计算的简洁实现”⼀节中介绍的⽅法，使⽤多GPU训练模型。
+⾸先，我们定义try_all_gpus函数，从而能够获取所有可⽤的GPU。
+In [15]: def try_all_gpus():
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+ctxes = []
+try:
+for i in range(16):
+# 假设⼀台机器上GPU的数量不超过16
+ctx = mx.gpu(i)
+_ = nd.array([0], ctx=ctx)
+ctxes.append(ctx)
+except mx.base.MXNetError:
+pass
+if not ctxes:
+ctxes = [mx.cpu()]
+return ctxes
+下⾯定义的辅助函数_get_batch将小批量数据样本batch划分并复制到ctx变量所指定的各个
+显存上。
+In [16]: def _get_batch(batch, ctx):
+features, labels = batch
+if labels.dtype != features.dtype:
+labels = labels.astype(features.dtype)
+return (gutils.split_and_load(features, ctx),
+gutils.split_and_load(labels, ctx), features.shape[0])
+然后，我们定义evaluate_accuracy函数评价模型的分类准确率。与“softmax回归的从零开
+始实现”和“卷积神经⽹络（LeNet）”两节中描述的evaluate_accuracy函数不同，这⾥定义
+的函数更加通⽤：它通过辅助函数_get_batch使⽤ctx变量所包含的所有GPU来评价模型。
+In [17]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def evaluate_accuracy(data_iter, net, ctx=[mx.cpu()]):
+if isinstance(ctx, mx.Context):
+ctx = [ctx]
+acc_sum, n = nd.array([0]), 0
+for batch in data_iter:
+features, labels, _ = _get_batch(batch, ctx)
+for X, y in zip(features, labels):
+y = y.astype('float32')
+acc_sum += (net(X).argmax(axis=1) == y).sum().copyto(mx.cpu())
+9.1. 图像增⼴
+335
+
+n += y.size
+acc_sum.wait_to_read()
+return acc_sum.asscalar() / n
+接下来，我们定义train函数使⽤多GPU训练并评价模型。
+In [18]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs):
+print('training on', ctx)
+if isinstance(ctx, mx.Context):
+ctx = [ctx]
+for epoch in range(num_epochs):
+train_l_sum, train_acc_sum, n, m, start = 0.0, 0.0, 0, 0, time.time()
+for i, batch in enumerate(train_iter):
+Xs, ys, batch_size = _get_batch(batch, ctx)
+ls = []
+with autograd.record():
+y_hats = [net(X) for X in Xs]
+ls = [loss(y_hat, y) for y_hat, y in zip(y_hats, ys)]
+for l in ls:
+l.backward()
+trainer.step(batch_size)
+train_l_sum += sum([l.sum().asscalar() for l in ls])
+n += sum([l.size for l in ls])
+train_acc_sum += sum([(y_hat.argmax(axis=1) == y).sum().asscalar()
+for y_hat, y in zip(y_hats, ys)])
+m += sum([y.size for y in ys])
+test_acc = evaluate_accuracy(test_iter, net, ctx)
+print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f, '
+'time %.1f sec'
+% (epoch + 1, train_l_sum / n, train_acc_sum / m, test_acc,
+time.time() - start))
+现在就可以定义train_with_data_aug函数使⽤图像增⼴来训练模型了。该函数获取了所有
+可⽤的GPU，并将Adam算法作为训练使⽤的优化算法，然后将图像增⼴应⽤于训练数据集之上，
+最后调⽤刚才定义的train函数训练并评价模型。
+In [19]: def train_with_data_aug(train_augs, test_augs, lr=0.001):
+batch_size, ctx, net = 256, try_all_gpus(), d2l.resnet18(10)
+net.initialize(ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'adam',
+{'learning_rate': lr})
+loss = gloss.SoftmaxCrossEntropyLoss()
+train_iter = load_cifar10(True, train_augs, batch_size)
+336
+9. 计算机视觉
+
+test_iter = load_cifar10(False, test_augs, batch_size)
+train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs=10)
+下⾯使⽤随机左右翻转的图像增⼴来训练模型。
+In [20]: train_with_data_aug(flip_aug, no_aug)
+training on [gpu(0), gpu(1)]
+epoch 1, loss 1.4237, train acc 0.494, test acc 0.607, time 12.4 sec
+epoch 2, loss 0.8211, train acc 0.708, test acc 0.630, time 10.6 sec
+epoch 3, loss 0.6054, train acc 0.788, test acc 0.767, time 10.5 sec
+epoch 4, loss 0.4822, train acc 0.833, test acc 0.766, time 10.9 sec
+epoch 5, loss 0.3959, train acc 0.863, test acc 0.777, time 10.6 sec
+epoch 6, loss 0.3336, train acc 0.884, test acc 0.820, time 10.5 sec
+epoch 7, loss 0.2768, train acc 0.903, test acc 0.816, time 10.7 sec
+epoch 8, loss 0.2389, train acc 0.918, test acc 0.831, time 10.7 sec
+epoch 9, loss 0.1976, train acc 0.932, test acc 0.832, time 10.6 sec
+epoch 10, loss 0.1652, train acc 0.943, test acc 0.857, time 10.7 sec
+⼩结
+• 图像增⼴基于现有训练数据⽣成随机图像从而应对过拟合。
+• 为了在预测时得到确定的结果，通常只将图像增⼴应⽤在训练样本上，而不在预测时使⽤
+含随机操作的图像增⼴。
+• 可以从Gluon的transforms模块中获取有关图⽚增⼴的类。
+练习
+• 不使⽤图像增⼴训练模型：train_with_data_aug(no_aug, no_aug)。⽐较有⽆图
+像增⼴时的训练准确率和测试准确率。该对⽐实验能否⽀持图像增⼴可以应对过拟合这⼀
+论断？为什么？
+• 在基于CIFAR-10数据集的模型训练中增加不同的图像增⼴⽅法。观察实现结果。
+• 查阅MXNet⽂档，Gluon的transforms模块还提供了哪些图像增⼴⽅法？
+9.1. 图像增⼴
+337
+
+扫码直达讨论区
+9.2 微调
+在前⾯的⼀些章节中，我们介绍了如何在只有6万张图像的Fashion-MNIST训练数据集上训练模
+型。我们还描述了学术界当下使⽤最⼴泛的⼤规模图像数据集ImageNet，它有超过1,000万的图
+像和1,000类的物体。然而，我们平常接触到数据集的规模通常在这两者之间。
+假设我们想从图像中识别出不同种类的椅⼦，然后将购买链接推荐给⽤⼾。⼀种可能的⽅法是先
+找出100种常⻅的椅⼦，为每种椅⼦拍摄1,000张不同⻆度的图像，然后在收集到的图像数据集上
+训练⼀个分类模型。这个椅⼦数据集虽然可能⽐Fashion-MNIST数据集要庞⼤，但样本数仍然不
+及ImageNet数据集中样本数的⼗分之⼀。这可能会导致适⽤于ImageNet数据集的复杂模型在这
+个椅⼦数据集上过拟合。同时，因为数据量有限，最终训练得到的模型的精度也可能达不到实⽤
+的要求。
+为了应对上述问题，⼀个显而易⻅的解决办法是收集更多的数据。然而，收集和标注数据会花费
+⼤量的时间和资⾦。例如，为了收集ImageNet数据集，研究⼈员花费了数百万美元的研究经费。
+虽然⽬前的数据采集成本已降低了不少，但其成本仍然不可忽略。
+另外⼀种解决办法是应⽤迁移学习（transfer learning），将从源数据集学到的知识迁移到⽬标数
+据集上。例如，虽然ImageNet数据集的图像⼤多跟椅⼦⽆关，但在该数据集上训练的模型可以抽
+取较通⽤的图像特征，从而能够帮助识别边缘、纹理、形状和物体组成等。这些类似的特征对于
+识别椅⼦也可能同样有效。
+本节我们介绍迁移学习中的⼀种常⽤技术：微调（fine tuning）。如图9.1所⽰，微调由以下4步构
+成。
+1. 在源数据集（如ImageNet数据集）上预训练⼀个神经⽹络模型，即源模型。
+2. 创建⼀个新的神经⽹络模型，即⽬标模型。它复制了源模型上除了输出层外的所有模型设
+计及其参数。我们假设这些模型参数包含了源数据集上学习到的知识，且这些知识同样适
+338
+9. 计算机视觉
+
+⽤于⽬标数据集。我们还假设源模型的输出层跟源数据集的标签紧密相关，因此在⽬标模
+型中不予采⽤。
+3. 为⽬标模型添加⼀个输出⼤小为⽬标数据集类别个数的输出层，并随机初始化该层的模型
+参数。
+4. 在⽬标数据集（如椅⼦数据集）上训练⽬标模型。我们将从头训练输出层，而其余层的参
+数都是基于源模型的参数微调得到的。
+图9.1: 微调
+当⽬标数据集远小于源数据集时，微调有助于提升模型的泛化能⼒。
+9.2.1 热狗识别
+接下来我们来实践⼀个具体的例⼦：热狗识别。我们将基于⼀个小数据集对在ImageNet数据集
+上训练好的ResNet模型进⾏微调。该小数据集含有数千张包含热狗和不包含热狗的图像。我们将
+使⽤微调得到的模型来识别⼀张图像中是否包含热狗。
+⾸先，导⼊实验所需的包或模块。Gluon的model_zoo包提供了常⽤的预训练模型。如果希望获
+取更多的计算机视觉的预训练模型，可以使⽤GluonCV⼯具包[1]。
+9.2. 微调
+339
+
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import data as gdata, loss as gloss, model_zoo
+from mxnet.gluon import utils as gutils
+import os
+import zipfile
+获取数据集
+我们使⽤的热狗数据集是从⽹上抓取的，它含有1400张包含热狗的正类图像，和同样多包含其他
+⻝品的负类图像。各类的1000张图像被⽤于训练，其余则⽤于测试。
+我们⾸先将压缩后的数据集下载到路径../data之下，然后在该路径将下载好的数据集解压，得到
+两个⽂件夹hotdog/train和hotdog/test。这两个⽂件夹下⾯均有hotdog和not-hotdog两
+个类别⽂件夹，每个类别⽂件夹⾥⾯是图像⽂件。
+In [2]: data_dir = '../data'
+base_url = 'https://apache-mxnet.s3-accelerate.amazonaws.com/'
+fname = gutils.download(
+base_url + 'gluon/dataset/hotdog.zip',
+path=data_dir, sha1_hash='fba480ffa8aa7e0febbb511d181409f899b9baa5')
+with zipfile.ZipFile(fname, 'r') as z:
+z.extractall(data_dir)
+我们创建两个ImageFolderDataset实例来分别读取训练数据集和测试数据集中的所有图像⽂
+件。
+In [3]: train_imgs = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, 'hotdog/train'))
+test_imgs = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, 'hotdog/test'))
+下⾯画出前8张正类图像和最后8张负类图像。可以看到，它们的⼤小和⾼宽⽐各不相同。
+In [4]: hotdogs = [train_imgs[i][0] for i in range(8)]
+not_hotdogs = [train_imgs[-i - 1][0] for i in range(8)]
+d2l.show_images(hotdogs + not_hotdogs, 2, 8, scale=1.4);
+340
+9. 计算机视觉
+
+在训练时，我们先从图像中裁剪出随机⼤小和随机⾼宽⽐的⼀块随机区域，然后将该区域缩放为
+⾼和宽均为224像素的输⼊。测试时，我们将图像的⾼和宽均缩放为256像素，然后从中裁剪出⾼
+和宽均为224像素的中⼼区域作为输⼊。此外，我们对RGB（红、绿、蓝）三个颜⾊通道的数值做
+标准化：每个数值减去该通道所有数值的平均值，再除以该通道所有数值的标准差作为输出。
+In [5]: # 指定RGB三个通道的均值和⽅差来将图像通道归⼀化
+normalize = gdata.vision.transforms.Normalize(
+[0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+train_augs = gdata.vision.transforms.Compose([
+gdata.vision.transforms.RandomResizedCrop(224),
+gdata.vision.transforms.RandomFlipLeftRight(),
+gdata.vision.transforms.ToTensor(),
+normalize])
+test_augs = gdata.vision.transforms.Compose([
+gdata.vision.transforms.Resize(256),
+gdata.vision.transforms.CenterCrop(224),
+gdata.vision.transforms.ToTensor(),
+normalize])
+定义和初始化模型
+我们使⽤在ImageNet数据集上预训练的ResNet-18作为源模型。这⾥指定pretrained=True来
+⾃动下载并加载预训练的模型参数。在第⼀次使⽤时需要联⽹下载模型参数。
+In [6]: pretrained_net = model_zoo.vision.resnet18_v2(pretrained=True)
+预训练的源模型实例含有两个成员变量，即features和output。前者包含模型除输出层以外
+的所有层，后者为模型的输出层。这样划分主要是为了⽅便微调除输出层以外所有层的模型参数。
+下⾯打印源模型的成员变量output。作为⼀个全连接层，它将ResNet最终的全局平均池化层输
+出变换成ImageNet数据集上1000类的输出。
+9.2. 微调
+341
+
+In [7]: pretrained_net.output
+Out[7]: Dense(512 -> 1000, linear)
+我们新建⼀个神经⽹络作为⽬标模型。它的定义与预训练的源模型⼀样，但最后的输出个数等于
+⽬标数据集的类别数。在下⾯的代码中，⽬标模型实例finetune_net的成员变量features中
+的模型参数被初始化为源模型相应层的模型参数。由于features中的模型参数是在ImageNet数
+据集上预训练得到的，已经⾜够好，因此⼀般只需使⽤较小的学习率来微调这些参数。而成员变
+量output中的模型参数采⽤了随机初始化，⼀般需要更⼤的学习率从头训练。假设Trainer实
+例中的学习率为η，我们设成员变量output中的模型参数在迭代中使⽤的学习率为10η。
+In [8]: finetune_net = model_zoo.vision.resnet18_v2(classes=2)
+finetune_net.features = pretrained_net.features
+finetune_net.output.initialize(init.Xavier())
+# output中的模型参数将在迭代中使⽤10倍⼤的学习率
+finetune_net.output.collect_params().setattr('lr_mult', 10)
+微调模型
+我们先定义⼀个使⽤微调的训练函数train_fine_tuning以便多次调⽤。
+In [9]: def train_fine_tuning(net, learning_rate, batch_size=128, num_epochs=5):
+train_iter = gdata.DataLoader(
+train_imgs.transform_first(train_augs), batch_size, shuffle=True)
+test_iter = gdata.DataLoader(
+test_imgs.transform_first(test_augs), batch_size)
+ctx = d2l.try_all_gpus()
+net.collect_params().reset_ctx(ctx)
+net.hybridize()
+loss = gloss.SoftmaxCrossEntropyLoss()
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {
+'learning_rate': learning_rate, 'wd': 0.001})
+d2l.train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs)
+我们将Trainer实例中的学习率设得小⼀点，如0.01，以便微调预训练得到的模型参数。根据前
+⾯的设置，我们将以10倍的学习率从头训练⽬标模型的输出层参数。
+In [10]: train_fine_tuning(finetune_net, 0.01)
+training on [gpu(0), gpu(1)]
+epoch 1, loss 3.0099, train acc 0.701, test acc 0.901, time 10.0 sec
+epoch 2, loss 0.5507, train acc 0.873, test acc 0.925, time 8.9 sec
+epoch 3, loss 0.3211, train acc 0.909, test acc 0.916, time 8.8 sec
+342
+9. 计算机视觉
+
+epoch 4, loss 0.4612, train acc 0.885, test acc 0.920, time 8.8 sec
+epoch 5, loss 0.2201, train acc 0.929, test acc 0.930, time 8.8 sec
+作为对⽐，我们定义⼀个相同的模型，但将它的所有模型参数都初始化为随机值。由于整个模型
+都需要从头训练，我们可以使⽤较⼤的学习率。
+In [11]: scratch_net = model_zoo.vision.resnet18_v2(classes=2)
+scratch_net.initialize(init=init.Xavier())
+train_fine_tuning(scratch_net, 0.1)
+training on [gpu(0), gpu(1)]
+epoch 1, loss 0.6463, train acc 0.735, test acc 0.806, time 9.0 sec
+epoch 2, loss 0.4053, train acc 0.829, test acc 0.796, time 8.8 sec
+epoch 3, loss 0.3979, train acc 0.826, test acc 0.863, time 8.9 sec
+epoch 4, loss 0.3541, train acc 0.848, test acc 0.821, time 9.0 sec
+epoch 5, loss 0.3598, train acc 0.852, test acc 0.819, time 9.0 sec
+可以看到，微调的模型因为参数初始值更好，往往在相同迭代周期下取得更⾼的精度。
+⼩结
+• 迁移学习将从源数据集学到的知识迁移到⽬标数据集上。微调是迁移学习的⼀种常⽤技术。
+• ⽬标模型复制了源模型上除了输出层外的所有模型设计及其参数，并基于⽬标数据集微调
+这些参数。而⽬标模型的输出层需要从头训练。
+• ⼀般来说，微调参数会使⽤较小的学习率，而从头训练输出层可以使⽤较⼤的学习率。
+练习
+• 不断增⼤finetune_net的学习率。精度会有什么变化？
+• 进⼀步调节对⽐试验中finetune_net和scratch_net的超参数。它们的精度是不是依
+然有区别？
+• 将finetune_net.features中的参数固定为源模型的参数而不在训练中迭代，结果会怎
+样？你可能会⽤到以下代码。
+In [12]: finetune_net.features.collect_params().setattr('grad_req', 'null')
+• 事实上ImageNet数据集⾥也有“hotdog”（热狗）这个类。它在输出层对应的权重参数可
+以⽤以下代码获取。我们可以怎样使⽤这个权重参数？
+9.2. 微调
+343
+
+In [13]: weight = pretrained_net.output.weight
+hotdog_w = nd.split(weight.data(), 1000, axis=0)[713]
+hotdog_w.shape
+Out[13]: (1, 512)
+参考⽂献
+[1] GluonCV⼯具包。https://gluon-cv.mxnet.io/
+扫码直达讨论区
+9.3 ⽬标检测和边界框
+在前⾯的⼀些章节中，我们介绍了诸多⽤于图像分类的模型。在图像分类任务⾥，我们假设图像
+⾥只有⼀个主体⽬标，并关注如何识别该⽬标的类别。然而，很多时候图像⾥有多个我们感兴趣
+的⽬标，我们不仅想知道它们的类别，还想得到它们在图像中的具体位置。在计算机视觉⾥，我
+们将这类任务称为⽬标检测（object detection）或物体检测。
+⽬标检测在多个领域中被⼴泛使⽤。例如，在⽆⼈驾驶⾥，我们需要通过识别拍摄到的视频图像
+⾥的⻋辆、⾏⼈、道路和障碍的位置来规划⾏进线路。机器⼈也常通过该任务来检测感兴趣的⽬
+标。安防领域则需要检测异常⽬标，如⽍徒或者炸弹。
+在接下来的⼏节⾥，我们将介绍⽬标检测⾥的多个深度学习模型。在此之前，让我们来了解⽬标
+位置这个概念。先导⼊实验所需的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import image
+下⾯加载本节将使⽤的⽰例图像。可以看到图像左边是⼀只狗，右边是⼀只猫。它们是这张图像
+⾥的两个主要⽬标。
+344
+9. 计算机视觉
+
+In [2]: d2l.set_figsize()
+img = image.imread('../img/catdog.jpg').asnumpy()
+d2l.plt.imshow(img);
+# 加分号只显⽰图
+9.3.1 边界框
+在⽬标检测⾥，我们通常使⽤边界框（bounding box）来描述⽬标位置。边界框是⼀个矩形框，
+可以由矩形左上⻆的x和y轴坐标与右下⻆的x和y轴坐标确定。我们根据上⾯的图的坐标信息来
+定义图中狗和猫的边界框。图中的坐标原点在图像的左上⻆，原点往右和往下分别为x轴和y轴的
+正⽅向。
+In [3]: # bbox是bounding box的缩写
+dog_bbox, cat_bbox = [60, 45, 378, 516], [400, 112, 655, 493]
+我们可以在图中将边界框画出来，以检查其是否准确。画之前，我们定义⼀个辅助函
+数bbox_to_rect。它将边界框表⽰成matplotlib的边界框格式。
+In [4]: def bbox_to_rect(bbox, color):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+# 将边界框(左上x, 左上y, 右下x, 右下y)格式转换成matplotlib格式：
+# ((左上x, 左上y), 宽, ⾼)
+return d2l.plt.Rectangle(
+xy=(bbox[0], bbox[1]), width=bbox[2]-bbox[0], height=bbox[3]-bbox[1],
+fill=False, edgecolor=color, linewidth=2)
+我们将边界框加载在图像上，可以看到⽬标的主要轮廓基本在框内。
+In [5]: fig = d2l.plt.imshow(img)
+fig.axes.add_patch(bbox_to_rect(dog_bbox, 'blue'))
+9.3. ⽬标检测和边界框
+345
+
+fig.axes.add_patch(bbox_to_rect(cat_bbox, 'red'));
+⼩结
+• 在⽬标检测⾥不仅需要找出图像⾥⾯所有感兴趣的⽬标，而且要知道它们的位置。位置⼀
+般由矩形边界框来表⽰。
+练习
+• 找⼀些图像，尝试标注其中⽬标的边界框。⽐较标注边界框与标注类别所花时间的差异。
+扫码直达讨论区
+346
+9. 计算机视觉
+
+9.4 锚框
+⽬标检测算法通常会在输⼊图像中采样⼤量的区域，然后判断这些区域中是否包含我们感兴趣的
+⽬标，并调整区域边缘从而更准确地预测⽬标的真实边界框（ground-truth bounding box）。不
+同的模型使⽤的区域采样⽅法可能不同。这⾥我们介绍其中的⼀种⽅法：它以每个像素为中⼼⽣
+成多个⼤小和宽⾼⽐（aspect ratio）不同的边界框。这些边界框被称为锚框（anchor box）。我
+们将在后⾯基于锚框实践⽬标检测。
+⾸先，导⼊本节需要的包或模块。这⾥我们新引⼊了contrib包，并修改了NumPy的打印精度。
+由于NDArray的打印实际调⽤NumPy的打印函数，本节打印出的NDArray中的浮点数更简洁⼀
+些。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import contrib, gluon, image, nd
+import numpy as np
+np.set_printoptions(2)
+9.4.1 ⽣成多个锚框
+假设输⼊图像⾼为h，宽为w。我们分别以图像的每个像素为中⼼⽣成不同形状的锚框。设⼤小
+为s ∈(0, 1]且宽⾼⽐为r > 0，那么锚框的宽和⾼将分别为ws√r和hs/√r。当中⼼位置给定时，已
+知宽和⾼的锚框是确定的。
+下⾯我们分别设定好⼀组⼤小s1, . . . , sn和⼀组宽⾼⽐r1, . . . , rm。如果以每个像素为中⼼时使⽤
+所有的⼤小与宽⾼⽐的组合，输⼊图像将⼀共得到whnm个锚框。虽然这些锚框可能覆盖了所有
+的真实边界框，但计算复杂度容易过⾼。因此，我们通常只对包含s1或r1的⼤小与宽⾼⽐的组合
+感兴趣，即
+(s1, r1), (s1, r2), . . . , (s1, rm), (s2, r1), (s3, r1), . . . , (sn, r1).
+也就是说，以相同像素为中⼼的锚框的数量为n + m −1。对于整个输⼊图像，我们将⼀共⽣
+成wh(n + m −1)个锚框。
+以上⽣成锚框的⽅法已实现在MultiBoxPrior函数中。指定输⼊、⼀组⼤小和⼀组宽⾼⽐，该
+函数将返回输⼊的所有锚框。
+In [2]: img = image.imread('../img/catdog.jpg').asnumpy()
+h, w = img.shape[0:2]
+9.4. 锚框
+347
+
+print(h, w)
+X = nd.random.uniform(shape=(1, 3, h, w))
+# 构造输⼊数据
+Y = contrib.nd.MultiBoxPrior(X, sizes=[0.75, 0.5, 0.25], ratios=[1, 2, 0.5])
+Y.shape
+561 728
+Out[2]: (1, 2042040, 4)
+我们看到，返回锚框变量y的形状为（批量⼤小，锚框个数，4）。将锚框变量y的形状变为（图像
+⾼，图像宽，以相同像素为中⼼的锚框个数，4）后，我们就可以通过指定像素位置来获取所有以
+该像素为中⼼的锚框了。下⾯的例⼦⾥我们访问以（250，250）为中⼼的第⼀个锚框。它有4个元
+素，分别是锚框左上⻆的x和y轴坐标和右下⻆的x和y轴坐标，其中x和y轴的坐标值分别已除以图
+像的宽和⾼，因此值域均为0和1之间。
+In [3]: boxes = Y.reshape((h, w, 5, 4))
+boxes[250, 250, 0, :]
+Out[3]:
+[0.06 0.07 0.63 0.82]
+<NDArray 4 @cpu(0)>
+为了描绘图像中以某个像素为中⼼的所有锚框，我们先定义show_bboxes函数以便在图像上画
+出多个边界框。
+In [4]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def show_bboxes(axes, bboxes, labels=None, colors=None):
+def _make_list(obj, default_values=None):
+if obj is None:
+obj = default_values
+elif not isinstance(obj, (list, tuple)):
+obj = [obj]
+return obj
+labels = _make_list(labels)
+colors = _make_list(colors, ['b', 'g', 'r', 'm', 'c'])
+for i, bbox in enumerate(bboxes):
+color = colors[i % len(colors)]
+rect = d2l.bbox_to_rect(bbox.asnumpy(), color)
+axes.add_patch(rect)
+if labels and len(labels) > i:
+text_color = 'k' if color == 'w' else 'w'
+axes.text(rect.xy[0], rect.xy[1], labels[i],
+va='center', ha='center', fontsize=9, color=text_color,
+348
+9. 计算机视觉
+
+bbox=dict(facecolor=color, lw=0))
+刚刚我们看到，变量boxes中x和y轴的坐标值分别已除以图像的宽和⾼。在绘图时，我们需要
+恢复锚框的原始坐标值，并因此定义了变量bbox_scale。现在，我们可以画出图像中以(250,
+250)为中⼼的所有锚框了。可以看到，⼤小为0.75且宽⾼⽐为1的锚框较好地覆盖了图像中的狗。
+In [5]: d2l.set_figsize()
+bbox_scale = nd.array((w, h, w, h))
+fig = d2l.plt.imshow(img)
+show_bboxes(fig.axes, boxes[250, 250, :, :] * bbox_scale,
+['s=0.75, r=1', 's=0.5, r=1', 's=0.25, r=1', 's=0.75, r=2',
+'s=0.75, r=0.5'])
+9.4.2 交并⽐
+我们刚刚提到某个锚框较好地覆盖了图像中的狗。如果该⽬标的真实边界框已知，这⾥的“较好”
+该如何量化呢？⼀种直观的⽅法是衡量锚框和真实边界框之间的相似度。我们知道，Jaccard系数
+（Jaccard index）可以衡量两个集合的相似度。给定集合A和B，它们的Jaccard系数即⼆者交集⼤
+小除以⼆者并集⼤小：
+J(A, B) = |A ∩B|
+|A ∪B|.
+实际上，我们可以把边界框内的像素区域看成是像素的集合。如此⼀来，我们可以⽤两个边界框
+的像素集合的Jaccard系数衡量这两个边界框的相似度。当衡量两个边界框的相似度时，我们通
+常将Jaccard系数称为交并⽐（intersection over union，IoU），即两个边界框相交⾯积与相并⾯
+9.4. 锚框
+349
+
+积之⽐，如图9.2所⽰。交并⽐的取值范围在0和1之间：0表⽰两个边界框⽆重合像素，1表⽰两个
+边界框相等。
+图9.2: 交并⽐是两个边界框相交⾯积与相并⾯积之⽐
+在本节的剩余部分，我们将使⽤交并⽐来衡量锚框与真实边界框以及锚框与锚框之间的相似度。
+9.4.3 标注训练集的锚框
+在训练集中，我们将每个锚框视为⼀个训练样本。为了训练⽬标检测模型，我们需要为每个锚框
+标注两类标签：⼀是锚框所含⽬标的类别，简称类别；⼆是真实边界框相对锚框的偏移量，简称
+偏移量（offset）。在⽬标检测时，我们⾸先⽣成多个锚框，然后为每个锚框预测类别以及偏移量，
+接着根据预测的偏移量调整锚框位置从而得到预测边界框，最后筛选需要输出的预测边界框。
+我们知道，在⽬标检测的训练集中，每个图像已标注了真实边界框的位置以及所含⽬标的类别。
+在⽣成锚框之后，我们主要依据与锚框相似的真实边界框的位置和类别信息为锚框标注。那么，
+该如何为锚框分配与其相似的真实边界框呢？
+假设图像中锚框分别为A1, A2, . . . , Ana，真实边界框分别为B1, B2, . . . , Bnb，且na ≥nb。定义矩
+阵X ∈Rna×nb，其中第i⾏第j列的元素xij为锚框Ai与真实边界框Bj的交并⽐。⾸先，我们找出
+矩阵X中最⼤元素，并将该元素的⾏索引与列索引分别记为i1, j1。我们为锚框Ai1分配真实边界
+框Bj1。显然，锚框Ai1和真实边界框Bj1在所有的“锚框—真实边界框”的配对中相似度最⾼。接
+下来，将矩阵X中第i1⾏和第j1列上的所有元素丢弃。找出矩阵X中剩余的最⼤元素，并将该元
+素的⾏索引与列索引分别记为i2, j2。我们为锚框Ai2分配真实边界框Bj2，再将矩阵X中第i2⾏和
+第j2列上的所有元素丢弃。此时矩阵X中已有两⾏两列的元素被丢弃。依此类推，直到矩阵X中
+所有nb列元素全部被丢弃。这个时候，我们已为nb个锚框各分配了⼀个真实边界框。接下来，我
+们只遍历剩余的na −nb个锚框：给定其中的锚框Ai，根据矩阵X的第i⾏找到与Ai交并⽐最⼤的
+真实边界框Bj，且只有当该交并⽐⼤于预先设定的阈值时，才为锚框Ai分配真实边界框Bj。
+350
+9. 计算机视觉
+
+如图9.3（左）所⽰，假设矩阵X中最⼤值为x23，我们将为锚框A2分配真实边界框B3。然后，丢
+弃矩阵中第2⾏和第3列的所有元素，找出剩余阴影部分的最⼤元素x71，为锚框A7分配真实边界
+框B1。接着如图9.3（中）所⽰，丢弃矩阵中第7⾏和第1列的所有元素，找出剩余阴影部分的最⼤
+元素x54，为锚框A5分配真实边界框B4。最后如图9.3（右）所⽰，丢弃矩阵中第5⾏和第4列的所
+有元素，找出剩余阴影部分的最⼤元素x92，为锚框A9分配真实边界框B2。之后，我们只需遍历
+除去A2, A5, A7, A9的剩余锚框，并根据阈值判断是否为剩余锚框分配真实边界框。
+图9.3: 为锚框分配真实边界框
+现在我们可以标注锚框的类别和偏移量了。如果⼀个锚框A被分配了真实边界框B，将锚框A的
+类别设为B的类别，并根据B和A的中⼼坐标的相对位置以及两个框的相对⼤小为锚框A标注偏
+移量。由于数据集中各个框的位置和⼤小各异，因此这些相对位置和相对⼤小通常需要⼀些特
+殊变换，才能使偏移量的分布更均匀从而更容易拟合。设锚框A及其被分配的真实边界框B的中
+⼼坐标分别为(xa, ya)和(xb, yb)，A和B的宽分别为wa和wb，⾼分别为ha和hb，⼀个常⽤的技巧是
+将A的偏移量标注为
+( xb−xa
+wa
+−µx
+σx
+,
+yb−ya
+ha
+−µy
+σy
+,
+log wb
+wa −µw
+σw
+,
+log hb
+ha −µh
+σh
+)
+,
+其中常数的默认值为µx = µy = µw = µh = 0, σx = σy = 0.1, σw = σh = 0.2。如果⼀个锚框没
+9.4. 锚框
+351
+
+有被分配真实边界框，我们只需将该锚框的类别设为背景。类别为背景的锚框通常被称为负类锚
+框，其余则被称为正类锚框。
+下⾯演⽰⼀个具体的例⼦。我们为读取的图像中的猫和狗定义真实边界框，其中第⼀个元素为
+类别（0为狗，1为猫），剩余4个元素分别为左上⻆的x和y轴坐标以及右下⻆的x和y轴坐标（值域
+在0到1之间）。这⾥通过左上⻆和右下⻆的坐标构造了5个需要标注的锚框，分别记为A0, . . . , A4
+（程序中索引从0开始）。先画出这些锚框与真实边界框在图像中的位置。
+In [6]: ground_truth = nd.array([[0, 0.1, 0.08, 0.52, 0.92],
+[1, 0.55, 0.2, 0.9, 0.88]])
+anchors = nd.array([[0, 0.1, 0.2, 0.3], [0.15, 0.2, 0.4, 0.4],
+[0.63, 0.05, 0.88, 0.98], [0.66, 0.45, 0.8, 0.8],
+[0.57, 0.3, 0.92, 0.9]])
+fig = d2l.plt.imshow(img)
+show_bboxes(fig.axes, ground_truth[:, 1:] * bbox_scale, ['dog', 'cat'], 'k')
+show_bboxes(fig.axes, anchors * bbox_scale, ['0', '1', '2', '3', '4']);
+我们可以通过contrib.nd模块中的MultiBoxTarget函数来为锚框标注类别和偏移量。该
+函数将背景类别设为0，并令从零开始的⽬标类别的整数索引⾃加1（1为狗，2为猫）。我们通
+过expand_dims函数为锚框和真实边界框添加样本维，并构造形状为(批量⼤小, 包括背景的类
+别个数, 锚框数)的任意预测结果。
+In [7]: labels = contrib.nd.MultiBoxTarget(anchors.expand_dims(axis=0),
+ground_truth.expand_dims(axis=0),
+nd.zeros((1, 3, 5)))
+返回的结果⾥有3项，均为NDArray。第三项表⽰为锚框标注的类别。
+352
+9. 计算机视觉
+
+In [8]: labels[2]
+Out[8]:
+[[0. 1. 2. 0. 2.]]
+<NDArray 1x5 @cpu(0)>
+我们根据锚框与真实边界框在图像中的位置来分析这些标注的类别。⾸先，在所有的“锚框—真
+实边界框”的配对中，锚框A4与猫的真实边界框的交并⽐最⼤，因此锚框A4的类别标注为猫。不
+考虑锚框A4或猫的真实边界框，在剩余的“锚框—真实边界框”的配对中，最⼤交并⽐的配对为
+锚框A1和狗的真实边界框，因此锚框A1的类别标注为狗。接下来遍历未标注的剩余3个锚框：与
+锚框A0交并⽐最⼤的真实边界框的类别为狗，但交并⽐小于阈值（默认为0.5），因此类别标注为
+背景；与锚框A2交并⽐最⼤的真实边界框的类别为猫，且交并⽐⼤于阈值，因此类别标注为猫；
+与锚框A3交并⽐最⼤的真实边界框的类别为猫，但交并⽐小于阈值，因此类别标注为背景。
+返回值的第⼆项为掩码（mask）变量，形状为(批量⼤小, 锚框个数的四倍)。掩码变量中的元素
+与每个锚框的4个偏移量⼀⼀对应。由于我们不关⼼对背景的检测，有关负类的偏移量不应影响
+⽬标函数。通过按元素乘法，掩码变量中的0可以在计算⽬标函数之前过滤掉负类的偏移量。
+In [9]: labels[1]
+Out[9]:
+[[0. 0. 0. 0. 1. 1. 1. 1. 1. 1. 1. 1. 0. 0. 0. 0. 1. 1. 1. 1.]]
+<NDArray 1x20 @cpu(0)>
+返回的第⼀项是为每个锚框标注的四个偏移量，其中负类锚框的偏移量标注为0。
+In [10]: labels[0]
+Out[10]:
+[[ 0.00e+00
+0.00e+00
+0.00e+00
+0.00e+00
+1.40e+00
+1.00e+01
+2.59e+00
+7.18e+00 -1.20e+00
+2.69e-01
+1.68e+00 -1.57e+00
+0.00e+00
+0.00e+00
+0.00e+00
+0.00e+00 -5.71e-01 -1.00e+00 -8.94e-07
+6.26e-01]]
+<NDArray 1x20 @cpu(0)>
+9.4.4 输出预测边界框
+在模型预测阶段，我们先为图像⽣成多个锚框，并为这些锚框⼀⼀预测类别和偏移量。随后，我
+们根据锚框及其预测偏移量得到预测边界框。当锚框数量较多时，同⼀个⽬标上可能会输出较多
+相似的预测边界框。为了使结果更加简洁，我们可以移除相似的预测边界框。常⽤的⽅法叫作⾮
+极⼤值抑制（non-maximum suppression，NMS）。
+我们来描述⼀下⾮极⼤值抑制的⼯作原理。对于⼀个预测边界框B，模型会计算各个类别的预测
+9.4. 锚框
+353
+
+概率。设其中最⼤的预测概率为p，该概率所对应的类别即B的预测类别。我们也将p称为预测边
+界框B的置信度。在同⼀图像上，我们将预测类别⾮背景的预测边界框按置信度从⾼到低排序，
+得到列表L。从L中选取置信度最⾼的预测边界框B1作为基准，将所有与B1的交并⽐⼤于某阈值
+的⾮基准预测边界框从L中移除。这⾥的阈值是预先设定的超参数。此时，L保留了置信度最⾼
+的预测边界框并移除了与其相似的其他预测边界框。接下来，从L中选取置信度第⼆⾼的预测边
+界框B2作为基准，将所有与B2的交并⽐⼤于某阈值的⾮基准预测边界框从L中移除。重复这⼀过
+程，直到L中所有的预测边界框都曾作为基准。此时L中任意⼀对预测边界框的交并⽐都小于阈
+值。最终，输出列表L中的所有预测边界框。
+下⾯来看⼀个具体的例⼦。先构造4个锚框。简单起⻅，我们假设预测偏移量全是0：预测边界框
+即锚框。最后，我们构造每个类别的预测概率。
+In [11]: anchors = nd.array([[0.1, 0.08, 0.52, 0.92], [0.08, 0.2, 0.56, 0.95],
+[0.15, 0.3, 0.62, 0.91], [0.55, 0.2, 0.9, 0.88]])
+offset_preds = nd.array([0] * anchors.size)
+cls_probs = nd.array([[0] * 4,
+# 背景的预测概率
+[0.9, 0.8, 0.7, 0.1],
+# 狗的预测概率
+[0.1, 0.2, 0.3, 0.9]])
+# 猫的预测概率
+在图像上打印预测边界框和它们的置信度。
+In [12]: fig = d2l.plt.imshow(img)
+show_bboxes(fig.axes, anchors * bbox_scale,
+['dog=0.9', 'dog=0.8', 'dog=0.7', 'cat=0.9'])
+我们使⽤contrib.nd模块的MultiBoxDetection函数来执⾏⾮极⼤值抑制并设阈值为0.5。
+这⾥为NDArray输⼊都增加了样本维。我们看到，返回的结果的形状为(批量⼤小, 锚框个数,
+6)。其中每⼀⾏的6个元素代表同⼀个预测边界框的输出信息。第⼀个元素是索引从0开始计数的
+354
+9. 计算机视觉
+
+预测类别（0为狗，1为猫），其中-1表⽰背景或在⾮极⼤值抑制中被移除。第⼆个元素是预测边
+界框的置信度。剩余的4个元素分别是预测边界框左上⻆的x和y轴坐标以及右下⻆的x和y轴坐标
+（值域在0到1之间）。
+In [13]: output = contrib.ndarray.MultiBoxDetection(
+cls_probs.expand_dims(axis=0), offset_preds.expand_dims(axis=0),
+anchors.expand_dims(axis=0), nms_threshold=0.5)
+output
+Out[13]:
+[[[ 0.
+0.9
+0.1
+0.08
+0.52
+0.92]
+[ 1.
+0.9
+0.55
+0.2
+0.9
+0.88]
+[-1.
+0.8
+0.08
+0.2
+0.56
+0.95]
+[-1.
+0.7
+0.15
+0.3
+0.62
+0.91]]]
+<NDArray 1x4x6 @cpu(0)>
+我们移除掉类别为-1的预测边界框，并可视化⾮极⼤值抑制保留的结果。
+In [14]: fig = d2l.plt.imshow(img)
+for i in output[0].asnumpy():
+if i[0] == -1:
+continue
+label = ('dog=', 'cat=')[int(i[0])] + str(i[1])
+show_bboxes(fig.axes, [nd.array(i[2:]) * bbox_scale], label)
+实践中，我们可以在执⾏⾮极⼤值抑制前将置信度较低的预测边界框移除，从而减小⾮极⼤值抑
+制的计算量。我们还可以筛选⾮极⼤值抑制的输出，例如，只保留其中置信度较⾼的结果作为最
+终输出。
+9.4. 锚框
+355
+
+⼩结
+• 以每个像素为中⼼，⽣成多个⼤小和宽⾼⽐不同的锚框。
+• 交并⽐是两个边界框相交⾯积与相并⾯积之⽐。
+• 在训练集中，为每个锚框标注两类标签：⼀是锚框所含⽬标的类别；⼆是真实边界框相对
+锚框的偏移量。
+• 预测时，可以使⽤⾮极⼤值抑制来移除相似的预测边界框，从而令结果简洁。
+练习
+• 改变MultiBoxPrior函数中sizes和ratios的取值，观察⽣成的锚框的变化。
+• 构造交并⽐为0.5的两个边界框，观察它们的重合度。
+• 按本节定义的为锚框标注偏移量的⽅法（常数采⽤默认值），验证偏移量labels[0]的输
+出结果。
+• 修改“标注训练集的锚框”与“输出预测边界框”两小节中的变量anchors，结果有什么
+变化？
+扫码直达讨论区
+9.5 多尺度⽬标检测
+在“锚框”⼀节中，我们在实验中以输⼊图像的每个像素为中⼼⽣成多个锚框。这些锚框是对输⼊
+图像不同区域的采样。然而，如果以图像每个像素为中⼼都⽣成锚框，很容易⽣成过多锚框而造
+成计算量过⼤。举个例⼦，假设输⼊图像的⾼和宽分别为561像素和728像素，如果以每个像素为
+中⼼⽣成5个不同形状的锚框，那么⼀张图像上则需要标注并预测200多万个锚框（561×728×5）。
+356
+9. 计算机视觉
+
+减少锚框个数并不难。⼀种简单的⽅法是在输⼊图像中均匀采样⼀小部分像素，并以采样的像
+素为中⼼⽣成锚框。此外，在不同尺度下，我们可以⽣成不同数量和不同⼤小的锚框。值得注
+意的是，较小⽬标⽐较⼤⽬标在图像上出现位置的可能性更多。举个简单的例⼦：形状为1 × 1、
+1 × 2和2 × 2的⽬标在形状为2 × 2的图像上可能出现的位置分别有4、2和1种。因此，当使⽤较小
+锚框来检测较小⽬标时，我们可以采样较多的区域；而当使⽤较⼤锚框来检测较⼤⽬标时，我们
+可以采样较少的区域。
+为了演⽰如何多尺度⽣成锚框，我们先读取⼀张图像。它的⾼和宽分别为561像素和728像素。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import contrib, image, nd
+img = image.imread('../img/catdog.jpg')
+h, w = img.shape[0:2]
+h, w
+Out[1]: (561, 728)
+我们在“⼆维卷积层”⼀节中将卷积神经⽹络的⼆维数组输出称为特征图。我们可以通过定义特
+征图的形状来确定任⼀图像上均匀采样的锚框中⼼。
+下⾯定义display_anchors函数。我们在特征图fmap上以每个单元（像素）为中⼼⽣成锚
+框anchors。由于锚框anchors中x和y轴的坐标值分别已除以特征图fmap的宽和⾼，这些值
+域在0和1之间的值表达了锚框在特征图中的相对位置。由于锚框anchors的中⼼遍布特征
+图fmap上的所有单元，anchors的中⼼在任⼀图像的空间相对位置⼀定是均匀分布的。具
+体来说，当特征图的宽和⾼分别设为fmap_w和fmap_h时，该函数将在任⼀图像上均匀采
+样fmap_h⾏fmap_w列个像素，并分别以它们为中⼼⽣成⼤小为s（假设列表s⻓度为1）的不
+同宽⾼⽐（ratios）的锚框。
+In [2]: d2l.set_figsize()
+def display_anchors(fmap_w, fmap_h, s):
+fmap = nd.zeros((1, 10, fmap_w, fmap_h))
+# 前两维的取值不影响输出结果
+anchors = contrib.nd.MultiBoxPrior(fmap, sizes=s, ratios=[1, 2, 0.5])
+bbox_scale = nd.array((w, h, w, h))
+d2l.show_bboxes(d2l.plt.imshow(img.asnumpy()).axes,
+anchors[0] * bbox_scale)
+我们先关注小⽬标的检测。为了在显⽰时更容易分辨，这⾥令不同中⼼的锚框不重合：设锚框⼤
+小为0.15，特征图的⾼和宽分别为4。可以看出，图像上4⾏4列的锚框中⼼分布均匀。
+In [3]: display_anchors(fmap_w=4, fmap_h=4, s=[0.15])
+9.5. 多尺度⽬标检测
+357
+
+我们将特征图的⾼和宽分别减半，并⽤更⼤的锚框检测更⼤的⽬标。当锚框⼤小设0.4时，有些锚
+框的区域有重合。
+In [4]: display_anchors(fmap_w=2, fmap_h=2, s=[0.4])
+最后，我们将特征图的⾼和宽进⼀步减半⾄1，并将锚框⼤小增⾄0.8。此时锚框中⼼即图像中⼼。
+In [5]: display_anchors(fmap_w=1, fmap_h=1, s=[0.8])
+358
+9. 计算机视觉
+
+既然我们已在多个尺度上⽣成了不同⼤小的锚框，相应地，我们需要在不同尺度下检测不同⼤小
+的⽬标。下⾯我们来介绍⼀种基于卷积神经⽹络的⽅法。
+在某个尺度下，假设我们依据ci张形状为h × w的特征图⽣成h × w组不同中⼼的锚框，且每组的
+锚框个数为a。例如，在刚才实验的第⼀个尺度下，我们依据10（通道数）张形状为4 × 4的特征
+图⽣成了16组不同中⼼的锚框，且每组含3个锚框。接下来，依据真实边界框的类别和位置，每个
+锚框将被标注类别和偏移量。在当前的尺度下，⽬标检测模型需要根据输⼊图像预测h × w组不
+同中⼼的锚框的类别和偏移量。
+假设这⾥的ci张特征图为卷积神经⽹络根据输⼊图像做前向计算所得的中间输出。既然每张特征
+图上都有h × w个不同的空间位置，那么相同空间位置可以看作含有ci个单元。根据“⼆维卷积
+层”⼀节中感受野的定义，特征图在相同空间位置的ci个单元在输⼊图像上的感受野相同，并表
+征了同⼀感受野内的输⼊图像信息。因此，我们可以将特征图在相同空间位置的ci个单元变换为
+以该位置为中⼼⽣成的a个锚框的类别和偏移量。不难发现，本质上，我们⽤输⼊图像在某个感
+受野区域内的信息来预测输⼊图像上与该区域位置相近的锚框的类别和偏移量。
+当不同层的特征图在输⼊图像上分别拥有不同⼤小的感受野时，它们将分别⽤来检测不同⼤小的
+⽬标。例如，我们可以通过设计⽹络，令较接近输出层的特征图中每个单元拥有更⼴阔的感受野，
+从而检测输⼊图像中更⼤尺⼨的⽬标。
+我们将在“单发多框检测（SSD）”⼀节具体实现⼀个多尺度⽬标检测的模型。
+9.5. 多尺度⽬标检测
+359
+
+⼩结
+• 可以在多个尺度下⽣成不同数量和不同⼤小的锚框，从而在多个尺度下检测不同⼤小的⽬
+标。
+• 特征图的形状能确定任⼀图像上均匀采样的锚框中⼼。
+• ⽤输⼊图像在某个感受野区域内的信息来预测输⼊图像上与该区域相近的锚框的类别和偏
+移量。
+练习
+• 给定⼀张输⼊图像，设特征图变量的形状为1 × ci × h × w，其中ci、h和w分别为特征图的
+个数、⾼和宽。你能想到哪些将该变量变换为锚框的类别和偏移量的⽅法？输出的形状分
+别是什么？
+扫码直达讨论区
+9.6 ⽬标检测数据集（⽪卡丘）
+在⽬标检测领域并没有类似MNIST或Fashion-MNIST那样的小数据集。为了快速测试模型，我们
+合成了⼀个小的数据集。我们⾸先使⽤⼀个开源的⽪卡丘3D模型⽣成了1000张不同⻆度和⼤小
+的⽪卡丘图像。然后我们收集了⼀系列背景图像，并在每张图的随机位置放置⼀张随机的⽪卡丘
+图像。我们使⽤MXNet提供的im2rec⼯具将图像转换成⼆进制的RecordIO格式[1]。该格式既可
+以降低数据集在磁盘上的存储开销，⼜能提⾼读取效率。如果想了解更多的图像读取⽅法，可以
+查阅GluonCV⼯具包的⽂档[2]。
+360
+9. 计算机视觉
+
+9.6.1 下载数据集
+RecordIO格式的⽪卡丘数据集可以直接在⽹上下载。下载数据集的操作定义
+在_download_pikachu函数中。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import gluon, image
+from mxnet.gluon import utils as gutils
+import os
+def _download_pikachu(data_dir):
+root_url = ('https://apache-mxnet.s3-accelerate.amazonaws.com/'
+'gluon/dataset/pikachu/')
+dataset = {'train.rec': 'e6bcb6ffba1ac04ff8a9b1115e650af56ee969c8',
+'train.idx': 'dcf7318b2602c06428b9988470c731621716c393',
+'val.rec': 'd6c33f799b4d058e82f2cb5bd9a976f69d72d520'}
+for k, v in dataset.items():
+gutils.download(root_url + k, os.path.join(data_dir, k), sha1_hash=v)
+9.6.2 读取数据集
+我们通过创建ImageDetIter实例来读取⽬标检测数据集。其中名称⾥的“Det”指的是Detection
+（检测）。我们将以随机顺序读取训练数据集。由于数据集的格式为RecordIO，我们需要提供图像
+索引⽂件train.idx以随机读取小批量。此外，对于训练集中的每张图像，我们将采⽤随机裁剪，并
+要求裁剪出的图像⾄少覆盖每个⽬标95%的区域。由于裁剪是随机的，这个要求不⼀定总被满⾜。
+我们设定最多尝试200次随机裁剪：如果都不符合要求则不裁剪图像。为保证输出结果的确定性，
+我们不随机裁剪测试数据集中的图像。我们也⽆须按随机顺序读取测试数据集。
+In [2]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def load_data_pikachu(batch_size, edge_size=256):
+# edge_size：输出图像的宽和⾼
+data_dir = '../data/pikachu'
+_download_pikachu(data_dir)
+train_iter = image.ImageDetIter(
+path_imgrec=os.path.join(data_dir, 'train.rec'),
+path_imgidx=os.path.join(data_dir, 'train.idx'),
+batch_size=batch_size,
+data_shape=(3, edge_size, edge_size),
+# 输出图像的形状
+shuffle=True,
+# 以随机顺序读取数据集
+rand_crop=1,
+# 随机裁剪的概率为1
+min_object_covered=0.95, max_attempts=200)
+9.6. ⽬标检测数据集（⽪卡丘）
+361
+
+val_iter = image.ImageDetIter(
+path_imgrec=os.path.join(data_dir, 'val.rec'), batch_size=batch_size,
+data_shape=(3, edge_size, edge_size), shuffle=False)
+return train_iter, val_iter
+下⾯我们读取⼀个小批量并打印图像和标签的形状。图像的形状和之前实验中的⼀样，依然是(批
+量⼤小, 通道数, ⾼, 宽)。而标签的形状则是(批量⼤小, m, 5)，其中m等于数据集中单个图像最多
+含有的边界框个数。小批量计算虽然⾼效，但它要求每张图像含有相同数量的边界框，以便放在
+同⼀个批量中。由于每张图像含有的边界框个数可能不同，我们为边界框个数小于m的图像填充
+⾮法边界框，直到每张图像均含有m个边界框。这样，我们就可以每次读取小批量的图像了。图像
+中每个边界框的标签由⻓度为5的数组表⽰。数组中第⼀个元素是边界框所含⽬标的类别。当值
+为-1时，该边界框为填充⽤的⾮法边界框。数组的剩余4个元素分别表⽰边界框左上⻆的x和y轴
+坐标以及右下⻆的x和y轴坐标（值域在0到1之间）。这⾥的⽪卡丘数据集中每个图像只有⼀个边
+界框，因此m = 1。
+In [3]: batch_size, edge_size = 32, 256
+train_iter, _ = load_data_pikachu(batch_size, edge_size)
+batch = train_iter.next()
+batch.data[0].shape, batch.label[0].shape
+Out[3]: ((32, 3, 256, 256), (32, 1, 5))
+9.6.3 图⽰数据
+我们画出10张图像和它们中的边界框。可以看到，⽪卡丘的⻆度、⼤小和位置在每张图像中都不
+⼀样。当然，这是⼀个简单的⼈⼯数据集。实际中的数据通常会复杂得多。
+In [4]: imgs = (batch.data[0][0:10].transpose((0, 2, 3, 1))) / 255
+axes = d2l.show_images(imgs, 2, 5).flatten()
+for ax, label in zip(axes, batch.label[0][0:10]):
+d2l.show_bboxes(ax, [label[0][1:5] * edge_size], colors=['w'])
+362
+9. 计算机视觉
+
+⼩结
+• 合成的⽪卡丘数据集可⽤于测试⽬标检测模型。
+• ⽬标检测的数据读取跟图像分类的类似。然而，在引⼊边界框后，标签形状和图像增⼴（如
+随机裁剪）发⽣了变化。
+练习
+• 查阅MXNet⽂档，image.ImageDetIter和image.CreateDetAugmenter这两个类的
+构造函数有哪些参数？它们的意义是什么？
+参考⽂献
+[1] im2rec⼯具。https://github.com/apache/incubator-mxnet/blob/master/tools/im2rec.py
+[2] GluonCV ⼯具包。https://gluon-cv.mxnet.io/
+9.6. ⽬标检测数据集（⽪卡丘）
+363
+
+扫码直达讨论区
+9.7 单发多框检测（SSD）
+我们在前⼏节分别介绍了边界框、锚框、多尺度⽬标检测和数据集，下⾯我们基于这些背景知识
+来构造⼀个⽬标检测模型：单发多框检测（single shot multibox detection，SSD）[1]。它简单、
+快速，并得到了⼴泛应⽤。该模型的⼀些设计思想和实现细节常适⽤于其他⽬标检测模型。
+9.7.1 模型
+图9.4描述了单发多框检测模型的设计。它主要由⼀个基础⽹络块和若⼲个多尺度特征块串联而
+成。其中基础⽹络块⽤来从原始图像中抽取特征，因此⼀般会选择常⽤的深度卷积神经⽹络。单
+发多框检测论⽂中选⽤了在分类层之前截断的VGG [1]，现在也常⽤ResNet替代。我们可以设计
+基础⽹络，使它输出的⾼和宽较⼤。这样⼀来，基于该特征图⽣成的锚框数量较多，可以⽤来检
+测尺⼨较小的⽬标。接下来的每个多尺度特征块将上⼀层提供的特征图的⾼和宽缩小（如减半），
+并使特征图中每个单元在输⼊图像上的感受野变得更⼴阔。如此⼀来，图9.4中越靠近顶部的多
+尺度特征块输出的特征图越小，故而基于特征图⽣成的锚框也越少，加之特征图中每个单元感受
+野越⼤，因此更适合检测尺⼨较⼤的⽬标。由于单发多框检测基于基础⽹络块和各个多尺度特征
+块⽣成不同数量和不同⼤小的锚框，并通过预测锚框的类别和偏移量（即预测边界框）检测不同
+⼤小的⽬标，因此单发多框检测是⼀个多尺度的⽬标检测模型。
+364
+9. 计算机视觉
+
+图9.4: 单发多框检测模型主要由⼀个基础⽹络块和若⼲多尺度特征块串联而成
+接下来我们介绍如何实现图中的各个模块。我们先介绍如何实现类别预测和边界框预测。
+类别预测层
+设⽬标的类别个数为q。每个锚框的类别个数将是q + 1，其中类别0表⽰锚框只包含背景。在某个
+尺度下，设特征图的⾼和宽分别为h和w，如果以其中每个单元为中⼼⽣成a个锚框，那么我们需
+要对hwa个锚框进⾏分类。如果使⽤全连接层作为输出，很容易导致模型参数过多。回忆“⽹络
+中的⽹络（NiN）”⼀节介绍的使⽤卷积层的通道来输出类别预测的⽅法。单发多框检测采⽤同样
+的⽅法来降低模型复杂度。
+具体来说，类别预测层使⽤⼀个保持输⼊⾼和宽的卷积层。这样⼀来，输出和输⼊在特征图宽和
+⾼上的空间坐标⼀⼀对应。考虑输出和输⼊同⼀空间坐标(x, y)：输出特征图上(x, y)坐标的通道
+⾥包含了以输⼊特征图(x, y)坐标为中⼼⽣成的所有锚框的类别预测。因此输出通道数为a(q + 1)，
+其中索引为i(q + 1) + j（0 ≤j ≤q）的通道代表了索引为i的锚框有关类别索引为j的预测。
+下⾯我们定义⼀个这样的类别预测层：指定参数a和q后，它使⽤⼀个填充为1的3 × 3卷积层。该
+卷积层的输⼊和输出的⾼和宽保持不变。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, contrib, gluon, image, init, nd
+9.7. 单发多框检测（SSD）
+365
+
+from mxnet.gluon import loss as gloss, nn
+import time
+def cls_predictor(num_anchors, num_classes):
+return nn.Conv2D(num_anchors * (num_classes + 1), kernel_size=3,
+padding=1)
+边界框预测层
+边界框预测层的设计与类别预测层的设计类似。唯⼀不同的是，这⾥需要为每个锚框预测4个偏
+移量，而不是q + 1个类别。
+In [2]: def bbox_predictor(num_anchors):
+return nn.Conv2D(num_anchors * 4, kernel_size=3, padding=1)
+连结多尺度的预测
+前⾯提到，单发多框检测根据多个尺度下的特征图⽣成锚框并预测类别和偏移量。由于每个尺度
+上特征图的形状或以同⼀单元为中⼼⽣成的锚框个数都可能不同，因此不同尺度的预测输出形状
+可能不同。
+在下⾯的例⼦中，我们对同⼀批量数据构造两个不同尺度下的特征图Y1和Y2，其中Y2相对于Y1来
+说⾼和宽分别减半。以类别预测为例，假设以Y1和Y2特征图中每个单元⽣成的锚框个数分别
+是5和3，当⽬标类别个数为10时，类别预测输出的通道数分别为5×(10+1) = 55和3×(10+1) = 33。
+预测输出的格式为(批量⼤小, 通道数, ⾼, 宽)。可以看到，除了批量⼤小外，其他维度⼤小均不⼀
+样。我们需要将它们变形成统⼀的格式并将多尺度的预测连结，从而让后续计算更简单。
+In [3]: def forward(x, block):
+block.initialize()
+return block(x)
+Y1 = forward(nd.zeros((2, 8, 20, 20)), cls_predictor(5, 10))
+Y2 = forward(nd.zeros((2, 16, 10, 10)), cls_predictor(3, 10))
+(Y1.shape, Y2.shape)
+Out[3]: ((2, 55, 20, 20), (2, 33, 10, 10))
+通道维包含中⼼相同的锚框的预测结果。我们⾸先将通道维移到最后⼀维。因为不同尺度下批量
+⼤小仍保持不变，我们可以将预测结果转成⼆维的(批量⼤小, ⾼×宽×通道数)的格式，以⽅便之
+后在维度1上的连结。
+366
+9. 计算机视觉
+
+In [4]: def flatten_pred(pred):
+return pred.transpose((0, 2, 3, 1)).flatten()
+def concat_preds(preds):
+return nd.concat(*[flatten_pred(p) for p in preds], dim=1)
+这样⼀来，尽管Y1和Y2形状不同，我们仍然可以将这两个同⼀批量不同尺度的预测结果连结在
+⼀起。
+In [5]: concat_preds([Y1, Y2]).shape
+Out[5]: (2, 25300)
+⾼和宽减半块
+为了在多尺度检测⽬标，下⾯定义⾼和宽减半块down_sample_blk。它串联了两个填充为1的3×
+3卷积层和步幅为2的2 × 2最⼤池化层。我们知道，填充为1的3 × 3卷积层不改变特征图的形状，
+而后⾯的池化层则直接将特征图的⾼和宽减半。由于1 × 2 + (3 −1) + (3 −1) = 6，输出特征图
+中每个单元在输⼊特征图上的感受野形状为6 × 6。可以看出，⾼和宽减半块使输出特征图中每个
+单元的感受野变得更⼴阔。
+In [6]: def down_sample_blk(num_channels):
+blk = nn.Sequential()
+for _ in range(2):
+blk.add(nn.Conv2D(num_channels, kernel_size=3, padding=1),
+nn.BatchNorm(in_channels=num_channels),
+nn.Activation('relu'))
+blk.add(nn.MaxPool2D(2))
+return blk
+测试⾼和宽减半块的前向计算。可以看到，它改变了输⼊的通道数，并将⾼和宽减半。
+In [7]: forward(nd.zeros((2, 3, 20, 20)), down_sample_blk(10)).shape
+Out[7]: (2, 10, 10, 10)
+基础⽹络块
+基础⽹络块⽤来从原始图像中抽取特征。为了计算简洁，我们在这⾥构造⼀个小的基础⽹络。该
+⽹络串联3个⾼和宽减半块，并逐步将通道数翻倍。当输⼊的原始图像的形状为256 × 256时，基
+础⽹络块输出的特征图的形状为32 × 32。
+9.7. 单发多框检测（SSD）
+367
+
+In [8]: def base_net():
+blk = nn.Sequential()
+for num_filters in [16, 32, 64]:
+blk.add(down_sample_blk(num_filters))
+return blk
+forward(nd.zeros((2, 3, 256, 256)), base_net()).shape
+Out[8]: (2, 64, 32, 32)
+完整的模型
+单发多框检测模型⼀共包含5个模块，每个模块输出的特征图既⽤来⽣成锚框，⼜⽤来预测这些
+锚框的类别和偏移量。第⼀模块为基础⽹络块，第⼆模块⾄第四模块为⾼和宽减半块，第五模块
+使⽤全局最⼤池化层将⾼和宽降到1。因此第⼆模块⾄第五模块均为图9.4中的多尺度特征块。
+In [9]: def get_blk(i):
+if i == 0:
+blk = base_net()
+elif i == 4:
+blk = nn.GlobalMaxPool2D()
+else:
+blk = down_sample_blk(128)
+return blk
+接下来，我们定义每个模块如何进⾏前向计算。跟之前介绍的卷积神经⽹络不同，这⾥不仅返回
+卷积计算输出的特征图Y，还返回根据Y⽣成的当前尺度的锚框，以及基于Y预测的锚框类别和偏
+移量。
+In [10]: def blk_forward(X, blk, size, ratio, cls_predictor, bbox_predictor):
+Y = blk(X)
+anchors = contrib.ndarray.MultiBoxPrior(Y, sizes=size, ratios=ratio)
+cls_preds = cls_predictor(Y)
+bbox_preds = bbox_predictor(Y)
+return (Y, anchors, cls_preds, bbox_preds)
+我们提到，图9.4中较靠近顶部的多尺度特征块⽤来检测尺⼨较⼤的⽬标，因此需要⽣成较⼤的
+锚框。我们在这⾥先将0.2到1.05之间均分5份，以确定不同尺度下锚框⼤小的较小值0.2、0.37、
+0.54等，再按√0.2 × 0.37 = 0.272、√0.37 × 0.54 = 0.447等来确定不同尺度下锚框⼤小的较⼤值。
+In [11]: sizes = [[0.2, 0.272], [0.37, 0.447], [0.54, 0.619], [0.71, 0.79],
+[0.88, 0.961]]
+368
+9. 计算机视觉
+
+ratios = [[1, 2, 0.5]] * 5
+num_anchors = len(sizes[0]) + len(ratios[0]) - 1
+现在，我们就可以定义出完整的模型TinySSD了。
+In [12]: class TinySSD(nn.Block):
+def __init__(self, num_classes, **kwargs):
+super(TinySSD, self).__init__(**kwargs)
+self.num_classes = num_classes
+for i in range(5):
+# 即赋值语句self.blk_i = get_blk(i)
+setattr(self, 'blk_%d' % i, get_blk(i))
+setattr(self, 'cls_%d' % i, cls_predictor(num_anchors,
+num_classes))
+setattr(self, 'bbox_%d' % i, bbox_predictor(num_anchors))
+def forward(self, X):
+anchors, cls_preds, bbox_preds = [None] * 5, [None] * 5, [None] * 5
+for i in range(5):
+# getattr(self, 'blk_%d' % i)即访问self.blk_i
+X, anchors[i], cls_preds[i], bbox_preds[i] = blk_forward(
+X, getattr(self, 'blk_%d' % i), sizes[i], ratios[i],
+getattr(self, 'cls_%d' % i), getattr(self, 'bbox_%d' % i))
+# reshape函数中的0表⽰保持批量⼤⼩不变
+return (nd.concat(*anchors, dim=1),
+concat_preds(cls_preds).reshape(
+(0, -1, self.num_classes + 1)), concat_preds(bbox_preds))
+我们创建单发多框检测模型实例并对⼀个⾼和宽均为256像素的小批量图像X做前向计算。我们在
+之前验证过，第⼀模块输出的特征图的形状为32 × 32。由于第⼆⾄第四模块为⾼和宽减半块、第
+五模块为全局池化层，并且以特征图每个单元为中⼼⽣成4个锚框，每个图像在5个尺度下⽣成的
+锚框总数为(322 + 162 + 82 + 42 + 1) × 4 = 5444。
+In [13]: net = TinySSD(num_classes=1)
+net.initialize()
+X = nd.zeros((32, 3, 256, 256))
+anchors, cls_preds, bbox_preds = net(X)
+print('output anchors:', anchors.shape)
+print('output class preds:', cls_preds.shape)
+print('output bbox preds:', bbox_preds.shape)
+output anchors: (1, 5444, 4)
+output class preds: (32, 5444, 2)
+output bbox preds: (32, 21776)
+9.7. 单发多框检测（SSD）
+369
+
+9.7.2 训练模型
+下⾯我们描述如何⼀步步训练单发多框检测模型来进⾏⽬标检测。
+读取数据集和初始化
+我们读取“⽬标检测数据集（⽪卡丘）”⼀节构造的⽪卡丘数据集。
+In [14]: batch_size = 32
+train_iter, _ = d2l.load_data_pikachu(batch_size)
+在⽪卡丘数据集中，⽬标的类别数为1。定义好模型以后，我们需要初始化模型参数并定义优化
+算法。
+In [15]: ctx, net = d2l.try_gpu(), TinySSD(num_classes=1)
+net.initialize(init=init.Xavier(), ctx=ctx)
+trainer = gluon.Trainer(net.collect_params(), 'sgd',
+{'learning_rate': 0.2, 'wd': 5e-4})
+定义损失函数和评价函数
+⽬标检测有两个损失：⼀是有关锚框类别的损失，我们可以重⽤之前图像分类问题⾥⼀直使⽤
+的交叉熵损失函数；⼆是有关正类锚框偏移量的损失。预测偏移量是⼀个回归问题，但这⾥不
+使⽤前⾯介绍过的平⽅损失，而使⽤L1范数损失，即预测值与真实值之间差的绝对值。掩码变
+量bbox_masks令负类锚框和填充锚框不参与损失的计算。最后，我们将有关锚框类别和偏移量
+的损失相加得到模型的最终损失函数。
+In [16]: cls_loss = gloss.SoftmaxCrossEntropyLoss()
+bbox_loss = gloss.L1Loss()
+def calc_loss(cls_preds, cls_labels, bbox_preds, bbox_labels, bbox_masks):
+cls = cls_loss(cls_preds, cls_labels)
+bbox = bbox_loss(bbox_preds * bbox_masks, bbox_labels * bbox_masks)
+return cls + bbox
+我们可以沿⽤准确率评价分类结果。因为使⽤了L1范数损失，我们⽤平均绝对误差评价边界框的
+预测结果。
+In [17]: def cls_eval(cls_preds, cls_labels):
+# 由于类别预测结果放在最后⼀维，argmax需要指定最后⼀维
+return (cls_preds.argmax(axis=-1) == cls_labels).sum().asscalar()
+370
+9. 计算机视觉
+
+def bbox_eval(bbox_preds, bbox_labels, bbox_masks):
+return ((bbox_labels - bbox_preds) * bbox_masks).abs().sum().asscalar()
+训练模型
+在训练模型时，我们需要在模型的前向计算过程中⽣成多尺度的锚框anchors，并为每个锚框预
+测类别cls_preds和偏移量bbox_preds。之后，我们根据标签信息Y为⽣成的每个锚框标注类
+别cls_labels和偏移量bbox_labels。最后，我们根据类别和偏移量的预测和标注值计算损
+失函数。为了代码简洁，这⾥没有评价测试数据集。
+In [18]: for epoch in range(20):
+acc_sum, mae_sum, n, m = 0.0, 0.0, 0, 0
+train_iter.reset()
+# 从头读取数据
+start = time.time()
+for batch in train_iter:
+X = batch.data[0].as_in_context(ctx)
+Y = batch.label[0].as_in_context(ctx)
+with autograd.record():
+# ⽣成多尺度的锚框，为每个锚框预测类别和偏移量
+anchors, cls_preds, bbox_preds = net(X)
+# 为每个锚框标注类别和偏移量
+bbox_labels, bbox_masks, cls_labels = contrib.nd.MultiBoxTarget(
+anchors, Y, cls_preds.transpose((0, 2, 1)))
+# 根据类别和偏移量的预测和标注值计算损失函数
+l = calc_loss(cls_preds, cls_labels, bbox_preds, bbox_labels,
+bbox_masks)
+l.backward()
+trainer.step(batch_size)
+acc_sum += cls_eval(cls_preds, cls_labels)
+n += cls_labels.size
+mae_sum += bbox_eval(bbox_preds, bbox_labels, bbox_masks)
+m += bbox_labels.size
+if (epoch + 1) % 5 == 0:
+print('epoch %2d, class err %.2e, bbox mae %.2e, time %.1f sec' % (
+epoch + 1, 1 - acc_sum / n, mae_sum / m, time.time() - start))
+epoch
+5, class err 3.02e-03, bbox mae 3.14e-03, time 9.6 sec
+epoch 10, class err 2.72e-03, bbox mae 2.90e-03, time 9.5 sec
+epoch 15, class err 2.50e-03, bbox mae 2.68e-03, time 9.5 sec
+epoch 20, class err 2.45e-03, bbox mae 2.63e-03, time 9.4 sec
+9.7. 单发多框检测（SSD）
+371
+
+9.7.3 预测
+在预测阶段，我们希望能把图像⾥⾯所有我们感兴趣的⽬标检测出来。下⾯读取测试图像，将其
+变换尺⼨，然后转成卷积层需要的四维格式。
+In [19]: img = image.imread('../img/pikachu.jpg')
+feature = image.imresize(img, 256, 256).astype('float32')
+X = feature.transpose((2, 0, 1)).expand_dims(axis=0)
+我们通过MultiBoxDetection函数根据锚框及其预测偏移量得到预测边界框，并通过⾮极⼤
+值抑制移除相似的预测边界框。
+In [20]: def predict(X):
+anchors, cls_preds, bbox_preds = net(X.as_in_context(ctx))
+cls_probs = cls_preds.softmax().transpose((0, 2, 1))
+output = contrib.nd.MultiBoxDetection(cls_probs, bbox_preds, anchors)
+idx = [i for i, row in enumerate(output[0]) if row[0].asscalar() != -1]
+return output[0, idx]
+output = predict(X)
+最后，我们将置信度不低于0.3的边界框筛选为最终输出⽤以展⽰。
+In [21]: d2l.set_figsize((5, 5))
+def display(img, output, threshold):
+fig = d2l.plt.imshow(img.asnumpy())
+for row in output:
+score = row[1].asscalar()
+if score < threshold:
+continue
+h, w = img.shape[0:2]
+bbox = [row[2:6] * nd.array((w, h, w, h), ctx=row.context)]
+d2l.show_bboxes(fig.axes, bbox, '%.2f' % score, 'w')
+display(img, output, threshold=0.3)
+372
+9. 计算机视觉
+
+⼩结
+• 单发多框检测是⼀个多尺度的⽬标检测模型。该模型基于基础⽹络块和各个多尺度特征块
+⽣成不同数量和不同⼤小的锚框，并通过预测锚框的类别和偏移量检测不同⼤小的⽬标。
+• 单发多框检测在训练中根据类别和偏移量的预测和标注值计算损失函数。
+练习
+• 限于篇幅原因，实验中忽略了单发多框检测的⼀些实现细节。你能从以下⼏个⽅⾯进⼀步
+改进模型吗？
+9.7. 单发多框检测（SSD）
+373
+
+损失函数
+将预测偏移量⽤到的L1范数损失替换为平滑L1范数损失。它在零点附近使⽤平⽅函数从而更加
+平滑，这是通过⼀个超参数σ来控制平滑区域的：
+f(x) =
+
+
+
+(σx)2/2,
+if |x| < 1/σ2
+|x| −0.5/σ2,
+otherwise
+当σ很⼤时该损失类似于L1范数损失。当它较小时，损失函数较平滑。
+In [22]: sigmas = [10, 1, 0.5]
+lines = ['-', '--', '-.']
+x = nd.arange(-2, 2, 0.1)
+d2l.set_figsize()
+for l, s in zip(lines, sigmas):
+y = nd.smooth_l1(x, scalar=s)
+d2l.plt.plot(x.asnumpy(), y.asnumpy(), l, label='sigma=%.1f' % s)
+d2l.plt.legend();
+在类别预测时，实验中使⽤了交叉熵损失：设真实类别j的预测概率是pj，交叉熵损失为−log pj。
+我们还可以使⽤焦点损失（focal loss）[2]：给定正的超参数γ和α，该损失的定义为
+−α(1 −pj)γ log pj.
+可以看到，增⼤γ可以有效减小正类预测概率较⼤时的损失。
+In [23]: def focal_loss(gamma, x):
+return -(1 - x) ** gamma * x.log()
+374
+9. 计算机视觉
+
+x = nd.arange(0.01, 1, 0.01)
+for l, gamma in zip(lines, [0, 1, 5]):
+y = d2l.plt.plot(x.asnumpy(), focal_loss(gamma, x).asnumpy(), l,
+label='gamma=%.1f' % gamma)
+d2l.plt.legend();
+训练和预测
+• 当⽬标在图像中占⽐较小时，模型通常会采⽤⽐较⼤的输⼊图像尺⼨。
+• 为锚框标注类别时，通常会产⽣⼤量的负类锚框。可以对负类锚框进⾏采样，从而使数据类
+别更加平衡。这个可以通过设置MultiBoxTarget函数的negative_mining_ratio参
+数来完成。
+• 在损失函数中为有关锚框类别和有关正类锚框偏移量的损失分别赋予不同的权重超参数。
+• 参考单发多框检测论⽂，还有哪些⽅法可以评价⽬标检测模型的精度[1]？
+参考⽂献
+[1] Liu, W., Anguelov, D., Erhan, D., Szegedy, C., Reed, S., Fu, C. Y., & Berg, A. C. (2016, October).
+Ssd: Single shot multibox detector. In European conference on computer vision (pp. 21-37).
+Springer, Cham.
+9.7. 单发多框检测（SSD）
+375
+
+[2] Lin, T. Y., Goyal, P., Girshick, R., He, K., & Dollár, P. (2018). Focal loss for dense object
+detection. IEEE transactions on pattern analysis and machine intelligence.
+扫码直达讨论区
+9.8 区域卷积神经⽹络（R-CNN）系列
+区域卷积神经⽹络（region-based CNN或regions with CNN features，R-CNN）是将深度模型应
+⽤于⽬标检测的开创性⼯作之⼀[1]。在本节中，我们将介绍R-CNN和它的⼀系列改进⽅法：快速
+的R-CNN（Fast R-CNN）[3]、更快的R-CNN（Faster R-CNN）[4] 以及掩码R-CNN（Mask R-CNN）
+[5]。限于篇幅，这⾥只介绍这些模型的设计思路。
+9.8.1 R-CNN
+R-CNN⾸先对图像选取若⼲提议区域（如锚框也是⼀种选取⽅法）并标注它们的类别和边界框
+（如偏移量）。然后，⽤卷积神经⽹络对每个提议区域做前向计算抽取特征。之后，我们⽤每个提
+议区域的特征预测类别和边界框。图9.5描述了R-CNN模型。
+图9.5: R-CNN模型
+376
+9. 计算机视觉
+
+具体来说，R-CNN主要由以下4步构成。
+1. 对输⼊图像使⽤选择性搜索（selective search）来选取多个⾼质量的提议区域[2]。这些提
+议区域通常是在多个尺度下选取的，并具有不同的形状和⼤小。每个提议区域将被标注类
+别和真实边界框。
+2. 选取⼀个预训练的卷积神经⽹络，并将其在输出层之前截断。将每个提议区域变形为⽹络
+需要的输⼊尺⼨，并通过前向计算输出抽取的提议区域特征。
+3. 将每个提议区域的特征连同其标注的类别作为⼀个样本，训练多个⽀持向量机对⽬标分类。
+其中每个⽀持向量机⽤来判断样本是否属于某⼀个类别。
+4. 将每个提议区域的特征连同其标注的边界框作为⼀个样本，训练线性回归模型来预测真实
+边界框。
+R-CNN虽然通过预训练的卷积神经⽹络有效抽取了图像特征，但它的主要缺点是速度慢。想象⼀
+下，我们可能从⼀张图像中选出上千个提议区域，对该图像做⽬标检测将导致上千次的卷积神经
+⽹络的前向计算。这个巨⼤的计算量令R-CNN难以在实际应⽤中被⼴泛采⽤。
+9.8.2 Fast R-CNN
+R-CNN的主要性能瓶颈在于需要对每个提议区域独⽴抽取特征。由于这些区域通常有⼤量重叠，
+独⽴的特征抽取会导致⼤量的重复计算。Fast R-CNN对R-CNN的⼀个主要改进在于只对整个图像
+做卷积神经⽹络的前向计算。
+图9.6描述了Fast R-CNN模型。
+9.8. 区域卷积神经⽹络（R-CNN）系列
+377
+
+图9.6: Fast R-CNN模型
+它的主要计算步骤如下。
+1. 与R-CNN相⽐，Fast R-CNN⽤来提取特征的卷积神经⽹络的输⼊是整个图像，而不是各个
+提议区域。而且，这个⽹络通常会参与训练，即更新模型参数。设输⼊为⼀张图像，将卷积
+神经⽹络的输出的形状记为1 × c × h1 × w1。
+2. 假设选择性搜索⽣成n个提议区域。这些形状各异的提议区域在卷积神经⽹络的输出上分
+别标出形状各异的兴趣区域。这些兴趣区域需要抽取出形状相同的特征（假设⾼和宽均分
+别指定为h2和w2）以便于连结后输出。Fast R-CNN引⼊兴趣区域池化（region of interest
+pooling，RoI池化）层，将卷积神经⽹络的输出和提议区域作为输⼊，输出连结后的各个提
+议区域抽取的特征，形状为n × c × h2 × w2。
+3. 通过全连接层将输出形状变换为n × d，其中超参数d取决于模型设计。
+4. 预测类别时，将全连接层的输出的形状再变换为n × q并使⽤softmax回归（q为类别个数）。
+预测边界框时，将全连接层的输出的形状变换为n × 4。也就是说，我们为每个提议区域预
+测类别和边界框。
+Fast R-CNN中提出的兴趣区域池化层与我们在“池化层”⼀节介绍过的池化层有所不同。在池化
+层中，我们通过设置池化窗口、填充和步幅来控制输出形状。而兴趣区域池化层对每个区域的输
+出形状是可以直接指定的，例如，指定每个区域输出的⾼和宽分别为h2和w2。假设某⼀兴趣区域
+378
+9. 计算机视觉
+
+窗口的⾼和宽分别为h和w，该窗口将被划分为形状为h2 × w2的⼦窗口⽹格，且每个⼦窗口的⼤
+小⼤约为(h/h2) × (w/w2)。任⼀⼦窗口的⾼和宽要取整，其中的最⼤元素作为该⼦窗口的输出。
+因此，兴趣区域池化层可从形状各异的兴趣区域中均抽取出形状相同的特征。
+图9.7中，我们在4 × 4的输⼊上选取了左上⻆的3 × 3区域作为兴趣区域。对于该兴趣区域，我们通
+过2 × 2兴趣区域池化层得到⼀个2 × 2的输出。4个划分后的⼦窗口分别含有元素0、1、4、5（5最
+⼤），2、6（6最⼤），8、9（9最⼤），10。
+图9.7: 2 × 2兴趣区域池化层
+我们使⽤ROIPooling函数来演⽰兴趣区域池化层的计算。假设卷积神经⽹络抽取的特征X的⾼
+和宽均为4且只有单通道。
+In [1]: from mxnet import nd
+X = nd.arange(16).reshape((1, 1, 4, 4))
+X
+Out[1]:
+[[[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11.]
+[12. 13. 14. 15.]]]]
+<NDArray 1x1x4x4 @cpu(0)>
+假设图像的⾼和宽均为40像素。再假设选择性搜索在图像上⽣成了两个提议区域：每个区域由5个
+元素表⽰，分别为区域⽬标类别、左上⻆的x和y轴坐标以及右下⻆的x和y轴坐标。
+In [2]: rois = nd.array([[0, 0, 0, 20, 20], [0, 0, 10, 30, 30]])
+由于X的⾼和宽是图像的⾼和宽的1/10，以上两个提议区域中的坐标先按spatial_scale⾃
+乘0.1，然后在X上分别标出兴趣区域X[:,:,0:3,0:3]和X[:,:,1:4,0:4]。最后对这两个兴
+趣区域分别划分⼦窗口⽹格并抽取⾼和宽为2的特征。
+In [3]: nd.ROIPooling(X, rois, pooled_size=(2, 2), spatial_scale=0.1)
+9.8. 区域卷积神经⽹络（R-CNN）系列
+379
+
+Out[3]:
+[[[[ 5.
+6.]
+[ 9. 10.]]]
+[[[ 9. 11.]
+[13. 15.]]]]
+<NDArray 2x1x2x2 @cpu(0)>
+9.8.3 Faster R-CNN
+Fast R-CNN通常需要在选择性搜索中⽣成较多的提议区域，以获得较精确的⽬标检测结果。Faster
+R-CNN提出将选择性搜索替换成区域提议⽹络（region proposal network），从而减少提议区域
+的⽣成数量，并保证⽬标检测的精度。
+图9.8: Faster R-CNN模型
+图9.8描述了Faster R-CNN模型。与Fast R-CNN相⽐，只有⽣成提议区域的⽅法从选择性搜索变
+成了区域提议⽹络，而其他部分均保持不变。具体来说，区域提议⽹络的计算步骤如下。
+1. 使⽤填充为1的3 × 3卷积层变换卷积神经⽹络的输出，并将输出通道数记为c。这样，卷积
+神经⽹络为图像抽取的特征图中的每个单元均得到⼀个⻓度为c的新特征。
+380
+9. 计算机视觉
+
+2. 以特征图每个单元为中⼼，⽣成多个不同⼤小和宽⾼⽐的锚框并标注它们。
+3. ⽤锚框中⼼单元⻓度为c的特征分别预测该锚框的⼆元类别（含⽬标还是背景）和边界框。
+4. 使⽤⾮极⼤值抑制，从预测类别为⽬标的预测边界框中移除相似的结果。最终输出的预测
+边界框即兴趣区域池化层所需要的提议区域。
+值得⼀提的是，区域提议⽹络作为Faster R-CNN的⼀部分，是和整个模型⼀起训练得到的。也就
+是说，Faster R-CNN的⽬标函数既包括⽬标检测中的类别和边界框预测，⼜包括区域提议⽹络中
+锚框的⼆元类别和边界框预测。最终，区域提议⽹络能够学习到如何⽣成⾼质量的提议区域，从
+而在减少提议区域数量的情况下也能保证⽬标检测的精度。
+9.8.4 Mask R-CNN
+如果训练数据还标注了每个⽬标在图像上的像素级位置，那么Mask R-CNN能有效利⽤这些详尽
+的标注信息进⼀步提升⽬标检测的精度。
+图9.9: Mask R-CNN模型
+如图9.9所⽰，Mask R-CNN在Faster R-CNN的基础上做了修改。Mask R-CNN将兴趣区域池化层
+替换成了兴趣区域对⻬层，即通过双线性插值（bilinear interpolation）来保留特征图上的空间
+信息，从而更适于像素级预测。兴趣区域对⻬层的输出包含了所有兴趣区域的形状相同的特征图。
+9.8. 区域卷积神经⽹络（R-CNN）系列
+381
+
+它们既⽤来预测兴趣区域的类别和边界框，⼜通过额外的全卷积⽹络预测⽬标的像素级位置。我
+们将在“全卷积⽹络（FCN）”⼀节介绍如何使⽤全卷积⽹络预测图像中像素级的语义。
+⼩结
+• R-CNN对图像选取若⼲提议区域，然后⽤卷积神经⽹络对每个提议区域做前向计算抽取特
+征，再⽤这些特征预测提议区域的类别和边界框。
+• Fast R-CNN对R-CNN的⼀个主要改进在于只对整个图像做卷积神经⽹络的前向计算。它引
+⼊了兴趣区域池化层，从而令兴趣区域能够抽取出形状相同的特征。
+• Faster R-CNN将Fast R-CNN中的选择性搜索替换成区域提议⽹络，从而减少提议区域的⽣
+成数量，并保证⽬标检测的精度。
+• Mask R-CNN在Faster R-CNN基础上引⼊⼀个全卷积⽹络，从而借助⽬标的像素级位置进⼀
+步提升⽬标检测的精度。
+练习
+• 了解GluonCV⼯具包中有关本节中各个模型的实现[6]。
+参考⽂献
+[1] Girshick, R., Donahue, J., Darrell, T., & Malik, J. (2014). Rich feature hierarchies for accu-
+rate object detection and semantic segmentation. In Proceedings of the IEEE conference on
+computer vision and pattern recognition (pp. 580-587).
+[2] Uijlings, J. R., Van De Sande, K. E., Gevers, T., & Smeulders, A. W. (2013). Selective search
+for object recognition. International journal of computer vision, 104(2), 154-171.
+[3] Girshick, R. (2015). Fast r-cnn. arXiv preprint arXiv:1504.08083.
+[4] Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards real-time object detection
+with region proposal networks. In Advances in neural information processing systems (pp. 91-
+99).
+[5] He, K., Gkioxari, G., Dollár, P., & Girshick, R. (2017, October). Mask r-cnn. In Computer
+Vision (ICCV), 2017 IEEE International Conference on (pp. 2980-2988). IEEE.
+382
+9. 计算机视觉
+
+[6] GluonCV ⼯具包。https://gluon-cv.mxnet.io/
+扫码直达讨论区
+9.9 语义分割和数据集
+在前⼏节讨论的⽬标检测问题中，我们⼀直使⽤⽅形边界框来标注和预测图像中的⽬标。本节将
+探讨语义分割（semantic segmentation）问题，它关注如何将图像分割成属于不同语义类别的区
+域。值得⼀提的是，这些语义区域的标注和预测都是像素级的。图9.10展⽰了语义分割中图像有
+关狗、猫和背景的标签。可以看到，与⽬标检测相⽐，语义分割标注的像素级的边框显然更加精
+细。
+图9.10: 语义分割中图像有关狗、猫和背景的标签
+9.9.1 图像分割和实例分割
+计算机视觉领域还有2个与语义分割相似的重要问题，即图像分割（image segmentation）和实
+例分割（instance segmentation）。我们在这⾥将它们与语义分割简单区分⼀下。
+• 图像分割将图像分割成若⼲组成区域。这类问题的⽅法通常利⽤图像中像素之间的相关性。
+它在训练时不需要有关图像像素的标签信息，在预测时也⽆法保证分割出的区域具有我们
+9.9. 语义分割和数据集
+383
+
+希望得到的语义。以图9.10的图像为输⼊，图像分割可能将狗分割成两个区域：⼀个覆盖以
+⿊⾊为主的嘴巴和眼睛，而另⼀个覆盖以⻩⾊为主的其余部分⾝体。
+• 实例分割⼜叫同时检测并分割（simultaneous detection and segmentation）。它研究如何
+识别图像中各个⽬标实例的像素级区域。与语义分割有所不同，实例分割不仅需要区分语
+义，还要区分不同的⽬标实例。如果图像中有两只狗，实例分割需要区分像素属于这两只
+狗中的哪⼀只。
+9.9.2 Pascal VOC2012语义分割数据集
+语义分割的⼀个重要数据集叫作Pascal VOC2012 [1]。为了更好地了解这个数据集，我们先导⼊
+实验所需的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import gluon, image, nd
+from mxnet.gluon import data as gdata, utils as gutils
+import os
+import sys
+import tarfile
+我们下载这个数据集的压缩包到../data路径下。压缩包⼤小是2 GB左右，下载需要⼀定时间。
+解压之后的数据集将会放置在../data/VOCdevkit/VOC2012路径下。
+In [2]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def download_voc_pascal(data_dir='../data'):
+voc_dir = os.path.join(data_dir, 'VOCdevkit/VOC2012')
+url = ('http://host.robots.ox.ac.uk/pascal/VOC/voc2012'
+'/VOCtrainval_11-May-2012.tar')
+sha1 = '4e443f8a2eca6b1dac8a6c57641b67dd40621a49'
+fname = gutils.download(url, data_dir, sha1_hash=sha1)
+with tarfile.open(fname, 'r') as f:
+f.extractall(data_dir)
+return voc_dir
+voc_dir = download_voc_pascal()
+进⼊../data/VOCdevkit/VOC2012路径后，我们可以获取数据集的不同组成部
+分。其中ImageSets/Segmentation路径包含了指定训练和测试样本的⽂本⽂件，
+而JPEGImages和SegmentationClass路径下分别包含了样本的输⼊图像和标签。这⾥
+的标签也是图像格式，其尺⼨和它所标注的输⼊图像的尺⼨相同。标签中颜⾊相同的像素属于同
+384
+9. 计算机视觉
+
+⼀个语义类别。下⾯定义read_voc_images函数将输⼊图像和标签全部读进内存。
+In [3]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def read_voc_images(root=voc_dir, is_train=True):
+txt_fname = '%s/ImageSets/Segmentation/%s' % (
+root, 'train.txt' if is_train else 'val.txt')
+with open(txt_fname, 'r') as f:
+images = f.read().split()
+features, labels = [None] * len(images), [None] * len(images)
+for i, fname in enumerate(images):
+features[i] = image.imread('%s/JPEGImages/%s.jpg' % (root, fname))
+labels[i] = image.imread(
+'%s/SegmentationClass/%s.png' % (root, fname))
+return features, labels
+train_features, train_labels = read_voc_images()
+我们画出前5张输⼊图像和它们的标签。在标签图像中，⽩⾊和⿊⾊分别代表边框和背景，而其
+他不同的颜⾊则对应不同的类别。
+In [4]: n = 5
+imgs = train_features[0:n] + train_labels[0:n]
+d2l.show_images(imgs, 2, n);
+接下来，我们列出标签中每个RGB颜⾊的值及其标注的类别。
+In [5]: # 该常量已保存在d2lzh包中⽅便以后使⽤
+VOC_COLORMAP = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
+[0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
+[64, 0, 0], [192, 0, 0], [64, 128, 0], [192, 128, 0],
+[64, 0, 128], [192, 0, 128], [64, 128, 128], [192, 128, 128],
+[0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
+9.9. 语义分割和数据集
+385
+
+[0, 64, 128]]
+# 该常量已保存在d2lzh包中⽅便以后使⽤
+VOC_CLASSES = ['background', 'aeroplane', 'bicycle', 'bird', 'boat',
+'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
+'diningtable', 'dog', 'horse', 'motorbike', 'person',
+'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
+有了上⾯定义的两个常量以后，我们可以很容易地查找标签中每个像素的类别索引。
+In [6]: colormap2label = nd.zeros(256 ** 3)
+for i, colormap in enumerate(VOC_COLORMAP):
+colormap2label[(colormap[0] * 256 + colormap[1]) * 256 + colormap[2]] = i
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+def voc_label_indices(colormap, colormap2label):
+colormap = colormap.astype('int32')
+idx = ((colormap[:, :, 0] * 256 + colormap[:, :, 1]) * 256
++ colormap[:, :, 2])
+return colormap2label[idx]
+例如，第⼀张样本图像中⻜机头部区域的类别索引为1，而背景全是0。
+In [7]: y = voc_label_indices(train_labels[0], colormap2label)
+y[105:115, 130:140], VOC_CLASSES[1]
+Out[7]: (
+[[0. 0. 0. 0. 0. 0. 0. 0. 0. 1.]
+[0. 0. 0. 0. 0. 0. 0. 1. 1. 1.]
+[0. 0. 0. 0. 0. 0. 1. 1. 1. 1.]
+[0. 0. 0. 0. 0. 1. 1. 1. 1. 1.]
+[0. 0. 0. 0. 0. 1. 1. 1. 1. 1.]
+[0. 0. 0. 0. 1. 1. 1. 1. 1. 1.]
+[0. 0. 0. 0. 0. 1. 1. 1. 1. 1.]
+[0. 0. 0. 0. 0. 1. 1. 1. 1. 1.]
+[0. 0. 0. 0. 0. 0. 1. 1. 1. 1.]
+[0. 0. 0. 0. 0. 0. 0. 0. 1. 1.]]
+<NDArray 10x10 @cpu(0)>, 'aeroplane')
+预处理数据
+在之前的章节中，我们通过缩放图像使其符合模型的输⼊形状。然而在语义分割⾥，这样做需要
+将预测的像素类别重新映射回原始尺⼨的输⼊图像。这样的映射难以做到精确，尤其在不同语义
+的分割区域。为了避免这个问题，我们将图像裁剪成固定尺⼨而不是缩放。具体来说，我们使⽤
+图像增⼴⾥的随机裁剪，并对输⼊图像和标签裁剪相同区域。
+386
+9. 计算机视觉
+
+In [8]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def voc_rand_crop(feature, label, height, width):
+feature, rect = image.random_crop(feature, (width, height))
+label = image.fixed_crop(label, *rect)
+return feature, label
+imgs = []
+for _ in range(n):
+imgs += voc_rand_crop(train_features[0], train_labels[0], 200, 300)
+d2l.show_images(imgs[::2] + imgs[1::2], 2, n);
+⾃定义语义分割数据集类
+我们通过继承Gluon提供的Dataset类⾃定义了⼀个语义分割数据集类VOCSegDataset。通过
+实现__getitem__函数，我们可以任意访问数据集中索引为idx的输⼊图像及其每个像素的类
+别索引。由于数据集中有些图像的尺⼨可能小于随机裁剪所指定的输出尺⼨，这些样本需要通过
+⾃定义的filter函数所移除。此外，我们还定义了normalize_image函数，从而对输⼊图像
+的RGB三个通道的值分别做标准化。
+In [9]: # 本类已保存在d2lzh包中⽅便以后使⽤
+class VOCSegDataset(gdata.Dataset):
+def __init__(self, is_train, crop_size, voc_dir, colormap2label):
+self.rgb_mean = nd.array([0.485, 0.456, 0.406])
+self.rgb_std = nd.array([0.229, 0.224, 0.225])
+self.crop_size = crop_size
+features, labels = read_voc_images(root=voc_dir, is_train=is_train)
+self.features = [self.normalize_image(feature)
+for feature in self.filter(features)]
+self.labels = self.filter(labels)
+9.9. 语义分割和数据集
+387
+
+self.colormap2label = colormap2label
+print('read ' + str(len(self.features)) + ' examples')
+def normalize_image(self, img):
+return (img.astype('float32') / 255 - self.rgb_mean) / self.rgb_std
+def filter(self, imgs):
+return [img for img in imgs if (
+img.shape[0] >= self.crop_size[0] and
+img.shape[1] >= self.crop_size[1])]
+def __getitem__(self, idx):
+feature, label = voc_rand_crop(self.features[idx], self.labels[idx],
+*self.crop_size)
+return (feature.transpose((2, 0, 1)),
+voc_label_indices(label, self.colormap2label))
+def __len__(self):
+return len(self.features)
+读取数据集
+我们通过⾃定义的VOCSegDataset类来分别创建训练集和测试集的实例。假设我们指定随机裁
+剪的输出图像的形状为320 × 480。下⾯我们可以查看训练集和测试集所保留的样本个数。
+In [10]: crop_size = (320, 480)
+voc_train = VOCSegDataset(True, crop_size, voc_dir, colormap2label)
+voc_test = VOCSegDataset(False, crop_size, voc_dir, colormap2label)
+read 1114 examples
+read 1078 examples
+设批量⼤小为64，分别定义训练集和测试集的迭代器。
+In [11]: batch_size = 64
+num_workers = 0 if sys.platform.startswith('win32') else 4
+train_iter = gdata.DataLoader(voc_train, batch_size, shuffle=True,
+last_batch='discard', num_workers=num_workers)
+test_iter = gdata.DataLoader(voc_test, batch_size, last_batch='discard',
+num_workers=num_workers)
+打印第⼀个小批量的形状。不同于图像分类和⽬标识别，这⾥的标签是⼀个三维数组。
+In [12]: for X, Y in train_iter:
+print(X.shape)
+388
+9. 计算机视觉
+
+print(Y.shape)
+break
+(64, 3, 320, 480)
+(64, 320, 480)
+⼩结
+• 语义分割关注如何将图像分割成属于不同语义类别的区域。
+• 语义分割的⼀个重要数据集叫作Pascal VOC2012。
+• 由于语义分割的输⼊图像和标签在像素上⼀⼀对应，所以将图像随机裁剪成固定尺⼨而不
+是缩放。
+练习
+• 回忆“图像增⼴”⼀节中的内容。哪些在图像分类中使⽤的图像增⼴⽅法难以⽤于语义分
+割？
+参考⽂献
+[1] Pascal VOC2012数据集。http://host.robots.ox.ac.uk/pascal/VOC/voc2012/
+扫码直达讨论区
+9.10 全卷积⽹络（FCN）
+上⼀节介绍了，我们可以基于语义分割对图像中的每个像素进⾏类别预测。全卷积⽹络（fully
+convolutional network，FCN）采⽤卷积神经⽹络实现了从图像像素到像素类别的变换[1]。与之
+9.10. 全卷积⽹络（FCN）
+389
+
+前介绍的卷积神经⽹络有所不同，全卷积⽹络通过转置卷积（transposed convolution）层将中
+间层特征图的⾼和宽变换回输⼊图像的尺⼨，从而令预测结果与输⼊图像在空间维（⾼和宽）上
+⼀⼀对应：给定空间维上的位置，通道维的输出即该位置对应像素的类别预测。
+我们先导⼊实验所需的包或模块，然后解释什么是转置卷积层。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import gluon, image, init, nd
+from mxnet.gluon import data as gdata, loss as gloss, model_zoo, nn
+import numpy as np
+import sys
+9.10.1 转置卷积层
+顾名思义，转置卷积层得名于矩阵的转置操作。事实上，卷积运算还可以通过矩阵乘法来实现。
+在下⾯的例⼦中，我们定义⾼和宽分别为4的输⼊X，以及⾼和宽分别为3的卷积核K。打印⼆维卷
+积运算的输出以及卷积核。可以看到，输出的⾼和宽分别为2。
+In [2]: X = nd.arange(1, 17).reshape((1, 1, 4, 4))
+K = nd.arange(1, 10).reshape((1, 1, 3, 3))
+conv = nn.Conv2D(channels=1, kernel_size=3)
+conv.initialize(init.Constant(K))
+conv(X), K
+Out[2]: (
+[[[[348. 393.]
+[528. 573.]]]]
+<NDArray 1x1x2x2 @cpu(0)>,
+[[[[1. 2. 3.]
+[4. 5. 6.]
+[7. 8. 9.]]]]
+<NDArray 1x1x3x3 @cpu(0)>)
+下⾯我们将卷积核K改写成含有⼤量零元素的稀疏矩阵W，即权重矩阵。权重矩阵的形状为(4, 16)，
+其中的⾮零元素来⾃卷积核K中的元素。将输⼊X逐⾏连结，得到⻓度为16的向量。然后将W与向
+量化的X做矩阵乘法，得到⻓度为4的向量。对其变形后，我们可以得到和上⾯卷积运算相同的结
+果。可⻅，我们在这个例⼦中使⽤矩阵乘法实现了卷积运算。
+In [3]: W, k = nd.zeros((4, 16)), nd.zeros(11)
+k[:3], k[4:7], k[8:] = K[0, 0, 0, :], K[0, 0, 1, :], K[0, 0, 2, :]
+W[0, 0:11], W[1, 1:12], W[2, 4:15], W[3, 5:16] = k, k, k, k
+nd.dot(W, X.reshape(16)).reshape((1, 1, 2, 2)), W
+390
+9. 计算机视觉
+
+Out[3]: (
+[[[[348. 393.]
+[528. 573.]]]]
+<NDArray 1x1x2x2 @cpu(0)>,
+[[1. 2. 3. 0. 4. 5. 6. 0. 7. 8. 9. 0. 0. 0. 0. 0.]
+[0. 1. 2. 3. 0. 4. 5. 6. 0. 7. 8. 9. 0. 0. 0. 0.]
+[0. 0. 0. 0. 1. 2. 3. 0. 4. 5. 6. 0. 7. 8. 9. 0.]
+[0. 0. 0. 0. 0. 1. 2. 3. 0. 4. 5. 6. 0. 7. 8. 9.]]
+<NDArray 4x16 @cpu(0)>)
+现在我们从矩阵乘法的⻆度来描述卷积运算。设输⼊向量为x，权重矩阵为W ，卷积的前向计算
+函数的实现可以看作将函数输⼊乘以权重矩阵，并输出向量y = W x。我们知道，反向传播需要
+依据链式法则。由于∇xy = W ⊤，卷积的反向传播函数的实现可以看作将函数输⼊乘以转置后
+的权重矩阵W ⊤。而转置卷积层正好交换了卷积层的前向计算函数与反向传播函数：这两个函数
+可以看作将函数输⼊向量分别乘以W ⊤和W 。
+不难想象，转置卷积层可以⽤来交换卷积层输⼊和输出的形状。让我们继续⽤矩阵乘法描述卷积。
+设权重矩阵是形状为4 × 16的矩阵，对于⻓度为16的输⼊向量，卷积前向计算输出⻓度为4的向
+量。假如输⼊向量的⻓度为4，转置权重矩阵的形状为16 × 4，那么转置卷积层将输出⻓度为16的
+向量。在模型设计中，转置卷积层常⽤于将较小的特征图变换为更⼤的特征图。在全卷积⽹络中，
+当输⼊是⾼和宽较小的特征图时，转置卷积层可以⽤来将⾼和宽放⼤到输⼊图像的尺⼨。
+我们来看⼀个例⼦。构造⼀个卷积层conv，并设输⼊X的形状为(1, 3, 64, 64)。卷积输出Y的通道
+数增加到10，但⾼和宽分别缩小了⼀半。
+In [4]: conv = nn.Conv2D(10, kernel_size=4, padding=1, strides=2)
+conv.initialize()
+X = nd.random.uniform(shape=(1, 3, 64, 64))
+Y = conv(X)
+Y.shape
+Out[4]: (1, 10, 32, 32)
+下⾯我们通过创建Conv2DTranspose实例来构造转置卷积层conv_trans。这⾥我们
+设conv_trans的卷积核形状、填充以及步幅与conv中的相同，并设输出通道数为3。当输⼊
+为卷积层conv的输出Y时，转置卷积层输出与卷积层输⼊的⾼和宽相同：转置卷积层将特征图的
+⾼和宽分别放⼤了2倍。
+In [5]: conv_trans = nn.Conv2DTranspose(3, kernel_size=4, padding=1, strides=2)
+conv_trans.initialize()
+conv_trans(Y).shape
+9.10. 全卷积⽹络（FCN）
+391
+
+Out[5]: (1, 3, 64, 64)
+在有些⽂献中，转置卷积也被称为分数步⻓卷积（fractionally-strided convolution）[2]。
+9.10.2 构造模型
+我们在这⾥给出全卷积⽹络模型最基本的设计。如图9.11所⽰，全卷积⽹络先使⽤卷积神经⽹络
+抽取图像特征，然后通过1 × 1卷积层将通道数变换为类别个数，最后通过转置卷积层将特征图的
+⾼和宽变换为输⼊图像的尺⼨。模型输出与输⼊图像的⾼和宽相同，并在空间位置上⼀⼀对应：
+最终输出的通道包含了该空间位置像素的类别预测。
+图9.11: 全卷积⽹络
+下⾯我们使⽤⼀个基于ImageNet数据集预训练的ResNet-18模型来抽取图像特征，并将该⽹络实
+例记为pretrained_net。可以看到，该模型成员变量features的最后两层分别是全局最⼤池
+化层GlobalAvgPool2D和样本变平层Flatten，而output模块包含了输出⽤的全连接层。全
+卷积⽹络不需要使⽤这些层。
+In [6]: pretrained_net = model_zoo.vision.resnet18_v2(pretrained=True)
+pretrained_net.features[-4:], pretrained_net.output
+392
+9. 计算机视觉
+
+Out[6]: (HybridSequential(
+(0): BatchNorm(axis=1, eps=1e-05, momentum=0.9, fix_gamma=False,
+use_global_stats=False, in_channels=512)
+,→
+(1): Activation(relu)
+(2): GlobalAvgPool2D(size=(1, 1), stride=(1, 1), padding=(0, 0),
+ceil_mode=True)
+,→
+(3): Flatten
+), Dense(512 -> 1000, linear))
+下⾯我们创建全卷积⽹络实例net。它复制了pretrained_net实例成员变量features⾥除去
+最后两层的所有层以及预训练得到的模型参数。
+In [7]: net = nn.HybridSequential()
+for layer in pretrained_net.features[:-2]:
+net.add(layer)
+给定⾼和宽分别为320和480的输⼊，net的前向计算将输⼊的⾼和宽减小⾄原来的1/32，即10和15。
+In [8]: X = nd.random.uniform(shape=(1, 3, 320, 480))
+net(X).shape
+Out[8]: (1, 512, 10, 15)
+接下来，我们通过1×1卷积层将输出通道数变换为Pascal VOC2012数据集的类别个数21。最后，我
+们需要将特征图的⾼和宽放⼤32倍，从而变回输⼊图像的⾼和宽。回忆⼀下“填充和步幅”⼀节中描
+述的卷积层输出形状的计算⽅法。由于(320−64+16×2+32)/32 = 10且(480−64+16×2+32)/32 =
+15，我们构造⼀个步幅为32的转置卷积层，并将卷积核的⾼和宽设为64、填充设为16。不难发现，
+如果步幅为s、填充为s/2（假设s/2为整数）、卷积核的⾼和宽为2s，转置卷积核将输⼊的⾼和宽
+分别放⼤s倍。
+In [9]: num_classes = 21
+net.add(nn.Conv2D(num_classes, kernel_size=1),
+nn.Conv2DTranspose(num_classes, kernel_size=64, padding=16,
+strides=32))
+9.10.3 初始化转置卷积层
+我们已经知道，转置卷积层可以放⼤特征图。在图像处理中，我们有时需要将图像放⼤，即上
+采样（upsample）。上采样的⽅法有很多，常⽤的有双线性插值。简单来说，为了得到输出图像
+在坐标(x, y)上的像素，先将该坐标映射到输⼊图像的坐标(x′, y′)，例如，根据输⼊与输出的尺
+⼨之⽐来映射。映射后的x′和y′通常是实数。然后，在输⼊图像上找到与坐标(x′, y′)最近的4个像
+素。最后，输出图像在坐标(x, y)上的像素依据输⼊图像上这4个像素及其与(x′, y′)的相对距离来
+9.10. 全卷积⽹络（FCN）
+393
+
+计算。双线性插值的上采样可以通过由以下bilinear_kernel函数构造的卷积核的转置卷积层
+来实现。限于篇幅，我们只给出bilinear_kernel函数的实现，不再讨论算法的原理。
+In [10]: def bilinear_kernel(in_channels, out_channels, kernel_size):
+factor = (kernel_size + 1) // 2
+if kernel_size % 2 == 1:
+center = factor - 1
+else:
+center = factor - 0.5
+og = np.ogrid[:kernel_size, :kernel_size]
+filt = (1 - abs(og[0] - center) / factor) * \
+(1 - abs(og[1] - center) / factor)
+weight = np.zeros((in_channels, out_channels, kernel_size, kernel_size),
+dtype='float32')
+weight[range(in_channels), range(out_channels), :, :] = filt
+return nd.array(weight)
+我们来实验⼀下⽤转置卷积层实现的双线性插值的上采样。构造⼀个将输⼊的⾼和宽放⼤2倍的
+转置卷积层，并将其卷积核⽤bilinear_kernel函数初始化。
+In [11]: conv_trans = nn.Conv2DTranspose(3, kernel_size=4, padding=1, strides=2)
+conv_trans.initialize(init.Constant(bilinear_kernel(3, 3, 4)))
+读取图像X，将上采样的结果记作Y。为了打印图像，我们需要调整通道维的位置。
+In [12]: img = image.imread('../img/catdog.jpg')
+X = img.astype('float32').transpose((2, 0, 1)).expand_dims(axis=0) / 255
+Y = conv_trans(X)
+out_img = Y[0].transpose((1, 2, 0))
+可以看到，转置卷积层将图像的⾼和宽分别放⼤2倍。值得⼀提的是，除了坐标刻度不同，双线性
+插值放⼤的图像和“⽬标检测和边界框”⼀节中打印出的原图看上去没什么两样。
+In [13]: d2l.set_figsize()
+print('input image shape:', img.shape)
+d2l.plt.imshow(img.asnumpy());
+print('output image shape:', out_img.shape)
+d2l.plt.imshow(out_img.asnumpy());
+input image shape: (561, 728, 3)
+output image shape: (1122, 1456, 3)
+394
+9. 计算机视觉
+
+在全卷积⽹络中，我们将转置卷积层初始化为双线性插值的上采样。对于1 × 1卷积层，我们采
+⽤Xavier随机初始化。
+In [14]: net[-1].initialize(init.Constant(bilinear_kernel(num_classes, num_classes,
+64)))
+net[-2].initialize(init=init.Xavier())
+9.10.4 读取数据集
+我们⽤上⼀节介绍的⽅法读取数据集。这⾥指定随机裁剪的输出图像的形状为320 × 480：⾼和宽
+都可以被32整除。
+In [15]: crop_size, batch_size, colormap2label = (320, 480), 32, nd.zeros(256**3)
+for i, cm in enumerate(d2l.VOC_COLORMAP):
+colormap2label[(cm[0] * 256 + cm[1]) * 256 + cm[2]] = i
+voc_dir = d2l.download_voc_pascal(data_dir='../data')
+num_workers = 0 if sys.platform.startswith('win32') else 4
+train_iter = gdata.DataLoader(
+d2l.VOCSegDataset(True, crop_size, voc_dir, colormap2label), batch_size,
+shuffle=True, last_batch='discard', num_workers=num_workers)
+test_iter = gdata.DataLoader(
+d2l.VOCSegDataset(False, crop_size, voc_dir, colormap2label), batch_size,
+last_batch='discard', num_workers=num_workers)
+read 1114 examples
+read 1078 examples
+9.10. 全卷积⽹络（FCN）
+395
+
+9.10.5 训练模型
+现在可以开始训练模型了。这⾥的损失函数和准确率计算与图像分类中的并没有本质上的不同。
+因为我们使⽤转置卷积层的通道来预测像素的类别，所以在SoftmaxCrossEntropyLoss⾥指
+定了axis=1（通道维）选项。此外，模型基于每个像素的预测类别是否正确来计算准确率。
+In [16]: ctx = d2l.try_all_gpus()
+loss = gloss.SoftmaxCrossEntropyLoss(axis=1)
+net.collect_params().reset_ctx(ctx)
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.1,
+'wd': 1e-3})
+d2l.train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs=5)
+training on [gpu(0), gpu(1)]
+epoch 1, loss 1.2399, train acc 0.738, test acc 0.823, time 16.5 sec
+epoch 2, loss 0.5680, train acc 0.829, test acc 0.837, time 16.2 sec
+epoch 3, loss 0.4466, train acc 0.858, test acc 0.844, time 16.2 sec
+epoch 4, loss 0.3954, train acc 0.872, test acc 0.834, time 16.3 sec
+epoch 5, loss 0.3471, train acc 0.887, test acc 0.853, time 16.2 sec
+9.10.6 预测像素类别
+在预测时，我们需要将输⼊图像在各个通道做标准化，并转成卷积神经⽹络所需要的四维输⼊格
+式。
+In [17]: def predict(img):
+X = test_iter._dataset.normalize_image(img)
+X = X.transpose((2, 0, 1)).expand_dims(axis=0)
+pred = nd.argmax(net(X.as_in_context(ctx[0])), axis=1)
+return pred.reshape((pred.shape[1], pred.shape[2]))
+为了可视化每个像素的预测类别，我们将预测类别映射回它们在数据集中的标注颜⾊。
+In [18]: def label2image(pred):
+colormap = nd.array(d2l.VOC_COLORMAP, ctx=ctx[0], dtype='uint8')
+X = pred.astype('int32')
+return colormap[X, :]
+测试数据集中的图像⼤小和形状各异。由于模型使⽤了步幅为32的转置卷积层，当输⼊图像的⾼
+或宽⽆法被32整除时，转置卷积层输出的⾼或宽会与输⼊图像的尺⼨有偏差。为了解决这个问题，
+我们可以在图像中截取多块⾼和宽为32的整数倍的矩形区域，并分别对这些区域中的像素做前向
+396
+9. 计算机视觉
+
+计算。这些区域的并集需要完整覆盖输⼊图像。当⼀个像素被多个区域所覆盖时，它在不同区域
+前向计算中转置卷积层输出的平均值可以作为softmax运算的输⼊，从而预测类别。
+简单起⻅，我们只读取⼏张较⼤的测试图像，并从图像的左上⻆开始截取形状为320 × 480的区
+域：只有该区域⽤来预测。对于输⼊图像，我们先打印截取的区域，再打印预测结果，最后打印
+标注的类别。
+In [19]: test_images, test_labels = d2l.read_voc_images(is_train=False)
+n, imgs = 4, []
+for i in range(n):
+crop_rect = (0, 0, 480, 320)
+X = image.fixed_crop(test_images[i], *crop_rect)
+pred = label2image(predict(X))
+imgs += [X, pred, image.fixed_crop(test_labels[i], *crop_rect)]
+d2l.show_images(imgs[::3] + imgs[1::3] + imgs[2::3], 3, n);
+9.10. 全卷积⽹络（FCN）
+397
+
+⼩结
+• 可以通过矩阵乘法来实现卷积运算。
+• 全卷积⽹络先使⽤卷积神经⽹络抽取图像特征，然后通过1 × 1卷积层将通道数变换为类别
+个数，最后通过转置卷积层将特征图的⾼和宽变换为输⼊图像的尺⼨，从而输出每个像素
+的类别。
+• 在全卷积⽹络中，可以将转置卷积层初始化为双线性插值的上采样。
+练习
+• ⽤矩阵乘法来实现卷积运算是否⾼效？为什么？
+• 如果将转置卷积层改⽤Xavier随机初始化，结果有什么变化？
+• 调节超参数，能进⼀步提升模型的精度吗？
+• 预测测试图像中所有像素的类别。
+• 全卷积⽹络的论⽂中还使⽤了卷积神经⽹络的某些中间层的输出[1]。试着实现这个想法。
+参考⽂献
+[1] Long, J., Shelhamer, E., & Darrell, T. (2015). Fully convolutional networks for semantic seg-
+mentation. In Proceedings of the IEEE conference on computer vision and pattern recognition
+(pp. 3431-3440).
+[2] Dumoulin, V., & Visin, F. (2016). A guide to convolution arithmetic for deep learning. arXiv
+preprint arXiv:1603.07285.
+扫码直达讨论区
+398
+9. 计算机视觉
+
+9.11 样式迁移
+如果你是⼀位摄影爱好者，也许接触过滤镜。它能改变照⽚的颜⾊样式，从而使⻛景照更加锐利
+或者令⼈像更加美⽩。但⼀个滤镜通常只能改变照⽚的某个⽅⾯。如果要照⽚达到理想中的样式，
+经常需要尝试⼤量不同的组合，其复杂程度不亚于模型调参。
+在本节中，我们将介绍如何使⽤卷积神经⽹络⾃动将某图像中的样式应⽤在另⼀图像之上，即样
+式迁移（style transfer）[1]。这⾥我们需要两张输⼊图像，⼀张是内容图像，另⼀张是样式图像，
+我们将使⽤神经⽹络修改内容图像使其在样式上接近样式图像。图9.12中的内容图像为本书作者
+在西雅图郊区的雷尼尔⼭国家公园（Mount Rainier National Park）拍摄的⻛景照，而样式图像
+则是⼀副主题为秋天橡树的油画。最终输出的合成图像在保留了内容图像中物体主体形状的情况
+下应⽤了样式图像的油画笔触，同时也让整体颜⾊更加鲜艳。
+图9.12: 输⼊内容图像和样式图像，输出样式迁移后的合成图像
+9.11.1 ⽅法
+图9.13⽤⼀个例⼦来阐述基于卷积神经⽹络的样式迁移⽅法。⾸先，我们初始化合成图像，例如
+将其初始化成内容图像。该合成图像是样式迁移过程中唯⼀需要更新的变量，即样式迁移所需迭
+代的模型参数。然后，我们选择⼀个预训练的卷积神经⽹络来抽取图像的特征，其中的模型参数
+9.11. 样式迁移
+399
+
+在训练中⽆须更新。深度卷积神经⽹络凭借多个层逐级抽取图像的特征。我们可以选择其中某些
+层的输出作为内容特征或样式特征。以图9.13为例，这⾥选取的预训练的神经⽹络含有3个卷积
+层，其中第⼆层输出图像的内容特征，而第⼀层和第三层的输出被作为图像的样式特征。接下来，
+我们通过正向传播（实线箭头⽅向）计算样式迁移的损失函数，并通过反向传播（虚线箭头⽅向）
+迭代模型参数，即不断更新合成图像。样式迁移常⽤的损失函数由3部分组成：内容损失（content
+loss）使合成图像与内容图像在内容特征上接近，样式损失（style loss）令合成图像与样式图像
+在样式特征上接近，而总变差损失（total variation loss）则有助于减少合成图像中的噪点。最后，
+当模型训练结束时，我们输出样式迁移的模型参数，即得到最终的合成图像。
+图9.13: 基于卷积神经⽹络的样式迁移。实线箭头和虚线箭头分别表⽰正向传播和反向传播
+下⾯，我们通过实验来进⼀步了解样式迁移的技术细节。实验需要⽤到⼀些导⼊的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, gluon, image, init, nd
+from mxnet.gluon import model_zoo, nn
+import time
+400
+9. 计算机视觉
+
+9.11.2 读取内容图像和样式图像
+⾸先，我们分别读取内容图像和样式图像。从打印出的图像坐标轴可以看出，它们的尺⼨并不⼀
+样。
+In [2]: d2l.set_figsize()
+content_img = image.imread('../img/rainier.jpg')
+d2l.plt.imshow(content_img.asnumpy());
+In [3]: style_img = image.imread('../img/autumn_oak.jpg')
+d2l.plt.imshow(style_img.asnumpy());
+9.11. 样式迁移
+401
+
+9.11.3 预处理和后处理图像
+下⾯定义图像的预处理函数和后处理函数。预处理函数preprocess对输⼊图像在RGB三个通道
+分别做标准化，并将结果变换成卷积神经⽹络接受的输⼊格式。后处理函数postprocess则将输
+出图像中的像素值还原回标准化之前的值。由于图像打印函数要求每个像素的浮点数值在0到1之
+间，我们使⽤clip函数对小于0和⼤于1的值分别取0和1。
+In [4]: rgb_mean = nd.array([0.485, 0.456, 0.406])
+rgb_std = nd.array([0.229, 0.224, 0.225])
+def preprocess(img, image_shape):
+img = image.imresize(img, *image_shape)
+img = (img.astype('float32') / 255 - rgb_mean) / rgb_std
+return img.transpose((2, 0, 1)).expand_dims(axis=0)
+def postprocess(img):
+img = img[0].as_in_context(rgb_std.context)
+return (img.transpose((1, 2, 0)) * rgb_std + rgb_mean).clip(0, 1)
+9.11.4 抽取特征
+我们使⽤基于ImageNet数据集预训练的VGG-19模型来抽取图像特征[1]。
+In [5]: pretrained_net = model_zoo.vision.vgg19(pretrained=True)
+为了抽取图像的内容特征和样式特征，我们可以选择VGG⽹络中某些层的输出。⼀般来说，越靠
+近输⼊层的输出越容易抽取图像的细节信息，反之则越容易抽取图像的全局信息。为了避免合成
+图像过多保留内容图像的细节，我们选择VGG较靠近输出的层，也称内容层，来输出图像的内容
+特征。我们还从VGG中选择不同层的输出来匹配局部和全局的样式，这些层也叫样式层。在“使
+⽤重复元素的⽹络（VGG）”⼀节中我们曾介绍过，VGG⽹络使⽤了5个卷积块。实验中，我们选
+择第四卷积块的最后⼀个卷积层作为内容层，以及每个卷积块的第⼀个卷积层作为样式层。这些
+层的索引可以通过打印pretrained_net实例来获取。
+In [6]: style_layers, content_layers = [0, 5, 10, 19, 28], [25]
+在抽取特征时，我们只需要⽤到VGG从输⼊层到最靠近输出层的内容层或样式层之间的所有层。
+下⾯构建⼀个新的⽹络net，它只保留需要⽤到的VGG的所有层。我们将使⽤net来抽取特征。
+In [7]: net = nn.Sequential()
+for i in range(max(content_layers + style_layers) + 1):
+net.add(pretrained_net.features[i])
+402
+9. 计算机视觉
+
+给定输⼊X，如果简单调⽤前向计算net(X)，只能获得最后⼀层的输出。由于我们还需要中间层
+的输出，因此这⾥我们逐层计算，并保留内容层和样式层的输出。
+In [8]: def extract_features(X, content_layers, style_layers):
+contents = []
+styles = []
+for i in range(len(net)):
+X = net[i](X)
+if i in style_layers:
+styles.append(X)
+if i in content_layers:
+contents.append(X)
+return contents, styles
+下⾯定义两个函数，其中get_contents函数对内容图像抽取内容特征，而get_styles函数则
+对样式图像抽取样式特征。因为在训练时⽆须改变预训练的VGG的模型参数，所以我们可以在训
+练开始之前就提取出内容图像的内容特征，以及样式图像的样式特征。由于合成图像是样式迁移
+所需迭代的模型参数，我们只能在训练过程中通过调⽤extract_features函数来抽取合成图
+像的内容特征和样式特征。
+In [9]: def get_contents(image_shape, ctx):
+content_X = preprocess(content_img, image_shape).copyto(ctx)
+contents_Y, _ = extract_features(content_X, content_layers, style_layers)
+return content_X, contents_Y
+def get_styles(image_shape, ctx):
+style_X = preprocess(style_img, image_shape).copyto(ctx)
+_, styles_Y = extract_features(style_X, content_layers, style_layers)
+return style_X, styles_Y
+9.11.5 定义损失函数
+下⾯我们来描述样式迁移的损失函数。它由内容损失、样式损失和总变差损失3部分组成。
+内容损失
+与线性回归中的损失函数类似，内容损失通过平⽅误差函数衡量合成图像与内容图像在内容特征
+上的差异。平⽅误差函数的两个输⼊均为extract_features函数计算所得到的内容层的输出。
+In [10]: def content_loss(Y_hat, Y):
+return (Y_hat - Y).square().mean()
+9.11. 样式迁移
+403
+
+样式损失
+样式损失也⼀样通过平⽅误差函数衡量合成图像与样式图像在样式上的差异。为了表达样式层输
+出的样式，我们先通过extract_features函数计算样式层的输出。假设该输出的样本数为1，
+通道数为c，⾼和宽分别为h和w，我们可以把输出变换成c⾏hw列的矩阵X。矩阵X可以看作是
+由c个⻓度为hw的向量x1, . . . , xc组成的。其中向量xi代表了通道i上的样式特征。这些向量的格
+拉姆矩阵（Gram matrix）XX⊤∈Rc×c中i⾏j列的元素xij即向量xi与xj的内积，它表达了通
+道i和通道j上样式特征的相关性。我们⽤这样的格拉姆矩阵表达样式层输出的样式。需要注意的
+是，当hw的值较⼤时，格拉姆矩阵中的元素容易出现较⼤的值。此外，格拉姆矩阵的⾼和宽皆为
+通道数c。为了让样式损失不受这些值的⼤小影响，下⾯定义的gram函数将格拉姆矩阵除以了矩
+阵中元素的个数，即chw。
+In [11]: def gram(X):
+num_channels, n = X.shape[1], X.size // X.shape[1]
+X = X.reshape((num_channels, n))
+return nd.dot(X, X.T) / (num_channels * n)
+⾃然地，样式损失的平⽅误差函数的两个格拉姆矩阵输⼊分别基于合成图像与样式图像的样式层
+输出。这⾥假设基于样式图像的格拉姆矩阵gram_Y已经预先计算好了。
+In [12]: def style_loss(Y_hat, gram_Y):
+return (gram(Y_hat) - gram_Y).square().mean()
+总变差损失
+有时候，我们学到的合成图像⾥⾯有⼤量⾼频噪点，即有特别亮或者特别暗的颗粒像素。⼀种常
+⽤的降噪⽅法是总变差降噪（total variation denoising）。假设xi,j表⽰坐标为(i, j)的像素值，降
+低总变差损失
+∑
+i,j
+|xi,j −xi+1,j| + |xi,j −xi,j+1|
+能够尽可能使邻近的像素值相似。
+In [13]: def tv_loss(Y_hat):
+return 0.5 * ((Y_hat[:, :, 1:, :] - Y_hat[:, :, :-1, :]).abs().mean() +
+(Y_hat[:, :, :, 1:] - Y_hat[:, :, :, :-1]).abs().mean())
+404
+9. 计算机视觉
+
+损失函数
+样式迁移的损失函数即内容损失、样式损失和总变差损失的加权和。通过调节这些权值超参数，
+我们可以权衡合成图像在保留内容、迁移样式以及降噪三⽅⾯的相对重要性。
+In [14]: content_weight, style_weight, tv_weight = 1, 1e3, 10
+def compute_loss(X, contents_Y_hat, styles_Y_hat, contents_Y, styles_Y_gram):
+# 分别计算内容损失、样式损失和总变差损失
+contents_l = [content_loss(Y_hat, Y) * content_weight for Y_hat, Y in zip(
+contents_Y_hat, contents_Y)]
+styles_l = [style_loss(Y_hat, Y) * style_weight for Y_hat, Y in zip(
+styles_Y_hat, styles_Y_gram)]
+tv_l = tv_loss(X) * tv_weight
+# 对所有损失求和
+l = nd.add_n(*styles_l) + nd.add_n(*contents_l) + tv_l
+return contents_l, styles_l, tv_l, l
+9.11.6 创建和初始化合成图像
+在样式迁移中，合成图像是唯⼀需要更新的变量。因此，我们可以定义⼀个简单的模
+型GeneratedImage，并将合成图像视为模型参数。模型的前向计算只需返回模型参数即可。
+In [15]: class GeneratedImage(nn.Block):
+def __init__(self, img_shape, **kwargs):
+super(GeneratedImage, self).__init__(**kwargs)
+self.weight = self.params.get('weight', shape=img_shape)
+def forward(self):
+return self.weight.data()
+下⾯，我们定义get_inits函数。该函数创建了合成图像的模型实例，并将其初始化为图像X。
+样式图像在各个样式层的格拉姆矩阵styles_Y_gram将在训练前预先计算好。
+In [16]: def get_inits(X, ctx, lr, styles_Y):
+gen_img = GeneratedImage(X.shape)
+gen_img.initialize(init.Constant(X), ctx=ctx, force_reinit=True)
+trainer = gluon.Trainer(gen_img.collect_params(), 'adam',
+{'learning_rate': lr})
+styles_Y_gram = [gram(Y) for Y in styles_Y]
+return gen_img(), styles_Y_gram, trainer
+9.11. 样式迁移
+405
+
+9.11.7 训练
+在训练模型时，我们不断抽取合成图像的内容特征和样式特征，并计算损失函数。回忆“异步
+计算”⼀节中有关⽤同步函数让前端等待计算结果的讨论。由于我们每隔50个迭代周期才调⽤
+同步函数asscalar，很容易造成内存占⽤过⾼，因此我们在每个迭代周期都调⽤⼀次同步函
+数waitall。
+In [17]: def train(X, contents_Y, styles_Y, ctx, lr, max_epochs, lr_decay_epoch):
+X, styles_Y_gram, trainer = get_inits(X, ctx, lr, styles_Y)
+for i in range(max_epochs):
+start = time.time()
+with autograd.record():
+contents_Y_hat, styles_Y_hat = extract_features(
+X, content_layers, style_layers)
+contents_l, styles_l, tv_l, l = compute_loss(
+X, contents_Y_hat, styles_Y_hat, contents_Y, styles_Y_gram)
+l.backward()
+trainer.step(1)
+nd.waitall()
+if i % 50 == 0 and i != 0:
+print('epoch %3d, content loss %.2f, style loss %.2f, '
+'TV loss %.2f, %.2f sec'
+% (i, nd.add_n(*contents_l).asscalar(),
+nd.add_n(*styles_l).asscalar(), tv_l.asscalar(),
+time.time() - start))
+if i % lr_decay_epoch == 0 and i != 0:
+trainer.set_learning_rate(trainer.learning_rate * 0.1)
+print('change lr to %.1e' % trainer.learning_rate)
+return X
+下⾯我们开始训练模型。⾸先将内容图像和样式图像的⾼和宽分别调整为150和225像素。合成图
+像将由内容图像来初始化。
+In [18]: ctx, image_shape = d2l.try_gpu(), (225, 150)
+net.collect_params().reset_ctx(ctx)
+content_X, contents_Y = get_contents(image_shape, ctx)
+_, styles_Y = get_styles(image_shape, ctx)
+output = train(content_X, contents_Y, styles_Y, ctx, 0.01, 500, 200)
+epoch
+50, content loss 10.11, style loss 29.39, TV loss 3.46, 0.01 sec
+epoch 100, content loss 7.51, style loss 15.43, TV loss 3.90, 0.01 sec
+epoch 150, content loss 6.32, style loss 10.38, TV loss 4.15, 0.01 sec
+epoch 200, content loss 5.66, style loss 8.12, TV loss 4.29, 0.01 sec
+change lr to 1.0e-03
+406
+9. 计算机视觉
+
+epoch 250, content loss 5.59, style loss 7.94, TV loss 4.30, 0.01 sec
+epoch 300, content loss 5.53, style loss 7.79, TV loss 4.31, 0.01 sec
+epoch 350, content loss 5.47, style loss 7.64, TV loss 4.31, 0.01 sec
+epoch 400, content loss 5.41, style loss 7.50, TV loss 4.32, 0.01 sec
+change lr to 1.0e-04
+epoch 450, content loss 5.41, style loss 7.48, TV loss 4.32, 0.01 sec
+下⾯我们将训练好的合成图像保存起来。可以看到图9.14中的合成图像保留了内容图像的⻛景和
+物体，并同时迁移了样式图像的⾊彩。因为图像尺⼨较小，所以细节上依然⽐较模糊。
+In [19]: d2l.plt.imsave('../img/neural-style-1.png', postprocess(output).asnumpy())
+图9.14: 150 × 225尺⼨的合成图像
+为了得到更加清晰的合成图像，下⾯我们在更⼤的300 × 450尺⼨上训练。我们将图9.14的⾼和宽
+放⼤2倍，以初始化更⼤尺⼨的合成图像。
+In [20]: image_shape = (450, 300)
+_, content_Y = get_contents(image_shape, ctx)
+_, style_Y = get_styles(image_shape, ctx)
+X = preprocess(postprocess(output) * 255, image_shape)
+output = train(X, content_Y, style_Y, ctx, 0.01, 300, 100)
+d2l.plt.imsave('../img/neural-style-2.png', postprocess(output).asnumpy())
+epoch
+50, content loss 13.86, style loss 13.73, TV loss 2.38, 0.03 sec
+epoch 100, content loss 9.53, style loss 8.79, TV loss 2.65, 0.03 sec
+change lr to 1.0e-03
+epoch 150, content loss 9.21, style loss 8.46, TV loss 2.68, 0.03 sec
+epoch 200, content loss 8.94, style loss 8.17, TV loss 2.70, 0.03 sec
+change lr to 1.0e-04
+epoch 250, content loss 8.91, style loss 8.14, TV loss 2.70, 0.03 sec
+9.11. 样式迁移
+407
+
+可以看到，由于图像尺⼨更⼤，每⼀次迭代需要花费更多的时间。从训练得到的图9.15中可以看
+到，此时的合成图像因为尺⼨更⼤，所以保留了更多的细节。合成图像⾥⾯不仅有⼤块的类似样
+式图像的油画⾊彩块，⾊彩块中甚⾄出现了细微的纹理。
+图9.15: 300 × 450尺⼨的合成图像
+⼩结
+• 样式迁移常⽤的损失函数由3部分组成：内容损失使合成图像与内容图像在内容特征上接
+近，样式损失令合成图像与样式图像在样式特征上接近，而总变差损失则有助于减少合成
+图像中的噪点。
+• 可以通过预训练的卷积神经⽹络来抽取图像的特征，并通过最小化损失函数来不断更新合
+成图像。
+• ⽤格拉姆矩阵表达样式层输出的样式。
+408
+9. 计算机视觉
+
+练习
+• 选择不同的内容和样式层，输出有什么变化？
+• 调整损失函数中的权值超参数，输出是否保留更多内容或减少更多噪点？
+• 替换实验中的内容图像和样式图像，你能创作出更有趣的合成图像吗？
+参考⽂献
+[1] Gatys, L. A., Ecker, A. S., & Bethge, M. (2016). Image style transfer using convolutional neural
+networks. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition
+(pp. 2414-2423).
+扫码直达讨论区
+9.12 实战Kaggle⽐赛：图像分类（CIFAR-10）
+到⽬前为⽌，我们⼀直在⽤Gluon的data包直接获取NDArray格式的图像数据集。然而，实际中
+的图像数据集往往是以图像⽂件的形式存在的。在本节中，我们将从原始的图像⽂件开始，⼀步
+步整理、读取并将其变换为NDArray格式。
+我们曾在“图像增⼴”⼀节中实验过CIFAR-10数据集。它是计算机视觉领域的⼀个重要数据集。
+现在我们将应⽤前⾯所学的知识，动⼿实战CIFAR-10图像分类问题的Kaggle⽐赛。该⽐赛的⽹⻚
+地址是https://www.kaggle.com/c/cifar-10 。
+图9.16展⽰了该⽐赛的⽹⻚信息。为了便于提交结果，请先在Kaggle⽹站上注册账号。
+9.12. 实战Kaggle⽐赛：图像分类（CIFAR-10）
+409
+
+图9.16: CIFAR-10图像分类⽐赛的⽹⻚信息。⽐赛数据集可通过点击“Data”标签获取
+⾸先，导⼊⽐赛所需的包或模块。
+In [1]: import d2lzh as d2l
+from mxnet import autograd, gluon, init
+from mxnet.gluon import data as gdata, loss as gloss, nn
+import os
+import pandas as pd
+import shutil
+import time
+9.12.1 获取和整理数据集
+⽐赛数据分为训练集和测试集。训练集包含5万张图像。测试集包含30万张图像，其中有1万张图
+像⽤来计分，其他29万张不计分的图像是为了防⽌⼈⼯标注测试集并提交标注结果。两个数据集
+中的图像格式都是png，⾼和宽均为32像素，并含有RGB三个通道（彩⾊）。图像⼀共涵盖10个类
+别，分别为⻜机、汽⻋、⻦、猫、⿅、狗、⻘蛙、⻢、船和卡⻋。图9.16的左上⻆展⽰了数据集中
+部分⻜机、汽⻋和⻦的图像。
+下载数据集
+登录Kaggle后，可以点击图9.16所⽰的CIFAR-10图像分类⽐赛⽹⻚上的“Data”标签，并分别下
+载训练数据集train.7z、测试数据集test.7z和训练数据集标签trainLabels.csv。
+410
+9. 计算机视觉
+
+解压数据集
+下载完训练数据集train.7z和测试数据集test.7z后需要解压缩。解压缩后，将训练数据集、测试数
+据集以及训练数据集标签分别存放在以下3个路径：
+• ../data/kaggle_cifar10/train/[1-50000].png；
+• ../data/kaggle_cifar10/test/[1-300000].png；
+• ../data/kaggle_cifar10/trainLabels.csv。
+为⽅便快速上⼿，我们提供了上述数据集的小规模采样，其中train_tiny.zip包含100个训练样本，
+而test_tiny.zip仅包含1个测试样本。它们解压后的⽂件夹名称分别为train_tiny和test_tiny。此外，
+将训练数据集标签的压缩⽂件解压，并得到trainLabels.csv。如果使⽤上述Kaggle⽐赛的完整数
+据集，还需要把下⾯demo变量改为False。
+In [2]: # 如果使⽤下载的Kaggle⽐赛的完整数据集，把demo变量改为False
+demo = True
+if demo:
+import zipfile
+for f in ['train_tiny.zip', 'test_tiny.zip', 'trainLabels.csv.zip']:
+with zipfile.ZipFile('../data/kaggle_cifar10/' + f, 'r') as z:
+z.extractall('../data/kaggle_cifar10/')
+整理数据集
+我们需要整理数据集，以⽅便训练和测试模型。以下的read_label_file函数将⽤来读取训练
+数据集的标签⽂件。该函数中的参数valid_ratio是验证集样本数与原始训练集样本数之⽐。
+In [3]: def read_label_file(data_dir, label_file, train_dir, valid_ratio):
+with open(os.path.join(data_dir, label_file), 'r') as f:
+# 跳过⽂件头⾏（栏名称）
+lines = f.readlines()[1:]
+tokens = [l.rstrip().split(',') for l in lines]
+idx_label = dict(((int(idx), label) for idx, label in tokens))
+labels = set(idx_label.values())
+n_train_valid = len(os.listdir(os.path.join(data_dir, train_dir)))
+n_train = int(n_train_valid * (1 - valid_ratio))
+assert 0 < n_train < n_train_valid
+return n_train // len(labels), idx_label
+下⾯定义⼀个辅助函数，从而仅在路径不存在的情况下创建路径。
+9.12. 实战Kaggle⽐赛：图像分类（CIFAR-10）
+411
+
+In [4]: def mkdir_if_not_exist(path):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+if not os.path.exists(os.path.join(*path)):
+os.makedirs(os.path.join(*path))
+我们接下来定义reorg_train_valid函数来从原始训练集中切分出验证集。
+以valid_ratio=0.1为例，由于原始训练集有50,000张图像，调参时将有45,000张图像⽤
+于训练并存放在路径input_dir/train下，而另外5,000张图像将作为验证集并存放在路
+径input_dir/valid下。经过整理后，同⼀类图像将被放在同⼀个⽂件夹下，便于稍后读取。
+In [5]: def reorg_train_valid(data_dir, train_dir, input_dir, n_train_per_label,
+idx_label):
+label_count = {}
+for train_file in os.listdir(os.path.join(data_dir, train_dir)):
+idx = int(train_file.split('.')[0])
+label = idx_label[idx]
+mkdir_if_not_exist([data_dir, input_dir, 'train_valid', label])
+shutil.copy(os.path.join(data_dir, train_dir, train_file),
+os.path.join(data_dir, input_dir, 'train_valid', label))
+if label not in label_count or label_count[label] < n_train_per_label:
+mkdir_if_not_exist([data_dir, input_dir, 'train', label])
+shutil.copy(os.path.join(data_dir, train_dir, train_file),
+os.path.join(data_dir, input_dir, 'train', label))
+label_count[label] = label_count.get(label, 0) + 1
+else:
+mkdir_if_not_exist([data_dir, input_dir, 'valid', label])
+shutil.copy(os.path.join(data_dir, train_dir, train_file),
+os.path.join(data_dir, input_dir, 'valid', label))
+下⾯的reorg_test函数⽤来整理测试集，从而⽅便预测时的读取。
+In [6]: def reorg_test(data_dir, test_dir, input_dir):
+mkdir_if_not_exist([data_dir, input_dir, 'test', 'unknown'])
+for test_file in os.listdir(os.path.join(data_dir, test_dir)):
+shutil.copy(os.path.join(data_dir, test_dir, test_file),
+os.path.join(data_dir, input_dir, 'test', 'unknown'))
+最后，我们⽤⼀个函数分别调⽤前⾯定义的read_label_file函数、reorg_train_valid函
+数以及reorg_test函数。
+In [7]: def reorg_cifar10_data(data_dir, label_file, train_dir, test_dir, input_dir,
+valid_ratio):
+n_train_per_label, idx_label = read_label_file(data_dir, label_file,
+train_dir, valid_ratio)
+reorg_train_valid(data_dir, train_dir, input_dir, n_train_per_label,
+412
+9. 计算机视觉
+
+idx_label)
+reorg_test(data_dir, test_dir, input_dir)
+我们在这⾥只使⽤100个训练样本和1个测试样本。训练数据集和测试数据集的⽂件夹名称分别
+为train_tiny和test_tiny。相应地，我们仅将批量⼤小设为1。实际训练和测试时应使⽤Kaggle⽐
+赛的完整数据集，并将批量⼤小batch_size设为⼀个较⼤的整数，如128。我们将10%的训练样
+本作为调参使⽤的验证集。
+In [8]: if demo:
+# 注意，此处使⽤⼩训练集和⼩测试集并将批量⼤⼩相应设⼩。使⽤Kaggle⽐赛的完整数据集时可
+# 设批量⼤⼩为较⼤整数
+train_dir, test_dir, batch_size = 'train_tiny', 'test_tiny', 1
+else:
+train_dir, test_dir, batch_size = 'train', 'test', 128
+data_dir, label_file = '../data/kaggle_cifar10', 'trainLabels.csv'
+input_dir, valid_ratio = 'train_valid_test', 0.1
+reorg_cifar10_data(data_dir, label_file, train_dir, test_dir, input_dir,
+valid_ratio)
+9.12.2 图像增⼴
+为应对过拟合，我们使⽤图像增⼴。例如，加⼊transforms.RandomFlipLeftRight()即可
+随机对图像做镜⾯翻转，也可以通过transforms.Normalize()对彩⾊图像RGB三个通道分别
+做标准化。下⾯列举了其中的部分操作，你可以根据需求来决定是否使⽤或修改这些操作。
+In [9]: transform_train = gdata.vision.transforms.Compose([
+# 将图像放⼤成⾼和宽各为40像素的正⽅形
+gdata.vision.transforms.Resize(40),
+# 随机对⾼和宽各为40像素的正⽅形图像裁剪出⾯积为原图像⾯积0.64~1倍的⼩正⽅形，再放缩为
+# ⾼和宽各为32像素的正⽅形
+gdata.vision.transforms.RandomResizedCrop(32, scale=(0.64, 1.0),
+ratio=(1.0, 1.0)),
+gdata.vision.transforms.RandomFlipLeftRight(),
+gdata.vision.transforms.ToTensor(),
+# 对图像的每个通道做标准化
+gdata.vision.transforms.Normalize([0.4914, 0.4822, 0.4465],
+[0.2023, 0.1994, 0.2010])])
+测试时，为保证输出的确定性，我们仅对图像做标准化。
+In [10]: transform_test = gdata.vision.transforms.Compose([
+gdata.vision.transforms.ToTensor(),
+9.12. 实战Kaggle⽐赛：图像分类（CIFAR-10）
+413
+
+gdata.vision.transforms.Normalize([0.4914, 0.4822, 0.4465],
+[0.2023, 0.1994, 0.2010])])
+9.12.3 读取数据集
+接下来，可以通过创建ImageFolderDataset实例来读取整理后的含原始图像⽂件的数据集，
+其中每个数据样本包括图像和标签。
+In [11]: # 读取原始图像⽂件。flag=1说明输⼊图像有3个通道（彩⾊）
+train_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'train'), flag=1)
+valid_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'valid'), flag=1)
+train_valid_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'train_valid'), flag=1)
+test_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'test'), flag=1)
+我们在DataLoader中指明定义好的图像增⼴操作。在训练时，我们仅⽤验证集评价模型，因此
+需要保证输出的确定性。在预测时，我们将在训练集和验证集的并集上训练模型，以充分利⽤所
+有标注的数据。
+In [12]: train_iter = gdata.DataLoader(train_ds.transform_first(transform_train),
+batch_size, shuffle=True, last_batch='keep')
+valid_iter = gdata.DataLoader(valid_ds.transform_first(transform_test),
+batch_size, shuffle=True, last_batch='keep')
+train_valid_iter = gdata.DataLoader(train_valid_ds.transform_first(
+transform_train), batch_size, shuffle=True, last_batch='keep')
+test_iter = gdata.DataLoader(test_ds.transform_first(transform_test),
+batch_size, shuffle=False, last_batch='keep')
+9.12.4 定义模型
+与“残差⽹络（ResNet）”⼀节中的实现稍有不同，这⾥基于HybridBlock类构建残差块。这是
+为了提升执⾏效率。
+In [13]: class Residual(nn.HybridBlock):
+def __init__(self, num_channels, use_1x1conv=False, strides=1, **kwargs):
+super(Residual, self).__init__(**kwargs)
+self.conv1 = nn.Conv2D(num_channels, kernel_size=3, padding=1,
+strides=strides)
+414
+9. 计算机视觉
+
+self.conv2 = nn.Conv2D(num_channels, kernel_size=3, padding=1)
+if use_1x1conv:
+self.conv3 = nn.Conv2D(num_channels, kernel_size=1,
+strides=strides)
+else:
+self.conv3 = None
+self.bn1 = nn.BatchNorm()
+self.bn2 = nn.BatchNorm()
+def hybrid_forward(self, F, X):
+Y = F.relu(self.bn1(self.conv1(X)))
+Y = self.bn2(self.conv2(Y))
+if self.conv3:
+X = self.conv3(X)
+return F.relu(Y + X)
+下⾯定义ResNet-18模型。
+In [14]: def resnet18(num_classes):
+net = nn.HybridSequential()
+net.add(nn.Conv2D(64, kernel_size=3, strides=1, padding=1),
+nn.BatchNorm(), nn.Activation('relu'))
+def resnet_block(num_channels, num_residuals, first_block=False):
+blk = nn.HybridSequential()
+for i in range(num_residuals):
+if i == 0 and not first_block:
+blk.add(Residual(num_channels, use_1x1conv=True, strides=2))
+else:
+blk.add(Residual(num_channels))
+return blk
+net.add(resnet_block(64, 2, first_block=True),
+resnet_block(128, 2),
+resnet_block(256, 2),
+resnet_block(512, 2))
+net.add(nn.GlobalAvgPool2D(), nn.Dense(num_classes))
+return net
+CIFAR-10图像分类问题的类别个数为10。我们将在训练开始前对模型进⾏Xavier随机初始化。
+In [15]: def get_net(ctx):
+num_classes = 10
+net = resnet18(num_classes)
+net.initialize(ctx=ctx, init=init.Xavier())
+9.12. 实战Kaggle⽐赛：图像分类（CIFAR-10）
+415
+
+return net
+loss = gloss.SoftmaxCrossEntropyLoss()
+9.12.5 定义训练函数
+我们将根据模型在验证集上的表现来选择模型并调节超参数。下⾯定义了模型的训练函数train。
+我们记录了每个迭代周期的训练时间，这有助于⽐较不同模型的时间开销。
+In [16]: def train(net, train_iter, valid_iter, num_epochs, lr, wd, ctx, lr_period,
+lr_decay):
+trainer = gluon.Trainer(net.collect_params(), 'sgd',
+{'learning_rate': lr, 'momentum': 0.9, 'wd': wd})
+for epoch in range(num_epochs):
+train_l_sum, train_acc_sum, n, start = 0.0, 0.0, 0, time.time()
+if epoch > 0 and epoch % lr_period == 0:
+trainer.set_learning_rate(trainer.learning_rate * lr_decay)
+for X, y in train_iter:
+y = y.astype('float32').as_in_context(ctx)
+with autograd.record():
+y_hat = net(X.as_in_context(ctx))
+l = loss(y_hat, y).sum()
+l.backward()
+trainer.step(batch_size)
+train_l_sum += l.asscalar()
+train_acc_sum += (y_hat.argmax(axis=1) == y).sum().asscalar()
+n += y.size
+time_s = "time %.2f sec" % (time.time() - start)
+if valid_iter is not None:
+valid_acc = d2l.evaluate_accuracy(valid_iter, net, ctx)
+epoch_s = ("epoch %d, loss %f, train acc %f, valid acc %f, "
+% (epoch + 1, train_l_sum / n, train_acc_sum / n,
+valid_acc))
+else:
+epoch_s = ("epoch %d, loss %f, train acc %f, " %
+(epoch + 1, train_l_sum / n, train_acc_sum / n))
+print(epoch_s + time_s + ', lr ' + str(trainer.learning_rate))
+416
+9. 计算机视觉
+
+9.12.6 训练并验证模型
+现在，我们可以训练并验证模型了。下⾯的超参数都是可以调节的，如增加迭代周期等。由
+于lr_period和lr_decay分别设为80和0.1，优化算法的学习率将在每80个迭代周期后⾃乘0.1。
+简单起⻅，这⾥仅训练1个迭代周期。
+In [17]: ctx, num_epochs, lr, wd = d2l.try_gpu(), 1, 0.1, 5e-4
+lr_period, lr_decay, net = 80, 0.1, get_net(ctx)
+net.hybridize()
+train(net, train_iter, valid_iter, num_epochs, lr, wd, ctx, lr_period,
+lr_decay)
+epoch 1, loss 5.998157, train acc 0.055556, valid acc 0.100000, time 1.34 sec, lr 0.1
+9.12.7 对测试集分类并在Kaggle提交结果
+得到⼀组满意的模型设计和超参数后，我们使⽤所有训练数据集（含验证集）重新训练模型，并
+对测试集进⾏分类。
+In [18]: net, preds = get_net(ctx), []
+net.hybridize()
+train(net, train_valid_iter, None, num_epochs, lr, wd, ctx, lr_period,
+lr_decay)
+for X, _ in test_iter:
+y_hat = net(X.as_in_context(ctx))
+preds.extend(y_hat.argmax(axis=1).astype(int).asnumpy())
+sorted_ids = list(range(1, len(test_ds) + 1))
+sorted_ids.sort(key=lambda x: str(x))
+df = pd.DataFrame({'id': sorted_ids, 'label': preds})
+df['label'] = df['label'].apply(lambda x: train_valid_ds.synsets[x])
+df.to_csv('submission.csv', index=False)
+epoch 1, loss 6.620115, train acc 0.090000, time 1.24 sec, lr 0.1
+执⾏完上述代码后，我们会得到⼀个submission.csv⽂件。这个⽂件符合Kaggle⽐赛要求的提交
+格式。提交结果的⽅法与“实战Kaggle⽐赛：房价预测”⼀节中的类似。
+⼩结
+• 可以通过创建ImageFolderDataset实例来读取含原始图像⽂件的数据集。
+9.12. 实战Kaggle⽐赛：图像分类（CIFAR-10）
+417
+
+• 可以应⽤卷积神经⽹络、图像增⼴和混合式编程来实战图像分类⽐赛。
+练习
+• 使⽤Kaggle⽐赛的完整CIFAR-10数据集。把批量⼤小batch_size和迭代周期
+数num_epochs分别改为128和300。可以在这个⽐赛中得到什么样的准确率和名次？
+• 如果不使⽤图像增⼴的⽅法能得到什么样的准确率？
+• 扫码直达讨论区，在社区交流⽅法和结果。你能发掘出其他更好的技巧吗？
+扫码直达讨论区
+9.13 实战Kaggle⽐赛：狗的品种识别（ImageNet Dogs）
+我们将在本节动⼿实战Kaggle⽐赛中的狗的品种识别问题。该⽐赛的⽹⻚地址是https://www.
+kaggle.com/c/dog-breed-identification 。
+在这个⽐赛中，将识别120类不同品种的狗。这个⽐赛的数据集实际上是著名的ImageNet的⼦集
+数据集。和上⼀节的CIFAR-10数据集中的图像不同，ImageNet数据集中的图像更⾼更宽，且尺
+⼨不⼀。
+图9.17展⽰了该⽐赛的⽹⻚信息。为了便于提交结果，请先在Kaggle⽹站上注册账号。
+418
+9. 计算机视觉
+
+图9.17: 狗的品种识别⽐赛的⽹⻚信息。⽐赛数据集可通过点击“Data”标签获取
+⾸先，导⼊⽐赛所需的包或模块。
+In [1]: import collections
+import d2lzh as d2l
+import math
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import data as gdata, loss as gloss, model_zoo, nn
+import os
+import shutil
+import time
+import zipfile
+9.13. 实战Kaggle⽐赛：狗的品种识别（ImageNet Dogs）
+419
+
+9.13.1 获取和整理数据集
+⽐赛数据分为训练集和测试集。训练集包含了10,222张图像，测试集包含了10,357张图像。两个
+数据集中的图像格式都是JPEG。这些图像都含有RGB三个通道（彩⾊），⾼和宽的⼤小不⼀。训
+练集中狗的类别共有120种，如拉布拉多、贵宾、腊肠、萨摩耶、哈⼠奇、吉娃娃和约克夏等。
+下载数据集
+登录Kaggle后，我们可以点击图9.17所⽰的狗的品种识别⽐赛⽹⻚上的“Data”标签，并分别下
+载训练数据集train.zip、测试数据集test.zip和训练数据集标签label.csv.zip。下载完成后，将它们
+分别存放在以下3个路径：
+• ../data/kaggle_dog/train.zip；
+• ../data/kaggle_dog/test.zip；
+• ../data/kaggle_dog/labels.csv.zip。
+为⽅便快速上⼿，我们提供了上述数据集的小规模采样train_valid_test_tiny.zip。如果要使⽤上
+述Kaggle⽐赛的完整数据集，还需要把下⾯demo变量改为False。
+In [2]: # 如果使⽤下载的Kaggle⽐赛的完整数据集，把demo变量改为False
+demo = True
+data_dir = '../data/kaggle_dog'
+if demo:
+zipfiles = ['train_valid_test_tiny.zip']
+else:
+zipfiles = ['train.zip', 'test.zip', 'labels.csv.zip']
+for f in zipfiles:
+with zipfile.ZipFile(data_dir + '/' + f, 'r') as z:
+z.extractall(data_dir)
+整理数据集
+我们定义下⾯的reorg_train_valid函数来从Kaggle⽐赛的完整原始训练集中切分出验证集。
+该函数中的参数valid_ratio指验证集中每类狗的样本数与原始训练集中数量最少⼀类的狗的
+样本数（66）之⽐。经过整理后，同⼀类狗的图像将被放在同⼀个⽂件夹下，便于稍后读取。
+In [3]: def reorg_train_valid(data_dir, train_dir, input_dir, valid_ratio, idx_label):
+# 训练集中数量最少⼀类的狗的样本数
+min_n_train_per_label = (
+420
+9. 计算机视觉
+
+collections.Counter(idx_label.values()).most_common()[:-2:-1][0][1])
+# 验证集中每类狗的样本数
+n_valid_per_label = math.floor(min_n_train_per_label * valid_ratio)
+label_count = {}
+for train_file in os.listdir(os.path.join(data_dir, train_dir)):
+idx = train_file.split('.')[0]
+label = idx_label[idx]
+d2l.mkdir_if_not_exist([data_dir, input_dir, 'train_valid', label])
+shutil.copy(os.path.join(data_dir, train_dir, train_file),
+os.path.join(data_dir, input_dir, 'train_valid', label))
+if label not in label_count or label_count[label] < n_valid_per_label:
+d2l.mkdir_if_not_exist([data_dir, input_dir, 'valid', label])
+shutil.copy(os.path.join(data_dir, train_dir, train_file),
+os.path.join(data_dir, input_dir, 'valid', label))
+label_count[label] = label_count.get(label, 0) + 1
+else:
+d2l.mkdir_if_not_exist([data_dir, input_dir, 'train', label])
+shutil.copy(os.path.join(data_dir, train_dir, train_file),
+os.path.join(data_dir, input_dir, 'train', label))
+下⾯的reorg_dog_data函数⽤来读取训练数据标签、切分验证集并整理测试集。
+In [4]: def reorg_dog_data(data_dir, label_file, train_dir, test_dir, input_dir,
+valid_ratio):
+# 读取训练数据标签
+with open(os.path.join(data_dir, label_file), 'r') as f:
+# 跳过⽂件头⾏（栏名称）
+lines = f.readlines()[1:]
+tokens = [l.rstrip().split(',') for l in lines]
+idx_label = dict(((idx, label) for idx, label in tokens))
+reorg_train_valid(data_dir, train_dir, input_dir, valid_ratio, idx_label)
+# 整理测试集
+d2l.mkdir_if_not_exist([data_dir, input_dir, 'test', 'unknown'])
+for test_file in os.listdir(os.path.join(data_dir, test_dir)):
+shutil.copy(os.path.join(data_dir, test_dir, test_file),
+os.path.join(data_dir, input_dir, 'test', 'unknown'))
+因为我们在这⾥使⽤了小数据集，所以将批量⼤小设为1。在实际训练和测试时，我们应使
+⽤Kaggle⽐赛的完整数据集并调⽤reorg_dog_data函数来整理数据集。相应地，我们也需要
+将批量⼤小batch_size设为⼀个较⼤的整数，如128。
+In [5]: if demo:
+# 注意，此处使⽤⼩数据集并将批量⼤⼩相应设⼩。使⽤Kaggle⽐赛的完整数据集时可设批量⼤⼩
+# 为较⼤整数
+9.13. 实战Kaggle⽐赛：狗的品种识别（ImageNet Dogs）
+421
+
+input_dir, batch_size = 'train_valid_test_tiny', 1
+else:
+label_file, train_dir, test_dir = 'labels.csv', 'train', 'test'
+input_dir, batch_size, valid_ratio = 'train_valid_test', 128, 0.1
+reorg_dog_data(data_dir, label_file, train_dir, test_dir, input_dir,
+valid_ratio)
+9.13.2 图像增⼴
+本节⽐赛的图像尺⼨⽐上⼀节中的更⼤。这⾥列举了更多可能有⽤的图像增⼴操作。
+In [6]: transform_train = gdata.vision.transforms.Compose([
+# 随机对图像裁剪出⾯积为原图像⾯积0.08~1倍、且⾼和宽之⽐在3/4~4/3的图像，再放缩为⾼和
+# 宽均为224像素的新图像
+gdata.vision.transforms.RandomResizedCrop(224, scale=(0.08, 1.0),
+ratio=(3.0/4.0, 4.0/3.0)),
+gdata.vision.transforms.RandomFlipLeftRight(),
+# 随机变化亮度、对⽐度和饱和度
+gdata.vision.transforms.RandomColorJitter(brightness=0.4, contrast=0.4,
+saturation=0.4),
+# 随机加噪声
+gdata.vision.transforms.RandomLighting(0.1),
+gdata.vision.transforms.ToTensor(),
+# 对图像的每个通道做标准化
+gdata.vision.transforms.Normalize([0.485, 0.456, 0.406],
+[0.229, 0.224, 0.225])])
+测试时，我们只使⽤确定性的图像预处理操作。
+In [7]: transform_test = gdata.vision.transforms.Compose([
+gdata.vision.transforms.Resize(256),
+# 将图像中央的⾼和宽均为224的正⽅形区域裁剪出来
+gdata.vision.transforms.CenterCrop(224),
+gdata.vision.transforms.ToTensor(),
+gdata.vision.transforms.Normalize([0.485, 0.456, 0.406],
+[0.229, 0.224, 0.225])])
+9.13.3 读取数据集
+和上⼀节⼀样，我们创建ImageFolderDataset实例来读取整理后的含原始图像⽂件的数据集。
+In [8]: train_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'train'), flag=1)
+422
+9. 计算机视觉
+
+valid_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'valid'), flag=1)
+train_valid_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'train_valid'), flag=1)
+test_ds = gdata.vision.ImageFolderDataset(
+os.path.join(data_dir, input_dir, 'test'), flag=1)
+这⾥创建DataLoader实例的⽅法也与上⼀节中的相同。
+In [9]: train_iter = gdata.DataLoader(train_ds.transform_first(transform_train),
+batch_size, shuffle=True, last_batch='keep')
+valid_iter = gdata.DataLoader(valid_ds.transform_first(transform_test),
+batch_size, shuffle=True, last_batch='keep')
+train_valid_iter = gdata.DataLoader(train_valid_ds.transform_first(
+transform_train), batch_size, shuffle=True, last_batch='keep')
+test_iter = gdata.DataLoader(test_ds.transform_first(transform_test),
+batch_size, shuffle=False, last_batch='keep')
+9.13.4 定义模型
+这个⽐赛的数据属于ImageNet数据集的⼦集，因此我们可以使⽤“微调”⼀节中介绍的思路，选
+⽤在ImageNet完整数据集上预训练的模型来抽取图像特征，以作为⾃定义小规模输出⽹络的输
+⼊。Gluon提供了丰富的预训练模型，这⾥以预训练的ResNet-34模型为例。由于⽐赛数据集属于
+预训练数据集的⼦集，因此我们直接复⽤预训练模型在输出层的输⼊，即抽取的特征。然后，我
+们可以将原输出层替换成⾃定义的可训练的小规模输出⽹络，如两个串联的全连接层。与“微调”
+⼀节中的实验不同，这⾥不再训练⽤于抽取特征的预训练模型：这样既节省了训练时间，⼜省去
+了存储其模型参数的梯度的空间。
+需要注意的是，我们在图像增⼴中使⽤了ImageNet数据集上RGB三个通道的均值和标准差做标
+准化，这和预训练模型所做的标准化是⼀致的。
+In [10]: def get_net(ctx):
+finetune_net = model_zoo.vision.resnet34_v2(pretrained=True)
+# 定义新的输出⽹络
+finetune_net.output_new = nn.HybridSequential(prefix='')
+finetune_net.output_new.add(nn.Dense(256, activation='relu'))
+# 120是输出的类别个数
+finetune_net.output_new.add(nn.Dense(120))
+# 初始化输出⽹络
+finetune_net.output_new.initialize(init.Xavier(), ctx=ctx)
+# 把模型参数分配到内存或显存上
+9.13. 实战Kaggle⽐赛：狗的品种识别（ImageNet Dogs）
+423
+
+finetune_net.collect_params().reset_ctx(ctx)
+return finetune_net
+在计算损失时，我们先通过成员变量features来获取预训练模型输出层的输⼊，即抽取的特征。
+然后，将该特征作为⾃定义的小规模输出⽹络的输⼊，并计算输出。
+In [11]: loss = gloss.SoftmaxCrossEntropyLoss()
+def evaluate_loss(data_iter, net, ctx):
+l_sum, n = 0.0, 0
+for X, y in data_iter:
+y = y.as_in_context(ctx)
+output_features = net.features(X.as_in_context(ctx))
+outputs = net.output_new(output_features)
+l_sum += loss(outputs, y).sum().asscalar()
+n += y.size
+return l_sum / n
+9.13.5 定义训练函数
+我们将依赖模型在验证集上的表现来选择模型并调节超参数。模型的训练函数train只训练⾃定
+义的小规模输出⽹络。
+In [12]: def train(net, train_iter, valid_iter, num_epochs, lr, wd, ctx, lr_period,
+lr_decay):
+# 只训练⾃定义的⼩规模输出⽹络
+trainer = gluon.Trainer(net.output_new.collect_params(), 'sgd',
+{'learning_rate': lr, 'momentum': 0.9, 'wd': wd})
+for epoch in range(num_epochs):
+train_l_sum, n, start = 0.0, 0, time.time()
+if epoch > 0 and epoch % lr_period == 0:
+trainer.set_learning_rate(trainer.learning_rate * lr_decay)
+for X, y in train_iter:
+y = y.as_in_context(ctx)
+output_features = net.features(X.as_in_context(ctx))
+with autograd.record():
+outputs = net.output_new(output_features)
+l = loss(outputs, y).sum()
+l.backward()
+trainer.step(batch_size)
+train_l_sum += l.asscalar()
+n += y.size
+time_s = "time %.2f sec" % (time.time() - start)
+424
+9. 计算机视觉
+
+if valid_iter is not None:
+valid_loss = evaluate_loss(valid_iter, net, ctx)
+epoch_s = ("epoch %d, train loss %f, valid loss %f, "
+% (epoch + 1, train_l_sum / n, valid_loss))
+else:
+epoch_s = ("epoch %d, train loss %f, "
+% (epoch + 1, train_l_sum / n))
+print(epoch_s + time_s + ', lr ' + str(trainer.learning_rate))
+9.13.6 训练并验证模型
+现在，我们可以训练并验证模型了。以下超参数都是可以调节的，如增加迭代周期等。由
+于lr_period和lr_decay分别设为10和0.1，优化算法的学习率将在每10个迭代周期后⾃乘0.1。
+In [13]: ctx, num_epochs, lr, wd = d2l.try_gpu(), 1, 0.01, 1e-4
+lr_period, lr_decay, net = 10, 0.1, get_net(ctx)
+net.hybridize()
+train(net, train_iter, valid_iter, num_epochs, lr, wd, ctx, lr_period,
+lr_decay)
+epoch 1, train loss 5.248451, valid loss 4.783238, time 1.64 sec, lr 0.01
+9.13.7 对测试集分类并在Kaggle提交结果
+得到⼀组满意的模型设计和超参数后，我们使⽤全部训练数据集（含验证集）重新训练模型，并
+对测试集分类。注意，我们要⽤刚训练好的输出⽹络做预测。
+In [14]: net = get_net(ctx)
+net.hybridize()
+train(net, train_valid_iter, None, num_epochs, lr, wd, ctx, lr_period,
+lr_decay)
+preds = []
+for data, label in test_iter:
+output_features = net.features(data.as_in_context(ctx))
+output = nd.softmax(net.output_new(output_features))
+preds.extend(output.asnumpy())
+ids = sorted(os.listdir(os.path.join(data_dir, input_dir, 'test/unknown')))
+with open('submission.csv', 'w') as f:
+f.write('id,' + ','.join(train_valid_ds.synsets) + '\n')
+for i, output in zip(ids, preds):
+9.13. 实战Kaggle⽐赛：狗的品种识别（ImageNet Dogs）
+425
+
+f.write(i.split('.')[0] + ',' + ','.join(
+[str(num) for num in output]) + '\n')
+epoch 1, train loss 5.066439, time 2.76 sec, lr 0.01
+执⾏完上述代码后，会⽣成⼀个submission.csv⽂件。这个⽂件符合Kaggle⽐赛要求的提交格式。
+提交结果的⽅法与“实战Kaggle⽐赛：房价预测”⼀节中的类似。
+⼩结
+• 我们可以使⽤在ImageNet数据集上预训练的模型抽取特征，并仅训练⾃定义的小规模输出
+⽹络，从而以较小的计算和存储开销对ImageNet的⼦集数据集做分类。
+练习
+• 使⽤Kaggle完整数据集，把批量⼤小batch_size和迭代周期数num_epochs分别调⼤些，
+可以在Kaggle上拿到什么样的结果？
+• 使⽤更深的预训练模型，你能获得更好的结果吗？
+• 扫码直达讨论区，在社区交流⽅法和结果。你能发掘出其他更好的技巧吗？
+扫码直达讨论区
+426
+9. 计算机视觉

@@ -1,0 +1,1053 @@
+8
+计算性能
+在深度学习中，数据集通常很⼤而且模型计算往往很复杂。因此，我们⼗分关注计算性能。本章
+将重点介绍影响计算性能的重要因⼦：命令式编程、符号式编程、异步计算、⾃动并⾏计算和
+多GPU计算。通过本章的学习，你将很可能进⼀步提升前⼏章已实现的模型的计算性能，例如，
+在不影响模型精度的前提下减少模型的训练时间。
+8.1 命令式和符号式混合编程
+本书到⽬前为⽌⼀直都在使⽤命令式编程，它使⽤编程语句改变程序状态。考虑下⾯这段简单的
+命令式程序。
+In [1]: def add(a, b):
+return a + b
+def fancy_func(a, b, c, d):
+e = add(a, b)
+f = add(c, d)
+g = add(e, f)
+297
+
+return g
+fancy_func(1, 2, 3, 4)
+Out[1]: 10
+和我们预期的⼀样，在运⾏语句e = add(a, b)时，Python会做加法运算并将结果存储在变
+量e中，从而令程序的状态发⽣改变。类似地，后⾯的两条语句f = add(c, d)和g = add(e,
+f)会依次做加法运算并存储变量。
+虽然使⽤命令式编程很⽅便，但它的运⾏可能很慢。⼀⽅⾯，即使fancy_func函数中的add是被
+重复调⽤的函数，Python也会逐⼀执⾏这3条函数调⽤语句。另⼀⽅⾯，我们需要保存变量e和f的
+值直到fancy_func中所有语句执⾏结束。这是因为在执⾏e = add(a, b)和f = add(c,
+d)这2条语句之后我们并不知道变量e和f是否会被程序的其他部分使⽤。
+与命令式编程不同，符号式编程通常在计算流程完全定义好后才被执⾏。多个深度学习框架，
+如Theano和TensorFlow，都使⽤了符号式编程。通常，符号式编程的程序需要下⾯3个步骤：
+1. 定义计算流程；
+2. 把计算流程编译成可执⾏的程序；
+3. 给定输⼊，调⽤编译好的程序执⾏。
+下⾯我们⽤符号式编程重新实现本节开头给出的命令式编程代码。
+In [2]: def add_str():
+return '''
+def add(a, b):
+return a + b
+'''
+def fancy_func_str():
+return '''
+def fancy_func(a, b, c, d):
+e = add(a, b)
+f = add(c, d)
+g = add(e, f)
+return g
+'''
+def evoke_str():
+return add_str() + fancy_func_str() + '''
+print(fancy_func(1, 2, 3, 4))
+'''
+298
+8. 计算性能
+
+prog = evoke_str()
+print(prog)
+y = compile(prog, '', 'exec')
+exec(y)
+def add(a, b):
+return a + b
+def fancy_func(a, b, c, d):
+e = add(a, b)
+f = add(c, d)
+g = add(e, f)
+return g
+print(fancy_func(1, 2, 3, 4))
+10
+以上定义的3个函数都仅以字符串的形式返回计算流程。最后，我们通过compile函数编译完整的
+计算流程并运⾏。由于在编译时系统能够完整地获取整个程序，因此有更多空间优化计算。例如，
+编译的时候可以将程序改写成print((1 + 2) + (3 + 4))，甚⾄直接改写成print(10)。这
+样不仅减少了函数调⽤，还节省了内存。
+对⽐这两种编程⽅式，我们可以看到以下两点。
+• 命令式编程更⽅便。当我们在Python⾥使⽤命令式编程时，⼤部分代码编写起来都很直观。
+同时，命令式编程更容易调试。这是因为我们可以很⽅便地获取并打印所有的中间变量值，
+或者使⽤Python的调试⼯具。
+• 符号式编程更⾼效并更容易移植。⼀⽅⾯，在编译的时候系统容易做更多优化；另⼀⽅⾯，
+符号式编程可以将程序变成⼀个与Python⽆关的格式，从而可以使程序在⾮Python环境下
+运⾏，以避开Python解释器的性能问题。
+8.1.1 混合式编程取两者之⻓
+⼤部分深度学习框架在命令式编程和符号式编程之间⼆选⼀。例如，Theano和受其启发的后来
+者TensorFlow使⽤了符号式编程，Chainer和它的追随者PyTorch使⽤了命令式编程。开发⼈员
+在设计Gluon时思考了这个问题：有没有可能既得到命令式编程的好处，⼜享受符号式编程的优
+势？开发者们认为，⽤⼾应该⽤纯命令式编程进⾏开发和调试；当需要产品级别的计算性能和部
+8.1. 命令式和符号式混合编程
+299
+
+署时，⽤⼾可以将⼤部分命令式程序转换成符号式程序来运⾏。Gluon通过提供混合式编程的⽅
+式做到了这⼀点。
+在混合式编程中，我们可以通过使⽤HybridBlock类或者HybridSequential类构建模型。
+默认情况下，它们和Block类或者Sequential类⼀样依据命令式编程的⽅式执⾏。当我们调
+⽤hybridize函数后，Gluon会转换成依据符号式编程的⽅式执⾏。事实上，绝⼤多数模型都可
+以接受这样的混合式编程的执⾏⽅式。
+本节将通过实验展⽰混合式编程的魅⼒。
+8.1.2 使⽤HybridSequential类构造模型
+我们之前学习了如何使⽤Sequential类来串联多个层。为了使⽤混合式编程，下⾯我们
+将Sequential类替换成HybridSequential类。
+In [3]: from mxnet import nd, sym
+from mxnet.gluon import nn
+import time
+def get_net():
+net = nn.HybridSequential()
+# 这⾥创建HybridSequential实例
+net.add(nn.Dense(256, activation='relu'),
+nn.Dense(128, activation='relu'),
+nn.Dense(2))
+net.initialize()
+return net
+x = nd.random.normal(shape=(1, 512))
+net = get_net()
+net(x)
+Out[3]:
+[[0.08827581 0.00505182]]
+<NDArray 1x2 @cpu(0)>
+我们可以通过调⽤hybridize函数来编译和优化HybridSequential实例中串联的层的计算。
+模型的计算结果不变。
+In [4]: net.hybridize()
+net(x)
+Out[4]:
+[[0.08827581 0.00505182]]
+300
+8. 计算性能
+
+<NDArray 1x2 @cpu(0)>
+需要注意的是，只有继承HybridBlock类的层才会被优化计算。例如，HybridSequential类
+和Gluon提供的Dense类都是HybridBlock类的⼦类，它们都会被优化计算。如果⼀个层只是继
+承⾃Block类而不是HybridBlock类，那么它将不会被优化。
+计算性能
+下⾯通过⽐较调⽤hybridize函数前后的计算时间来展⽰符号式编程的性能提升。这⾥我们
+对1000次net模型计算计时。在net调⽤hybridize函数前后，它分别依据命令式编程和符号式
+编程做模型计算。
+In [5]: def benchmark(net, x):
+start = time.time()
+for i in range(1000):
+_ = net(x)
+nd.waitall()
+# 等待所有计算完成⽅便计时
+return time.time() - start
+net = get_net()
+print('before hybridizing: %.4f sec' % (benchmark(net, x)))
+net.hybridize()
+print('after hybridizing: %.4f sec' % (benchmark(net, x)))
+before hybridizing: 0.4733 sec
+after hybridizing: 0.2195 sec
+由上述结果可⻅，在⼀个HybridSequential实例调⽤hybridize函数后，它可以通过符号式
+编程提升计算性能。
+获取符号式程序
+在模型net根据输⼊计算模型输出后，例如benchmark函数中的net(x)，我们就可以通
+过export函数将符号式程序和模型参数保存到硬盘。
+In [6]: net.export('my_mlp')
+此时⽣成的.json和.params⽂件分别为符号式程序和模型参数。它们可以被Python或MXNet⽀持
+的其他前端语⾔读取，如C++、R、Scala、Perl和其他语⾔。这样，我们就可以很⽅便地使⽤其他
+前端语⾔或在其他设备上部署训练好的模型。同时，由于部署时使⽤的是符号式程序，计算性能
+往往⽐命令式程序的性能更好。
+8.1. 命令式和符号式混合编程
+301
+
+在MXNet中，符号式程序指的是基于Symbol类型的程序。我们知道，当给net提供NDArray类
+型的输⼊x后，net(x)会根据x直接计算模型输出并返回结果。对于调⽤过hybridize函数后的
+模型，我们还可以给它输⼊⼀个Symbol类型的变量，net(x)会返回Symbol类型的结果。
+In [7]: x = sym.var('data')
+net(x)
+Out[7]: <Symbol dense5_fwd>
+8.1.3 使⽤HybridBlock类构造模型
+和Sequential类与Block类之间的关系⼀样，HybridSequential类是HybridBlock类的⼦
+类。与Block实例需要实现forward函数不太⼀样的是，对于HybridBlock实例，我们需要实
+现hybrid_forward函数。
+前⾯我们展⽰了调⽤hybridize函数后的模型可以获得更好的计算性能和可移植性。此外，调
+⽤hybridize函数后的模型会影响灵活性。为了解释这⼀点，我们先使⽤HybridBlock类构造
+模型。
+In [8]: class HybridNet(nn.HybridBlock):
+def __init__(self, **kwargs):
+super(HybridNet, self).__init__(**kwargs)
+self.hidden = nn.Dense(10)
+self.output = nn.Dense(2)
+def hybrid_forward(self, F, x):
+print('F: ', F)
+print('x: ', x)
+x = F.relu(self.hidden(x))
+print('hidden: ', x)
+return self.output(x)
+在继承HybridBlock类时，我们需要在hybrid_forward函数中添加额外的输⼊F。我们知道，
+MXNet既有基于命令式编程的NDArray类，⼜有基于符号式编程的Symbol类。由于这两个类的
+函数基本⼀致，MXNet会根据输⼊来决定F使⽤NDArray或Symbol。
+下⾯创建了⼀个HybridBlock实例。可以看到在默认情况下F使⽤NDArray。而且，我们打印出
+了输⼊x和使⽤ReLU激活函数的隐藏层的输出。
+In [9]: net = HybridNet()
+net.initialize()
+302
+8. 计算性能
+
+x = nd.random.normal(shape=(1, 4))
+net(x)
+F:
+<module 'mxnet.ndarray' from '/var/lib/jenkins/miniconda3/envs/d2l-zh-build/lib/py ⌋
+thon3.6/site-packages/mxnet/ndarray/__init__.py'>
+,→
+x:
+[[-0.12225834
+0.5429998
+-0.9469352
+0.59643304]]
+<NDArray 1x4 @cpu(0)>
+hidden:
+[[0.11134676 0.04770704 0.05341475 0.
+0.08091211 0.
+0.
+0.04143535 0.
+0.
+]]
+<NDArray 1x10 @cpu(0)>
+Out[9]:
+[[0.00370749 0.00134991]]
+<NDArray 1x2 @cpu(0)>
+再运⾏⼀次前向计算会得到同样的结果。
+In [10]: net(x)
+F:
+<module 'mxnet.ndarray' from '/var/lib/jenkins/miniconda3/envs/d2l-zh-build/lib/py ⌋
+thon3.6/site-packages/mxnet/ndarray/__init__.py'>
+,→
+x:
+[[-0.12225834
+0.5429998
+-0.9469352
+0.59643304]]
+<NDArray 1x4 @cpu(0)>
+hidden:
+[[0.11134676 0.04770704 0.05341475 0.
+0.08091211 0.
+0.
+0.04143535 0.
+0.
+]]
+<NDArray 1x10 @cpu(0)>
+Out[10]:
+[[0.00370749 0.00134991]]
+<NDArray 1x2 @cpu(0)>
+接下来看看调⽤hybridize函数后会发⽣什么。
+In [11]: net.hybridize()
+net(x)
+F:
+<module 'mxnet.symbol' from '/var/lib/jenkins/miniconda3/envs/d2l-zh-build/lib/pyt ⌋
+hon3.6/site-packages/mxnet/symbol/__init__.py'>
+,→
+x:
+<Symbol data>
+hidden:
+<Symbol hybridnet0_relu0>
+Out[11]:
+[[0.00370749 0.00134991]]
+<NDArray 1x2 @cpu(0)>
+8.1. 命令式和符号式混合编程
+303
+
+可以看到，F变成了Symbol。而且，虽然输⼊数据还是NDArray，但在hybrid_forward函数
+⾥，相同输⼊和中间输出全部变成了Symbol类型。
+再运⾏⼀次前向计算看看。
+In [12]: net(x)
+Out[12]:
+[[0.00370749 0.00134991]]
+<NDArray 1x2 @cpu(0)>
+可以看到hybrid_forward函数⾥定义的3条打印语句都没有打印任何东西。这是因为
+上⼀次在调⽤hybridize函数后运⾏net(x)的时候，符号式程序已经得到。之后再运
+⾏net(x)的时候MXNet将不再访问Python代码，而是直接在C++后端执⾏符号式程序。这也是
+调⽤hybridize函数后模型计算性能会提升的⼀个原因。但它可能的问题在于，我们损失了写
+程序的灵活性。在上⾯这个例⼦中，如果我们希望使⽤那3条打印语句调试代码，执⾏符号式
+程序时会跳过它们⽆法打印。此外，对于少数像asnumpy这样的Symbol所不⽀持的函数，以及
+像a += b和a[:] = a + b（需改写为a = a + b）这样的原地（in-place）操作，我们⽆法
+在hybrid_forward函数中使⽤并在调⽤hybridize函数后进⾏前向计算。
+⼩结
+• 命令式编程和符号式编程各有优劣。MXNet通过混合式编程取⼆者之⻓。
+• 通过HybridSequential类和HybridBlock类构建的模型可以调⽤hybridize函数将
+命令式程序转成符号式程序。建议⼤家使⽤这种⽅法获得计算性能的提升。
+练习
+• 在本节HybridNet类的hybrid_forward函数中第⼀⾏添加x.asnumpy()，运⾏本节的
+全部代码，观察并分析报错的位置和错误类型。
+• 如果在hybrid_forward函数中加⼊Python的if和for语句会怎么样？
+• 回顾前⾯⼏章中你感兴趣的模型，改⽤HybridBlock类或HybridSequential类实现。
+304
+8. 计算性能
+
+扫码直达讨论区
+8.2 异步计算
+MXNet使⽤异步计算来提升计算性能。理解它的⼯作原理既有助于开发更⾼效的程序，⼜有助于
+在内存资源有限的情况下主动降低计算性能从而减小内存开销。我们先导⼊本节中实验需要的包
+或模块。
+In [1]: from mxnet import autograd, gluon, nd
+from mxnet.gluon import loss as gloss, nn
+import os
+import subprocess
+import time
+8.2.1 MXNet中的异步计算
+⼴义上讲，MXNet包括⽤⼾直接⽤来交互的前端和系统⽤来执⾏计算的后端。例如，⽤⼾可以
+使⽤不同的前端语⾔编写MXNet程序，如Python、R、Scala和C++。⽆论使⽤何种前端编程语⾔，
+MXNet程序的执⾏主要都发⽣在C++实现的后端。换句话说，⽤⼾写好的前端MXNet程序会传给
+后端执⾏计算。后端有⾃⼰的线程在队列中不断收集任务并执⾏它们。
+MXNet通过前端线程和后端线程的交互实现异步计算。异步计算指，前端线程⽆须等待当前指令
+从后端线程返回结果就继续执⾏后⾯的指令。为了便于解释，假设Python前端线程调⽤以下4条
+指令。
+In [2]: a = nd.ones((1, 2))
+b = nd.ones((1, 2))
+c = a * b + 2
+c
+Out[2]:
+[[3. 3.]]
+<NDArray 1x2 @cpu(0)>
+8.2. 异步计算
+305
+
+在异步计算中，Python前端线程执⾏前3条语句的时候，仅仅是把任务放进后端的队列⾥就返回
+了。当最后⼀条语句需要打印计算结果时，Python前端线程会等待C++后端线程把变量c的结果
+计算完。此设计的⼀个好处是，这⾥的Python前端线程不需要做实际计算。因此，⽆论Python的
+性能如何，它对整个程序性能的影响很小。只要C++后端⾜够⾼效，那么不管前端编程语⾔性能
+如何，MXNet都可以提供⼀致的⾼性能。
+为了演⽰异步计算的性能，我们先实现⼀个简单的计时类。
+In [3]: class Benchmark():
+# 本类已保存在d2lzh包中⽅便以后使⽤
+def __init__(self, prefix=None):
+self.prefix = prefix + ' ' if prefix else ''
+def __enter__(self):
+self.start = time.time()
+def __exit__(self, *args):
+print('%stime: %.4f sec' % (self.prefix, time.time() - self.start))
+下⾯的例⼦通过计时来展⽰异步计算的效果。可以看到，当y = nd.dot(x, x).sum()返回的
+时候并没有等待变量y真正被计算完。只有当print函数需要打印变量y时才必须等待它计算完。
+In [4]: with Benchmark('Workloads are queued.'):
+x = nd.random.uniform(shape=(2000, 2000))
+y = nd.dot(x, x).sum()
+with Benchmark('Workloads are finished.'):
+print('sum =', y)
+Workloads are queued. time: 0.0007 sec
+sum =
+[2.0003661e+09]
+<NDArray 1 @cpu(0)>
+Workloads are finished. time: 0.1712 sec
+的确，除⾮我们需要打印或者保存计算结果，否则我们基本⽆须关⼼⽬前结果在内存中是否已经
+计算好了。只要数据是保存在NDArray⾥并使⽤MXNet提供的运算符，MXNet将默认使⽤异步
+计算来获取⾼计算性能。
+8.2.2 ⽤同步函数让前端等待计算结果
+除了刚刚介绍的print函数外，我们还有其他⽅法让前端线程等待后端的计算结果完成。我们可
+以使⽤wait_to_read函数让前端等待某个的NDArray的计算结果完成，再执⾏前端中后⾯的
+306
+8. 计算性能
+
+语句。或者，我们可以⽤waitall函数令前端等待前⾯所有计算结果完成。后者是性能测试中常
+⽤的⽅法。
+下⾯是使⽤wait_to_read函数的例⼦。输出⽤时包含了变量y的计算时间。
+In [5]: with Benchmark():
+y = nd.dot(x, x)
+y.wait_to_read()
+time: 0.0646 sec
+下⾯是使⽤waitall函数的例⼦。输出⽤时包含了变量y和变量z的计算时间。
+In [6]: with Benchmark():
+y = nd.dot(x, x)
+z = nd.dot(x, x)
+nd.waitall()
+time: 0.1269 sec
+此外，任何将NDArray转换成其他不⽀持异步计算的数据结构的操作都会让前端等待计算结果。
+例如，当我们调⽤asnumpy函数和asscalar函数时：
+In [7]: with Benchmark():
+y = nd.dot(x, x)
+y.asnumpy()
+time: 0.0670 sec
+In [8]: with Benchmark():
+y = nd.dot(x, x)
+y.norm().asscalar()
+time: 0.1585 sec
+上⾯介绍的wait_to_read函数、waitall函数、asnumpy函数、asscalar函数和print函数
+会触发让前端等待后端计算结果的⾏为。这类函数通常称为同步函数。
+8.2.3 使⽤异步计算提升计算性能
+在下⾯的例⼦中，我们⽤for循环不断对变量y赋值。当在for循环内使⽤同步函
+数wait_to_read时，每次赋值不使⽤异步计算；当在for循环外使⽤同步函数waitall时，则
+使⽤异步计算。
+In [9]: with Benchmark('synchronous.'):
+for _ in range(1000):
+8.2. 异步计算
+307
+
+y = x + 1
+y.wait_to_read()
+with Benchmark('asynchronous.'):
+for _ in range(1000):
+y = x + 1
+nd.waitall()
+synchronous. time: 0.5856 sec
+asynchronous. time: 0.3696 sec
+我们观察到，使⽤异步计算能提升⼀定的计算性能。为了解释这⼀现象，让我们对Python前端线
+程和C++后端线程的交互稍作简化。在每⼀次循环中，前端和后端的交互⼤约可以分为3个阶段：
+1. 前端令后端将计算任务y = x + 1放进队列；
+2. 后端从队列中获取计算任务并执⾏真正的计算；
+3. 后端将计算结果返回给前端。
+我们将这3个阶段的耗时分别设为t1, t2, t3。如果不使⽤异步计算，执⾏1000次计算的总耗时⼤约
+为1000(t1 + t2 + t3)；如果使⽤异步计算，由于每次循环中前端都⽆须等待后端返回计算结果，执
+⾏1000次计算的总耗时可以降为t1 + 1000t2 + t3（假设1000t2 > 999t1）。
+8.2.4 异步计算对内存的影响
+为了解释异步计算对内存使⽤的影响，让我们先回忆⼀下前⾯章节的内容。在前⾯章节中实现的
+模型训练过程中，我们通常会在每个小批量上评测⼀下模型，如模型的损失或者精度。细⼼的读
+者也许已经发现了，这类评测常⽤到同步函数，如asscalar函数或者asnumpy函数。如果去掉
+这些同步函数，前端会将⼤量的小批量计算任务在极短的时间内丢给后端，从而可能导致占⽤更
+多内存。当我们在每个小批量上都使⽤同步函数时，前端在每次迭代时仅会将⼀个小批量的任务
+丢给后端执⾏计算，并通常会减小内存占⽤。
+由于深度学习模型通常⽐较⼤，而内存资源通常有限，建议⼤家在训练模型时对每个小批量都使
+⽤同步函数，例如，⽤asscalar函数或者asnumpy函数评价模型的表现。类似地，在使⽤模型
+预测时，为了减小内存的占⽤，也建议⼤家对每个小批量预测时都使⽤同步函数，例如，直接打
+印出当前小批量的预测结果。
+下⾯我们来演⽰异步计算对内存的影响。我们先定义⼀个数据获取函数data_iter，它会从被
+调⽤时开始计时，并定期打印到⽬前为⽌获取数据批量的总耗时。
+308
+8. 计算性能
+
+In [10]: def data_iter():
+start = time.time()
+num_batches, batch_size = 100, 1024
+for i in range(num_batches):
+X = nd.random.normal(shape=(batch_size, 512))
+y = nd.ones((batch_size,))
+yield X, y
+if (i + 1) % 50 == 0:
+print('batch %d, time %f sec' % (i + 1, time.time() - start))
+下⾯定义多层感知机、优化算法和损失函数。
+In [11]: net = nn.Sequential()
+net.add(nn.Dense(2048, activation='relu'),
+nn.Dense(512, activation='relu'),
+nn.Dense(1))
+net.initialize()
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.005})
+loss = gloss.L2Loss()
+这⾥定义辅助函数来监测内存的使⽤。需要注意的是，这个函数只能在Linux或macOS上运⾏。
+In [12]: def get_mem():
+res = subprocess.check_output(['ps', 'u', '-p', str(os.getpid())])
+return int(str(res).split()[15]) / 1e3
+现在我们可以做测试了。我们先试运⾏⼀次，让系统把net的参数初始化。有关初始化的讨论可
+参⻅“模型参数的延后初始化”⼀节。
+In [13]: for X, y in data_iter():
+break
+loss(y, net(X)).wait_to_read()
+对于训练模型net来说，我们可以⾃然地使⽤同步函数asscalar将每个小批量的损失
+从NDArray格式中取出，并打印每个迭代周期后的模型损失。此时，每个小批量的⽣成间隔较⻓，
+不过内存开销较小。
+In [14]: l_sum, mem = 0, get_mem()
+for X, y in data_iter():
+with autograd.record():
+l = loss(y, net(X))
+l_sum += l.mean().asscalar()
+# 使⽤同步函数asscalar
+l.backward()
+trainer.step(X.shape[0])
+nd.waitall()
+print('increased memory: %f MB' % (get_mem() - mem))
+8.2. 异步计算
+309
+
+batch 50, time 3.371737 sec
+batch 100, time 6.779474 sec
+increased memory: 2.896000 MB
+如果去掉同步函数，虽然每个小批量的⽣成间隔较短，但训练过程中可能会导致内存占⽤较⾼。
+这是因为在默认异步计算下，前端会将所有小批量计算在短时间内全部丢给后端。这可能在内存
+积压⼤量中间结果⽆法释放。实验中我们看到，不到⼀秒，所有数据（X和y）就都已经产⽣。但
+因为训练速度没有跟上，所以这些数据只能放在内存⾥不能及时清除，从而占⽤额外内存。
+In [15]: mem = get_mem()
+for X, y in data_iter():
+with autograd.record():
+l = loss(y, net(X))
+l.backward()
+trainer.step(X.shape[0])
+nd.waitall()
+print('increased memory: %f MB' % (get_mem() - mem))
+batch 50, time 0.079871 sec
+batch 100, time 0.159572 sec
+increased memory: 198.924000 MB
+⼩结
+• MXNet包括⽤⼾直接⽤来交互的前端和系统⽤来执⾏计算的后端。
+• MXNet能够通过异步计算提升计算性能。
+• 建议使⽤每个小批量训练或预测时⾄少使⽤⼀个同步函数，从而避免在短时间内将过多计
+算任务丢给后端。
+练习
+• 在“使⽤异步计算提升计算性能”⼀节中，我们提到使⽤异步计算可以使执⾏1000次计算
+的总耗时降为t1 + 1000t2 + t3。这⾥为什么要假设1000t2 > 999t1？
+310
+8. 计算性能
+
+扫码直达讨论区
+8.3 ⾃动并⾏计算
+MXNet后端会⾃动构建计算图。通过计算图，系统可以知道所有计算的依赖关系，并可以选择将
+没有依赖关系的多个任务并⾏执⾏来获得计算性能的提升。例如“异步计算”⼀节的第⼀个例⼦
+⾥依次执⾏了a = nd.ones((1, 2))和b = nd.ones((1, 2))。这两步计算之间并没有依
+赖关系，因此系统可以选择并⾏执⾏它们。
+通常，⼀个运算符会⽤到所有CPU或单块GPU上全部的计算资源。例如，dot运算符会⽤到所
+有CPU（即使是⼀台机器上有多个CPU处理器）或单块GPU上所有的线程。如果每个运算符的计
+算量⾜够⼤，只在CPU上或者单块GPU上并⾏运⾏多个运算符时，每个运算符的运⾏只分到CPU或
+单块GPU上部分计算资源。即使这些计算可以并⾏，最终计算性能的提升可能也并不明显。本节
+中探讨的⾃动并⾏计算主要关注同时使⽤CPU和GPU的并⾏计算，以及计算和通信的并⾏。
+⾸先导⼊本节中实验所需的包或模块。注意，需要⾄少⼀块GPU才能运⾏本节实验。
+In [1]: import d2lzh as d2l
+import mxnet as mx
+from mxnet import nd
+8.3.1 CPU和GPU的并⾏计算
+我们先介绍CPU和GPU的并⾏计算，例如，程序中的计算既发⽣在CPU上，⼜发⽣在GPU上。先
+定义run函数，令它做10次矩阵乘法。
+In [2]: def run(x):
+return [nd.dot(x, x) for _ in range(10)]
+接下来，分别在内存和显存上创建NDArray。
+In [3]: x_cpu = nd.random.uniform(shape=(2000, 2000))
+x_gpu = nd.random.uniform(shape=(6000, 6000), ctx=mx.gpu(0))
+8.3. ⾃动并⾏计算
+311
+
+然后，分别使⽤它们在CPU和GPU上运⾏run函数并打印运⾏所需时间。
+In [4]: run(x_cpu)
+# 预热开始
+run(x_gpu)
+nd.waitall()
+# 预热结束
+with d2l.Benchmark('Run on CPU.'):
+run(x_cpu)
+nd.waitall()
+with d2l.Benchmark('Then run on GPU.'):
+run(x_gpu)
+nd.waitall()
+Run on CPU. time: 0.6275 sec
+Then run on GPU. time: 0.3045 sec
+我们去掉run(x_cpu)和run(x_gpu)这两个计算任务之间的waitall同步函数，并希望系统能
+⾃动并⾏这两个任务。
+In [5]: with d2l.Benchmark('Run on both CPU and GPU in parallel.'):
+run(x_cpu)
+run(x_gpu)
+nd.waitall()
+Run on both CPU and GPU in parallel. time: 0.6279 sec
+可以看到，当两个计算任务⼀起执⾏时，执⾏总时间小于它们分开执⾏的总和。这表明，MXNet能
+有效地在CPU和GPU上⾃动并⾏计算。
+8.3.2 计算和通信的并⾏计算
+在同时使⽤CPU和GPU的计算中，经常需要在内存和显存之间复制数据，造成数据的通信。在下
+⾯的例⼦中，我们在GPU上计算，然后将结果复制回CPU使⽤的内存。我们分别打印GPU上计算
+时间和显存到内存的通信时间。
+In [6]: def copy_to_cpu(x):
+return [y.copyto(mx.cpu()) for y in x]
+with d2l.Benchmark('Run on GPU.'):
+y = run(x_gpu)
+nd.waitall()
+with d2l.Benchmark('Then copy to CPU.'):
+312
+8. 计算性能
+
+copy_to_cpu(y)
+nd.waitall()
+Run on GPU. time: 0.3120 sec
+Then copy to CPU. time: 0.5209 sec
+我们去掉计算和通信之间的waitall同步函数，打印这两个任务完成的总时间。
+In [7]: with d2l.Benchmark('Run and copy in parallel.'):
+y = run(x_gpu)
+copy_to_cpu(y)
+nd.waitall()
+Run and copy in parallel. time: 0.6163 sec
+可以看到，执⾏计算和通信的总时间小于两者分别执⾏的耗时之和。需要注意的是，这个计算并
+通信的任务不同于本节之前介绍的同时使⽤CPU和GPU并⾏计算的任务。这⾥的运⾏和通信之间
+有依赖关系：y[i]必须先在GPU上计算好才能复制到CPU使⽤的内存。所幸的是，在计算y[i]的
+时候系统可以复制y[i-1]，从而减少计算和通信的总运⾏时间。
+⼩结
+• MXNet能够通过⾃动并⾏计算提升计算性能，例如CPU和GPU的并⾏计算以及计算和通信
+的并⾏。
+练习
+• 本节中定义的run函数⾥做了10次运算。它们之间也没有依赖关系。设计实验，看看MXNet有
+没有⾃动并⾏执⾏它们。
+• 设计包含更加复杂的数据依赖的计算任务，通过实验观察MXNet能否得到正确的结果并提
+升计算性能。
+• 当运算符的计算量⾜够小时，仅在CPU或单块GPU上并⾏计算也可能提升计算性能。设计
+实验来验证这⼀点。
+8.3. ⾃动并⾏计算
+313
+
+扫码直达讨论区
+8.4 多GPU计算
+本节中我们将展⽰如何使⽤多块GPU计算，例如，使⽤多块GPU训练同⼀个模型。正如所期望的
+那样，运⾏本节中的程序需要⾄少2块GPU。事实上，⼀台机器上安装多块GPU很常⻅，这是因为
+主板上通常会有多个PCIe插槽。如果正确安装了NVIDIA驱动，我们可以通过nvidia-smi命令
+来查看当前计算机上的全部GPU。
+In [1]: !nvidia-smi
+Mon May 13 00:33:22 2019
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 410.48
+Driver Version: 410.48
+|
+|-------------------------------+----------------------+----------------------+
+| GPU
+Name
+Persistence-M| Bus-Id
+Disp.A | Volatile Uncorr. ECC |
+| Fan
+Temp
+Perf
+Pwr:Usage/Cap|
+Memory-Usage | GPU-Util
+Compute M. |
+|===============================+======================+======================|
+|
+0
+Tesla V100-SXM2…
+On
+| 00000000:00:1B.0 Off |
+0 |
+| N/A
+59C
+P0
+44W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
+|
+1
+Tesla V100-SXM2…
+On
+| 00000000:00:1C.0 Off |
+0 |
+| N/A
+52C
+P0
+72W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
+|
+2
+Tesla V100-SXM2…
+On
+| 00000000:00:1D.0 Off |
+0 |
+| N/A
+43C
+P0
+43W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
+|
+3
+Tesla V100-SXM2…
+On
+| 00000000:00:1E.0 Off |
+0 |
+| N/A
+42C
+P0
+41W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
++-----------------------------------------------------------------------------+
+| Processes:
+GPU Memory |
+|
+GPU
+PID
+Type
+Process name
+Usage
+|
+|=============================================================================|
+314
+8. 计算性能
+
+|
+No running processes found
+|
++-----------------------------------------------------------------------------+
+“⾃动并⾏计算”⼀节介绍过，⼤部分运算可以使⽤所有的CPU的全部计算资源，或者单块GPU的
+全部计算资源。但如果使⽤多块GPU训练模型，我们仍然需要实现相应的算法。这些算法中最常
+⽤的叫作数据并⾏。
+8.4.1 数据并⾏
+数据并⾏⽬前是深度学习⾥使⽤最⼴泛的将模型训练任务划分到多块GPU的⽅法。回忆⼀下我们
+在“小批量随机梯度下降”⼀节中介绍的使⽤优化算法训练模型的过程。下⾯我们就以小批量随
+机梯度下降为例来介绍数据并⾏是如何⼯作的。
+假设⼀台机器上有k块GPU。给定需要训练的模型，每块GPU及其相应的显存将分别独⽴维护⼀
+份完整的模型参数。在模型训练的任意⼀次迭代中，给定⼀个随机小批量，我们将该批量中的样
+本划分成k份并分给每块显卡的显存⼀份。然后，每块GPU将根据相应显存所分到的小批量⼦集
+和所维护的模型参数分别计算模型参数的本地梯度。接下来，我们把k块显卡的显存上的本地梯
+度相加，便得到当前的小批量随机梯度。之后，每块GPU都使⽤这个小批量随机梯度分别更新相
+应显存所维护的那⼀份完整的模型参数。图8.1描绘了使⽤2块GPU的数据并⾏下的小批量随机梯
+度的计算。
+图8.1: 使⽤2块GPU的数据并⾏下的小批量随机梯度的计算
+为了从零开始实现多GPU训练中的数据并⾏，让我们先导⼊需要的包或模块。
+8.4. 多GPU计算
+315
+
+In [2]: import d2lzh as d2l
+import mxnet as mx
+from mxnet import autograd, nd
+from mxnet.gluon import loss as gloss
+import time
+8.4.2 定义模型
+我们使⽤“卷积神经⽹络（LeNet）”⼀节⾥介绍的LeNet来作为本节的样例模型。这⾥的模型实
+现部分只⽤到了NDArray。
+In [3]: # 初始化模型参数
+scale = 0.01
+W1 = nd.random.normal(scale=scale, shape=(20, 1, 3, 3))
+b1 = nd.zeros(shape=20)
+W2 = nd.random.normal(scale=scale, shape=(50, 20, 5, 5))
+b2 = nd.zeros(shape=50)
+W3 = nd.random.normal(scale=scale, shape=(800, 128))
+b3 = nd.zeros(shape=128)
+W4 = nd.random.normal(scale=scale, shape=(128, 10))
+b4 = nd.zeros(shape=10)
+params = [W1, b1, W2, b2, W3, b3, W4, b4]
+# 定义模型
+def lenet(X, params):
+h1_conv = nd.Convolution(data=X, weight=params[0], bias=params[1],
+kernel=(3, 3), num_filter=20)
+h1_activation = nd.relu(h1_conv)
+h1 = nd.Pooling(data=h1_activation, pool_type='avg', kernel=(2, 2),
+stride=(2, 2))
+h2_conv = nd.Convolution(data=h1, weight=params[2], bias=params[3],
+kernel=(5, 5), num_filter=50)
+h2_activation = nd.relu(h2_conv)
+h2 = nd.Pooling(data=h2_activation, pool_type='avg', kernel=(2, 2),
+stride=(2, 2))
+h2 = nd.flatten(h2)
+h3_linear = nd.dot(h2, params[4]) + params[5]
+h3 = nd.relu(h3_linear)
+y_hat = nd.dot(h3, params[6]) + params[7]
+return y_hat
+# 交叉熵损失函数
+316
+8. 计算性能
+
+loss = gloss.SoftmaxCrossEntropyLoss()
+8.4.3 多GPU之间同步数据
+我们需要实现⼀些多GPU之间同步数据的辅助函数。下⾯的get_params函数将模型参数复制到
+某块显卡的显存并初始化梯度。
+In [4]: def get_params(params, ctx):
+new_params = [p.copyto(ctx) for p in params]
+for p in new_params:
+p.attach_grad()
+return new_params
+尝试把模型参数params复制到gpu(0)上。
+In [5]: new_params = get_params(params, mx.gpu(0))
+print('b1 weight:', new_params[1])
+print('b1 grad:', new_params[1].grad)
+b1 weight:
+[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+<NDArray 20 @gpu(0)>
+b1 grad:
+[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+<NDArray 20 @gpu(0)>
+给定分布在多块显卡的显存之间的数据。下⾯的allreduce函数可以把各块显卡的显存上的数
+据加起来，然后再⼴播到所有的显存上。
+In [6]: def allreduce(data):
+for i in range(1, len(data)):
+data[0][:] += data[i].copyto(data[0].context)
+for i in range(1, len(data)):
+data[0].copyto(data[i])
+简单测试⼀下allreduce函数。
+In [7]: data = [nd.ones((1, 2), ctx=mx.gpu(i)) * (i + 1) for i in range(2)]
+print('before allreduce:', data)
+allreduce(data)
+print('after allreduce:', data)
+before allreduce: [
+[[1. 1.]]
+<NDArray 1x2 @gpu(0)>,
+8.4. 多GPU计算
+317
+
+[[2. 2.]]
+<NDArray 1x2 @gpu(1)>]
+after allreduce: [
+[[3. 3.]]
+<NDArray 1x2 @gpu(0)>,
+[[3. 3.]]
+<NDArray 1x2 @gpu(1)>]
+给定⼀个批量的数据样本，下⾯的split_and_load函数可以将其划分并复制到各块显卡的显
+存上。
+In [8]: def split_and_load(data, ctx):
+n, k = data.shape[0], len(ctx)
+m = n // k
+# 简单起⻅，假设可以整除
+assert m * k == n, '# examples is not divided by # devices.'
+return [data[i * m: (i + 1) * m].as_in_context(ctx[i]) for i in range(k)]
+让我们试着⽤split_and_load函数将6个数据样本平均分给2块显卡的显存。
+In [9]: batch = nd.arange(24).reshape((6, 4))
+ctx = [mx.gpu(0), mx.gpu(1)]
+splitted = split_and_load(batch, ctx)
+print('input: ', batch)
+print('load into', ctx)
+print('output:', splitted)
+input:
+[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11.]
+[12. 13. 14. 15.]
+[16. 17. 18. 19.]
+[20. 21. 22. 23.]]
+<NDArray 6x4 @cpu(0)>
+load into [gpu(0), gpu(1)]
+output: [
+[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11.]]
+<NDArray 3x4 @gpu(0)>,
+[[12. 13. 14. 15.]
+[16. 17. 18. 19.]
+[20. 21. 22. 23.]]
+<NDArray 3x4 @gpu(1)>]
+318
+8. 计算性能
+
+8.4.4 单个⼩批量上的多GPU训练
+现在我们可以实现单个小批量上的多GPU训练了。它的实现主要依据本节介绍的数据并⾏⽅法。
+我们将使⽤刚刚定义的多GPU之间同步数据的辅助函数allreduce和split_and_load。
+In [10]: def train_batch(X, y, gpu_params, ctx, lr):
+# 当ctx包含多块GPU及相应的显存时，将⼩批量数据样本划分并复制到各个显存上
+gpu_Xs, gpu_ys = split_and_load(X, ctx), split_and_load(y, ctx)
+with autograd.record():
+# 在各块GPU上分别计算损失
+ls = [loss(lenet(gpu_X, gpu_W), gpu_y)
+for gpu_X, gpu_y, gpu_W in zip(gpu_Xs, gpu_ys, gpu_params)]
+for l in ls:
+# 在各块GPU上分别反向传播
+l.backward()
+# 把各块显卡的显存上的梯度加起来，然后⼴播到所有显存上
+for i in range(len(gpu_params[0])):
+allreduce([gpu_params[c][i].grad for c in range(len(ctx))])
+for param in gpu_params:
+# 在各块显卡的显存上分别更新模型参数
+d2l.sgd(param, lr, X.shape[0])
+# 这⾥使⽤了完整批量⼤⼩
+8.4.5 定义训练函数
+现在我们可以定义训练函数了。这⾥的训练函数和“softmax回归的从零开始实现”⼀节定义的训
+练函数train_ch3有所不同。值得强调的是，在这⾥我们需要依据数据并⾏将完整的模型参数
+复制到多块显卡的显存上，并在每次迭代时对单个小批量进⾏多GPU训练。
+In [11]: def train(num_gpus, batch_size, lr):
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+ctx = [mx.gpu(i) for i in range(num_gpus)]
+print('running on:', ctx)
+# 将模型参数复制到num_gpus块显卡的显存上
+gpu_params = [get_params(params, c) for c in ctx]
+for epoch in range(4):
+start = time.time()
+for X, y in train_iter:
+# 对单个⼩批量进⾏多GPU训练
+train_batch(X, y, gpu_params, ctx, lr)
+nd.waitall()
+train_time = time.time() - start
+def net(x):
+# 在gpu(0)上验证模型
+return lenet(x, gpu_params[0])
+8.4. 多GPU计算
+319
+
+test_acc = d2l.evaluate_accuracy(test_iter, net, ctx[0])
+print('epoch %d, time %.1f sec, test acc %.2f'
+% (epoch + 1, train_time, test_acc))
+8.4.6 多GPU训练实验
+让我们先从单GPU训练开始。设批量⼤小为256，学习率为0.2。
+In [12]: train(num_gpus=1, batch_size=256, lr=0.2)
+running on: [gpu(0)]
+epoch 1, time 1.6 sec, test acc 0.10
+epoch 2, time 1.5 sec, test acc 0.70
+epoch 3, time 1.4 sec, test acc 0.73
+epoch 4, time 1.4 sec, test acc 0.78
+保持批量⼤小和学习率不变，将使⽤的GPU数量改为2。可以看到，测试精度的提升同上⼀个实
+验中的结果⼤体相当。因为有额外的通信开销，所以我们并没有看到训练时间的显著降低。因此，
+我们将在下⼀节实验计算更加复杂的模型。
+In [13]: train(num_gpus=2, batch_size=256, lr=0.2)
+running on: [gpu(0), gpu(1)]
+epoch 1, time 2.6 sec, test acc 0.10
+epoch 2, time 2.4 sec, test acc 0.61
+epoch 3, time 2.3 sec, test acc 0.75
+epoch 4, time 2.3 sec, test acc 0.75
+⼩结
+• 可以使⽤数据并⾏更充分地利⽤多块GPU的计算资源，实现多GPU训练模型。
+• 给定超参数的情况下，改变GPU数量时模型的训练精度⼤体相当。
+练习
+• 在多GPU训练实验中，使⽤2块GPU训练并将batch_size翻倍⾄512，训练时间有何变化？
+如果希望测试精度与单GPU训练中的结果相当，学习率应如何调节？
+• 将实验的模型预测部分改为⽤多GPU预测。
+320
+8. 计算性能
+
+扫码直达讨论区
+8.5 多GPU计算的简洁实现
+在Gluon中，我们可以很⽅便地使⽤数据并⾏进⾏多GPU计算。例如，我们并不需要⾃⼰实现
+“多GPU计算”⼀节⾥介绍的多GPU之间同步数据的辅助函数。
+⾸先导⼊本节实验所需的包或模块。运⾏本节中的程序需要⾄少2块GPU。
+In [1]: import d2lzh as d2l
+import mxnet as mx
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import loss as gloss, nn, utils as gutils
+import time
+8.5.1 多GPU上初始化模型参数
+我们使⽤ResNet-18作为本节的样例模型。由于本节的输⼊图像使⽤原尺⼨（未放⼤），这⾥的模
+型构造与“残差⽹络（ResNet）”⼀节中的ResNet-18构造稍有不同。这⾥的模型在⼀开始使⽤了
+较小的卷积核、步幅和填充，并去掉了最⼤池化层。
+In [2]: def resnet18(num_classes):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+def resnet_block(num_channels, num_residuals, first_block=False):
+blk = nn.Sequential()
+for i in range(num_residuals):
+if i == 0 and not first_block:
+blk.add(d2l.Residual(
+num_channels, use_1x1conv=True, strides=2))
+else:
+blk.add(d2l.Residual(num_channels))
+return blk
+net = nn.Sequential()
+# 这⾥使⽤了较⼩的卷积核、步幅和填充，并去掉了最⼤池化层
+8.5. 多GPU计算的简洁实现
+321
+
+net.add(nn.Conv2D(64, kernel_size=3, strides=1, padding=1),
+nn.BatchNorm(), nn.Activation('relu'))
+net.add(resnet_block(64, 2, first_block=True),
+resnet_block(128, 2),
+resnet_block(256, 2),
+resnet_block(512, 2))
+net.add(nn.GlobalAvgPool2D(), nn.Dense(num_classes))
+return net
+net = resnet18(10)
+之前我们介绍了如何使⽤initialize函数的ctx参数在内存或单块显卡的显存上初始化模型参
+数。事实上，ctx可以接受⼀系列的CPU及内存和GPU及相应的显存，从而使初始化好的模型参
+数复制到ctx⾥所有的内存和显存上。
+In [3]: ctx = [mx.gpu(0), mx.gpu(1)]
+net.initialize(init=init.Normal(sigma=0.01), ctx=ctx)
+Gluon提供了上⼀节中实现的split_and_load函数。它可以划分⼀个小批量的数据样本并复制
+到各个内存或显存上。之后，根据输⼊数据所在的内存或显存，模型计算会相应地使⽤CPU或相
+同显卡上的GPU。
+In [4]: x = nd.random.uniform(shape=(4, 1, 28, 28))
+gpu_x = gutils.split_and_load(x, ctx)
+net(gpu_x[0]), net(gpu_x[1])
+Out[4]: (
+[[ 5.48149410e-06 -8.33710715e-07 -1.63167692e-06 -6.36740651e-07
+-3.82161625e-06 -2.35140487e-06 -2.54695942e-06 -9.47847525e-08
+-6.90336265e-07
+2.57562351e-06]
+[ 5.47108630e-06 -9.42464624e-07 -1.04940636e-06
+9.80811592e-08
+-3.32518175e-06 -2.48629181e-06 -3.36428002e-06
+1.04558694e-07
+-6.10013558e-07
+2.03278455e-06]]
+<NDArray 2x10 @gpu(0)>,
+[[ 5.61763409e-06 -1.28375871e-06 -1.46055413e-06
+1.83029556e-07
+-3.55116504e-06 -2.43710201e-06 -3.57318004e-06 -3.09748373e-07
+-1.10165661e-06
+1.89098932e-06]
+[ 5.14186922e-06 -1.37299264e-06 -1.15200896e-06
+1.15074045e-07
+-3.73728130e-06 -2.82897167e-06 -3.64771950e-06
+1.57815748e-07
+-6.07329866e-07
+1.97120107e-06]]
+<NDArray 2x10 @gpu(1)>)
+现在，我们可以访问已初始化好的模型参数值了。需要注意的是，默认情况下weight.data()会
+返回内存上的参数值。因为我们指定了2块GPU来初始化模型参数，所以需要指定显存来访问参
+322
+8. 计算性能
+
+数值。我们看到，相同参数在不同显卡的显存上的值⼀样。
+In [5]: weight = net[0].params.get('weight')
+try:
+weight.data()
+except RuntimeError:
+print('not initialized on', mx.cpu())
+weight.data(ctx[0])[0], weight.data(ctx[1])[0]
+not initialized on cpu(0)
+Out[5]: (
+[[[-0.01473444 -0.01073093 -0.01042483]
+[-0.01327885 -0.01474966 -0.00524142]
+[ 0.01266256
+0.00895064 -0.00601594]]]
+<NDArray 1x3x3 @gpu(0)>,
+[[[-0.01473444 -0.01073093 -0.01042483]
+[-0.01327885 -0.01474966 -0.00524142]
+[ 0.01266256
+0.00895064 -0.00601594]]]
+<NDArray 1x3x3 @gpu(1)>)
+8.5.2 多GPU训练模型
+当使⽤多块GPU来训练模型时，Trainer实例会⾃动做数据并⾏，例如，划分小批量数据样本并
+复制到各块显卡的显存上，以及对各块显卡的显存上的梯度求和再⼴播到所有显存上。这样，我
+们就可以很⽅便地实现训练函数了。
+In [6]: def train(num_gpus, batch_size, lr):
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+ctx = [mx.gpu(i) for i in range(num_gpus)]
+print('running on:', ctx)
+net.initialize(init=init.Normal(sigma=0.01), ctx=ctx, force_reinit=True)
+trainer = gluon.Trainer(
+net.collect_params(), 'sgd', {'learning_rate': lr})
+loss = gloss.SoftmaxCrossEntropyLoss()
+for epoch in range(4):
+start = time.time()
+for X, y in train_iter:
+gpu_Xs = gutils.split_and_load(X, ctx)
+gpu_ys = gutils.split_and_load(y, ctx)
+with autograd.record():
+ls = [loss(net(gpu_X), gpu_y)
+for gpu_X, gpu_y in zip(gpu_Xs, gpu_ys)]
+8.5. 多GPU计算的简洁实现
+323
+
+for l in ls:
+l.backward()
+trainer.step(batch_size)
+nd.waitall()
+train_time = time.time() - start
+test_acc = d2l.evaluate_accuracy(test_iter, net, ctx[0])
+print('epoch %d, time %.1f sec, test acc %.2f' % (
+epoch + 1, train_time, test_acc))
+⾸先在单GPU上训练模型。
+In [7]: train(num_gpus=1, batch_size=256, lr=0.1)
+running on: [gpu(0)]
+epoch 1, time 14.6 sec, test acc 0.87
+epoch 2, time 13.3 sec, test acc 0.90
+epoch 3, time 13.3 sec, test acc 0.92
+epoch 4, time 13.3 sec, test acc 0.93
+然后尝试在2块GPU上训练模型。与上⼀节使⽤的LeNet相⽐，ResNet-18的计算更加复杂，通信
+时间⽐计算时间更短，因此ResNet-18的并⾏计算所获得的性能提升更佳。
+In [8]: train(num_gpus=2, batch_size=512, lr=0.2)
+running on: [gpu(0), gpu(1)]
+epoch 1, time 7.6 sec, test acc 0.75
+epoch 2, time 6.9 sec, test acc 0.86
+epoch 3, time 6.8 sec, test acc 0.85
+epoch 4, time 6.8 sec, test acc 0.76
+⼩结
+• 在Gluon中，可以很⽅便地进⾏多GPU计算，例如，在多GPU及相应的显存上初始化模型参
+数和训练模型。
+练习
+• 本节使⽤了ResNet-18模型。试试不同的迭代周期、批量⼤小和学习率。如果条件允许，使
+⽤更多GPU来计算。
+• 有时候，不同设备的计算能⼒不⼀样，例如，同时使⽤CPU和GPU，或者不同GPU之间型号
+不⼀样。这时候，应该如何将小批量划分到内存或不同显卡的显存？
+324
+8. 计算性能
+
+扫码直达讨论区
+8.5. 多GPU计算的简洁实现
+325
+
+326
+8. 计算性能

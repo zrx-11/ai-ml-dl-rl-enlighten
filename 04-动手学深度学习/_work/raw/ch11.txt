@@ -1,0 +1,992 @@
+11
+附录
+11.1 主要符号⼀览
+下⾯列举了本书中使⽤的主要符号。
+11.1.1 数
+• x：标量
+• x：向量
+• X：矩阵
+• X：张量
+11.1.2 集合
+• X：集合
+491
+
+• R：实数集合
+• Rn：n维的实数向量集合
+• Rx×y：x⾏y列的实数矩阵集合
+11.1.3 操作符
+• (·)⊤：向量或矩阵的转置
+• ⊙：按元素相乘，即阿达⻢（Hadamard）积
+• |X|：集合X中元素个数
+• ∥· ∥p：Lp范数
+• ∥· ∥：L2范数
+• ∑：连加
+• ∏：连乘
+11.1.4 函数
+• f(·)：函数
+• log(·)：⾃然对数函数
+• exp(·)：指数函数
+11.1.5 导数和梯度
+•
+dy
+dx：y关于x的导数
+•
+∂y
+∂x：y关于x的偏导数
+• ∇·y：y关于·的梯度
+492
+11. 附录
+
+11.1.6 概率和统计
+• P(·)：概率分布
+• · ∼P：随机变量·的概率分布是P
+• P(· | ·)：条件概率分布
+• E· (f(·))：函数f(·)对·的数学期望
+11.1.7 复杂度
+• O：⼤O符号（渐进符号）
+11.2 数学基础
+本节总结了本书中涉及的有关线性代数、微分和概率的基础知识。为避免赘述本书未涉及的数学
+背景知识，本节中的少数定义稍有简化。
+11.2.1 线性代数
+下⾯分别概括了向量、矩阵、运算、范数、特征向量和特征值的概念。
+向量
+本书中的向量指的是列向量。⼀个n维向量x的表达式可写成
+x =
+
+
+x1
+x2
+...
+xn
+
+
+,
+其中x1, . . . , xn是向量的元素。我们将各元素均为实数的n维向量x记作x ∈Rn或x ∈Rn×1。
+11.2. 数学基础
+493
+
+矩阵
+⼀个m⾏n列矩阵的表达式可写成
+X =
+
+
+x11
+x12
+. . .
+x1n
+x21
+x22
+. . .
+x2n
+...
+...
+...
+...
+xm1
+xm2
+. . .
+xmn
+
+
+,
+其中xij是矩阵X中第i⾏第j列的元素（1 ≤i ≤m, 1 ≤j ≤n）。我们将各元素均为实数的m⾏n列
+矩阵X记作X ∈Rm×n。不难发现，向量是特殊的矩阵。
+运算
+设n维向量a中的元素为a1, . . . , an，n维向量b中的元素为b1, . . . , bn。向量a与b的点乘（内积）是
+⼀个标量：
+a · b = a1b1 + . . . + anbn.
+设两个m⾏n列矩阵
+A =
+
+
+a11
+a12
+. . .
+a1n
+a21
+a22
+. . .
+a2n
+...
+...
+...
+...
+am1
+am2
+. . .
+amn
+
+
+,
+B =
+
+
+b11
+b12
+. . .
+b1n
+b21
+b22
+. . .
+b2n
+...
+...
+...
+...
+bm1
+bm2
+. . .
+bmn
+
+
+.
+矩阵A的转置是⼀个n⾏m列矩阵，它的每⼀⾏其实是原矩阵的每⼀列：
+A⊤=
+
+
+a11
+a21
+. . .
+am1
+a12
+a22
+. . .
+am2
+...
+...
+...
+...
+a1n
+a2n
+. . .
+amn
+
+
+.
+两个相同形状的矩阵的加法是将两个矩阵按元素做加法：
+A + B =
+
+
+a11 + b11
+a12 + b12
+. . .
+a1n + b1n
+a21 + b21
+a22 + b22
+. . .
+a2n + b2n
+...
+...
+...
+...
+am1 + bm1
+am2 + bm2
+. . .
+amn + bmn
+
+
+.
+494
+11. 附录
+
+我们使⽤符号⊙表⽰两个矩阵按元素做乘法的运算：
+A ⊙B =
+
+
+a11b11
+a12b12
+. . .
+a1nb1n
+a21b21
+a22b22
+. . .
+a2nb2n
+...
+...
+...
+...
+am1bm1
+am2bm2
+. . .
+amnbmn
+
+
+.
+定义⼀个标量k。标量与矩阵的乘法也是按元素做乘法的运算：
+kA =
+
+
+ka11
+ka12
+. . .
+ka1n
+ka21
+ka22
+. . .
+ka2n
+...
+...
+...
+...
+kam1
+kam2
+. . .
+kamn
+
+
+.
+其他诸如标量与矩阵按元素相加、相除等运算与上式中的相乘运算类似。矩阵按元素开根号、取
+对数等运算也就是对矩阵每个元素开根号、取对数等，并得到和原矩阵形状相同的矩阵。
+矩阵乘法和按元素的乘法不同。设A为m⾏p列的矩阵，B为p⾏n列的矩阵。两个矩阵相乘的结果
+AB =
+
+
+a11
+a12
+. . .
+a1p
+a21
+a22
+. . .
+a2p
+...
+...
+...
+...
+ai1
+ai2
+. . .
+aip
+...
+...
+...
+...
+am1
+am2
+. . .
+amp
+
+
+
+
+b11
+b12
+. . .
+b1j
+. . .
+b1n
+b21
+b22
+. . .
+b2j
+. . .
+b2n
+...
+...
+...
+...
+...
+...
+bp1
+bp2
+. . .
+bpj
+. . .
+bpn
+
+
+是⼀个m⾏n列的矩阵，其中第i⾏第j列（1 ≤i ≤m, 1 ≤j ≤n）的元素为
+ai1b1j + ai2b2j + . . . + aipbpj =
+p
+∑
+k=1
+aikbkj.
+范数
+设n维向量x中的元素为x1, . . . , xn。向量x的Lp范数为
+∥x∥p =
+( n
+∑
+i=1
+|xi|p
+)1/p
+.
+11.2. 数学基础
+495
+
+例如，x的L1范数是该向量元素绝对值之和：
+∥x∥1 =
+n
+∑
+i=1
+|xi| .
+而x的L2范数是该向量元素平⽅和的平⽅根：
+∥x∥2 =
+v
+u
+u
+t
+n
+∑
+i=1
+x2
+i .
+我们通常⽤∥x∥指代∥x∥2。
+设X是⼀个m⾏n列矩阵。矩阵X的Frobenius范数为该矩阵元素平⽅和的平⽅根：
+∥X∥F =
+v
+u
+u
+t
+m
+∑
+i=1
+n
+∑
+j=1
+x2
+ij,
+其中xij为矩阵X在第i⾏第j列的元素。
+特征向量和特征值
+对于⼀个n⾏n列的矩阵A，假设有标量λ和⾮零的n维向量v使
+Av = λv,
+那么v是矩阵A的⼀个特征向量，标量λ是v对应的特征值。
+11.2.2 微分
+我们在这⾥简要介绍微分的⼀些基本概念和演算。
+导数和微分
+假设函数f : R →R的输⼊和输出都是标量。函数f的导数
+f ′(x) = lim
+h→0
+f(x + h) −f(x)
+h
+,
+496
+11. 附录
+
+且假定该极限存在。给定y = f(x)，其中x和y分别是函数f的⾃变量和因变量。以下有关导数和
+微分的表达式等价：
+f ′(x) = y′ = dy
+dx = df
+dx = d
+dxf(x) = Df(x) = Dxf(x),
+其中符号D和d/dx也叫微分运算符。常⻅的微分演算有DC = 0（C为常数）、Dxn = nxn−1（n为
+常数）、Dex = ex、D ln(x) = 1/x等。
+如果函数f和g都可导，设C为常数，那么
+d
+dx[Cf(x)] = C d
+dxf(x),
+d
+dx[f(x) + g(x)] = d
+dxf(x) + d
+dxg(x),
+d
+dx[f(x)g(x)] = f(x) d
+dx[g(x)] + g(x) d
+dx[f(x)],
+d
+dx
+[f(x)
+g(x)
+]
+= g(x) d
+dx[f(x)] −f(x) d
+dx[g(x)]
+[g(x)]2
+.
+如果y = f(u)和u = g(x)都是可导函数，依据链式法则，
+dy
+dx = dy
+du
+du
+dx.
+泰勒展开
+函数f的泰勒展开式是
+f(x) =
+∞
+∑
+n=0
+f (n)(a)
+n!
+(x −a)n,
+其中f (n)为函数f的n阶导数（求n次导数），n!为n的阶乘。假设ϵ是⼀个⾜够小的数，如果将上式
+中x和a分别替换成x + ϵ和x，可以得到
+f(x + ϵ) ≈f(x) + f ′(x)ϵ + O(ϵ2).
+由于ϵ⾜够小，上式也可以简化成
+f(x + ϵ) ≈f(x) + f ′(x)ϵ.
+11.2. 数学基础
+497
+
+偏导数
+设u为⼀个有n个⾃变量的函数，u = f(x1, x2, . . . , xn)，它有关第i个变量xi的偏导数为
+∂u
+∂xi
+= lim
+h→0
+f(x1, . . . , xi−1, xi + h, xi+1, . . . , xn) −f(x1, . . . , xi, . . . , xn)
+h
+.
+以下有关偏导数的表达式等价：
+∂u
+∂xi
+= ∂f
+∂xi
+= fxi = fi = Dif = Dxif.
+为了计算∂u/∂xi，只需将x1, . . . , xi−1, xi+1, . . . , xn视为常数并求u有关xi的导数。
+梯度
+假设函数f : Rn →R的输⼊是⼀个n维向量x = [x1, x2, . . . , xn]⊤，输出是标量。函数f(x)有关x的
+梯度是⼀个由n个偏导数组成的向量：
+∇xf(x) =
+[∂f(x)
+∂x1
+, ∂f(x)
+∂x2
+, . . . , ∂f(x)
+∂xn
+]⊤
+.
+为表⽰简洁，我们有时⽤∇f(x)代替∇xf(x)。
+假设x是⼀个向量，常⻅的梯度演算包括
+∇xA⊤x = A,
+∇xx⊤A = A,
+∇xx⊤Ax = (A + A⊤)x,
+∇x∥x∥2 = ∇xx⊤x = 2x.
+类似地，假设X是⼀个矩阵，那么
+∇X∥X∥2
+F = 2X.
+498
+11. 附录
+
+海森矩阵
+假设函数f : Rn →R的输⼊是⼀个n维向量x = [x1, x2, . . . , xn]⊤，输出是标量。假定函数f所有
+的⼆阶偏导数都存在，f的海森矩阵H是⼀个n⾏n列的矩阵：
+H =
+
+
+∂2f
+∂x2
+1
+∂2f
+∂x1∂x2
+. . .
+∂2f
+∂x1∂xn
+∂2f
+∂x2∂x1
+∂2f
+∂x2
+2
+. . .
+∂2f
+∂x2∂xn
+...
+...
+...
+...
+∂2f
+∂xn∂x1
+∂2f
+∂xn∂x2
+. . .
+∂2f
+∂x2
+n
+
+
+,
+其中⼆阶偏导数
+∂2f
+∂xi∂xj
+=
+∂
+∂xj
+( ∂f
+∂xi
+)
+.
+11.2.3 概率
+最后，我们简要介绍条件概率、期望和均匀分布。
+条件概率
+假设事件A和事件B的概率分别为P(A)和P(B)，两个事件同时发⽣的概率记作P(A ∩
+B)或P(A, B)。给定事件B，事件A的条件概率
+P(A | B) = P(A ∩B)
+P(B)
+.
+也就是说，
+P(A ∩B) = P(B)P(A | B) = P(A)P(B | A).
+当满⾜
+P(A ∩B) = P(A)P(B)
+时，事件A和事件B相互独⽴。
+11.2. 数学基础
+499
+
+期望
+离散的随机变量X的期望（或平均值）为
+E(X) =
+∑
+x
+xP(X = x).
+均匀分布
+假设随机变量X服从[a, b]上的均匀分布，即X ∼U(a, b)。随机变量X取a和b之间任意⼀个数的概
+率相等。
+⼩结
+• 本节总结了本书中涉及的有关线性代数、微分和概率的基础知识。
+练习
+• 求函数f(x) = 3x2
+1 + 5ex2的梯度。
+扫码直达讨论区
+11.3 使⽤Jupyter记事本
+本节介绍如何使⽤Jupyter记事本编辑和运⾏本书的代码。请确保你已按照“获取和运⾏本书的
+代码”⼀节中的步骤安装好Jupyter记事本并获取了本书的代码。
+500
+11. 附录
+
+11.3.1 在本地编辑和运⾏本书的代码
+下⾯我们介绍如何在本地使⽤Jupyter记事本来编辑和运⾏本书的代码。假设本书的代码所在的
+本地路径为xx/yy/d2l-zh/。在命令⾏模式下进⼊该路径（cd xx/yy/d2l-zh），然后运⾏命
+令jupyter notebook。这时在浏览器打开http://localhost:8888（通常会⾃动打开）就可以看
+到Jupyter记事本的界⾯和本书的代码所在的各个⽂件夹，如图11.1所⽰。
+图11.1: 本书的代码所在的各个⽂件夹
+我们可以通过点击⽹⻚上显⽰的⽂件夹访问其中的记事本⽂件。它们的后缀通常是“ipynb”。简
+洁起⻅，我们创建⼀个临时的test.ipynb⽂件，点击后所显⽰的内容如图11.2所⽰。该记事本包括
+了格式化⽂本单元（markdown cell）和代码单元（code cell），其中格式化⽂本单元中的内容包
+括“这是标题”和“这是⼀段正⽂。”，代码单元中包括两⾏Python代码。
+11.3. 使⽤Jupyter记事本
+501
+
+图11.2: test.ipynb⽂件包括了格式化⽂本单元和代码单元
+双击格式化⽂本单元，进⼊编辑模式。在该单元的末尾添加⼀段新⽂本“你好世界。”，如图11.3所
+⽰。
+图11.3: 编辑格式化⽂本单元
+如图11.4所⽰，点击菜单栏的“Cell”→“Run Cells”，运⾏编辑好的单元。
+502
+11. 附录
+
+图11.4: 运⾏单元
+运⾏完以后，图11.5展⽰了编辑后的格式化⽂本单元。
+图11.5: 编辑后的格式化⽂本单元
+接下来，点击代码单元。在最后⼀⾏代码后添加乘以2的操作* 2，如图11.6所⽰。
+11.3. 使⽤Jupyter记事本
+503
+
+图11.6: 编辑代码单元
+我们也可以⽤快捷键运⾏单元（默认Ctrl + Enter），并得到图11.7所⽰的输出结果。
+图11.7: 运⾏代码单元得到输出结果
+当⼀个记事本包含的单元较多时，我们可以点击菜单栏的“Kernel”→“Restart & Run All”，以
+504
+11. 附录
+
+运⾏整个记事本中的所有单元。点击菜单栏的“Help”→“Edit Keyboard Shortcuts”后可以根
+据⾃⼰的偏好编辑快捷键。
+11.3.2 ⾼级选项
+下⾯介绍有关使⽤Jupyter记事本的⼀些⾼级选项。你可以根据⾃⼰的兴趣参考其中的内容。
+⽤Jupyter记事本读写GitHub源⽂件
+如果想为本书内容做贡献，需要修改在GitHub上markdown格式的源⽂件（后缀为.md）。
+通过notedown插件，就可以使⽤Jupyter记事本修改并运⾏markdown格式的源代码。
+Linux/macOS⽤⼾可以执⾏以下命令获得GitHub源⽂件并激活运⾏环境：
+git clone https://github.com/d2l-ai/d2l-zh.git
+cd d2l-zh
+conda env create -f environment.yml
+# 若conda版本低于4.4，运⾏source activate gluon；Windows⽤⼾则运⾏activate gluon
+conda activate gluon
+下⾯安装notedown插件，运⾏Jupyter记事本并加载插件：
+pip install https://github.com/mli/notedown/tarball/master
+jupyter notebook --NotebookApp.contents_manager_class='notedown.NotedownContentsManager
+,→'
+如果想每次运⾏Jupyter记事本时默认开启notedown插件，可以参考下⾯的步骤。
+⾸先，执⾏下⾯的命令⽣成Jupyter记事本配置⽂件（如果已经⽣成，可以跳过）：
+jupyter notebook --generate-config
+然后，将下⾯这⼀⾏加⼊到Jupyter记事本配置⽂件（⼀般在⽤⼾主⽬录下的隐藏⽂件夹.
+jupyter中的jupyter_notebook_config.py）的末尾
+c.NotebookApp.contents_manager_class = 'notedown.NotedownContentsManager'
+之后，只需要运⾏jupyter notebook命令即可默认开启notedown插件。
+11.3. 使⽤Jupyter记事本
+505
+
+在远端服务器上运⾏Jupyter记事本
+有时候，我们希望在远端服务器上运⾏Jupyter记事本，并通过本地计算机上的浏览器访问。如果
+本地计算机上安装了Linux或者macOS（Windows通过putty等第三⽅软件也能⽀持），那么可以
+使⽤端口映射：
+ssh myserver -L 8888:localhost:8888
+以上myserver是远端服务器地址。然后我们可以使⽤http://localhost:8888 打开运⾏Jupyter记
+事本的远端服务器myserver。我们将在下⼀节详细介绍如何在AWS实例上运⾏Jupyter记事本。
+运⾏计时
+我们可以通过ExecutionTime插件来对Jupyter记事本的每个代码单元的运⾏计时。下⾯是安装该
+插件的命令：
+pip install jupyter_contrib_nbextensions
+jupyter contrib nbextension install --user
+jupyter nbextension enable execute_time/ExecuteTime
+⼩结
+• 可以使⽤Jupyter记事本编辑和运⾏本书的代码。
+练习
+• 尝试在本地编辑和运⾏本书的代码。
+扫码直达讨论区
+506
+11. 附录
+
+11.4 使⽤AWS运⾏代码
+当本地机器的计算资源有限时，可以通过云计算服务获取更强⼤的计算资源来运⾏本书中的深度
+学习代码。本节将介绍如何在AWS（亚⻢逊的云计算服务）上申请实例并通过Jupyter记事本运⾏
+代码。本节中的例⼦有如下两个步骤。
+1. 申请含⼀个K80 GPU的p2.xlarge实例。
+2. 安装CUDA及相应GPU版本的MXNet。
+申请其他类型的实例或安装其他版本的MXNet的⽅法与本节类似。
+11.4.1 申请账号并登陆
+⾸先，我们需要在AWS官⽅⽹站上创建账号。这通常需要⼀张信⽤卡。需要注意的是，AWS中国
+需要公司实体才能注册。如果你是个⼈⽤⼾，请注册AWS全球账号。
+登录AWS账号后，点击图11.8红框中的“EC2”进⼊EC2⾯板。
+11.4. 使⽤AWS运⾏代码
+507
+
+图11.8: 登录AWS账号
+11.4.2 创建并运⾏EC2实例
+图11.9展⽰了EC2⾯板的界⾯。在图11.9右上⻆红框处选择离我们较近的数据中⼼来降低延迟。我
+们可以选亚太地区，如Asia Pacific（Seoul）。注意，有些数据中⼼可能没有GPU实例。点击图11.9下
+⽅红框内“Launch Instance”按钮启动实例。
+508
+11. 附录
+
+图11.9: EC2⾯板
+图11.10的最上⾯⼀⾏显⽰了配置实例所需的7个步骤。在第⼀步“1. Choose AMI”中，选择Ubuntu
+16.04作为操作系统。
+图11.10: 选择操作系统
+EC2提供了⼤量不同配置的实例。如图11.11所⽰，在第⼆步“2. Choose Instance Type”中，选
+择有⼀个K80 GPU的p2.xlarge实例。我们也可以选择像p2.16xlarge这样有多个GPU的实例。如果
+11.4. 使⽤AWS运⾏代码
+509
+
+想⽐较不同实例的机器配置和收费，可参考https://www.ec2instances.info/ 。
+图11.11: 选择实例
+建议在选择实例前先在图11.9左栏“Limits”标签⾥检查下有⽆数量限制。如图11.12所⽰，该
+账号的限制是最多在⼀个区域开⼀个p2.xlarge实例。如果需要开更多实例，可以通过点击右边
+“Request limit increase”链接来申请更⼤的实例容量。这通常需要⼀个⼯作⽇来处理。
+图11.12: 实例的数量限制
+我们将保持第三步“3. Configure Instance”、第五步“5. Add Tags”和第六步“6. Configure
+Security Group”中的默认配置不变。点击第四步“4. Add Storage”，如图11.13所⽰，将默认的
+硬盘⼤小增⼤到40 GB。注意，安装CUDA需要4 GB左右空间。
+510
+11. 附录
+
+图11.13: 修改实例的硬盘⼤小
+最后，在第七步“7. Review”中点击“Launch”来启动配置好的实例。这时候会提⽰我们选择
+⽤来访问实例的密钥。如果没有的话，可以选择图11.14中第⼀个下拉菜单的“Create a new key
+pair”选项来⽣成秘钥。之后，我们通过该下拉菜单的“Choose an existing key pair”选项选择
+⽣成好的密钥。点击“Launch Instances”按钮启动创建好的实例。
+11.4. 使⽤AWS运⾏代码
+511
+
+图11.14: 选择密钥
+点击图11.15所⽰的实例ID就可以查看该实例的状态了。
+图11.15: 点击实例ID
+如图11.16所⽰，当实例状态（Instance State）变绿后，右击实例并选择“Connect”，这时就可
+以看到访问该实例的⽅法了。例如，在命令⾏输⼊以下命令：
+512
+11. 附录
+
+ssh -i "/path/to/key.pem" ubuntu@ec2-xx-xxx-xxx-xxx.y.compute.amazonaws.com
+其中/path/to/key.pem是本地存放访问实例的密钥的路径。当命令⾏提⽰“Are you sure you
+want to continue connecting (yes/no)”时，键⼊“yes”并按回⻋键即可登录创建好的实例。
+图11.16: 查看访问开启实例的⽅法。
+为了使⽤GPU版本的MXNet，我们还需要在创建好的实例上安装CUDA（参考“安装CUDA”小
+节）。实际上，我们也可以直接创建已安装CUDA的实例，例如，在第⼀步“1. Choose AMI”中，
+选择“Deep Learning Base AMI (Ubuntu) Version XX.X”，并保持后⾯步骤不变。登录实例后，运
+⾏cat README命令查看实例上已安装的CUDA各版本（假设含9.0）。如果希望将CUDA的默认版
+本设为9.0，依次运⾏命令sudo rm /usr/local/cuda和sudo ln -s /usr/local/cuda-
+9.0 /usr/local/cuda。之后，即可跳过以下小节的CUDA安装步骤。
+11.4.3 安装CUDA
+下⾯介绍CUDA的安装步骤。⾸先，更新并安装编译需要的包：
+sudo apt-get update && sudo apt-get install -y build-essential git libgfortran3
+NVIDIA⼀般每年会更新⼀次CUDA主版本。这⾥我们下载CUDA 9.0（也可使⽤MXNet⽀持的其
+他版本）。访问NVIDIA官⽅⽹站获取正确版本的CUDA 9.0的下载地址，如图11.17所⽰。
+11.4. 使⽤AWS运⾏代码
+513
+
+图11.17: 获取CUDA 9.0的下载地址
+获取下载地址后，下载并安装CUDA 9.0，例如：
+514
+11. 附录
+
+# 以NVIDIA官⽅⽹站上的下载链接和安装⽂件名为准
+wget https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_
+,→384.81_linux-run
+sudo sh cuda_9.0.176_384.81_linux-run
+点击Ctrl+C跳出⽂档浏览，并回答以下⼏个问题。
+Do you accept the previously read EULA?
+accept/decline/quit: accept
+Install NVIDIA Accelerated Graphics Driver for Linux-x86_64 384.81?
+(y)es/(n)o/(q)uit: y
+Do you want to install the OpenGL libraries?
+(y)es/(n)o/(q)uit [ default is yes ]: y
+Do you want to run nvidia-xconfig?
+This will ... vendors.
+(y)es/(n)o/(q)uit [ default is no ]: n
+Install the CUDA 9.0 Toolkit?
+(y)es/(n)o/(q)uit: y
+Enter Toolkit Location
+[ default is /usr/local/cuda-9.0 ]:
+Do you want to install a symbolic link at /usr/local/cuda?
+(y)es/(n)o/(q)uit: y
+Install the CUDA 9.0 Samples?
+(y)es/(n)o/(q)uit: n
+当安装完成后，运⾏下⾯的命令就可以看到该实例的GPU了。
+nvidia-smi
+最后，将CUDA加⼊到库的路径中，以⽅便其他库找到它。如果使⽤其他版本或其他路径，需要
+修改以下命令中的字符串“/usr/local/cuda-9.0”。
+echo "export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:/usr/local/cuda-9.0/lib64" >> ~/.
+,→bashrc
+11.4.4 获取本书的代码并安装GPU版的MXNet
+我们已在“获取和运⾏本书的代码”⼀节中介绍了Linux⽤⼾获取本书的代码并安装运⾏环境的
+⽅法。⾸先，安装Linux版的Miniconda，例如
+11.4. 使⽤AWS运⾏代码
+515
+
+# 以Miniconda官⽅⽹站上的下载链接和安装⽂件名为准
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+sudo sh Miniconda3-latest-Linux-x86_64.sh
+这时需要回答下⾯⼏个问题（如当conda版本为4.6.14时）:
+Do you accept the license terms? [yes|no]
+[no] >>> yes
+Do you wish the installer to initialize Miniconda3
+by running conda init? [yes|no]
+[no] >>> yes
+安装完成后，运⾏⼀次source ~/.bashrc让CUDA和conda⽣效。接下来，下载本书的代码，安
+装并激活conda环境。如未安装unzip，可运⾏命令sudo apt install unzip安装。
+mkdir d2l-zh && cd d2l-zh
+curl https://zh.d2l.ai/d2l-zh-1.0.zip -o d2l-zh.zip
+unzip d2l-zh.zip && rm d2l-zh.zip
+conda env create -f environment.yml
+conda activate gluon
+默认conda环境⾥安装了CPU版本的MXNet。现在我们将它替换成GPU版本的MXNet。因
+为CUDA的版本是9.0，所以安装mxnet-cu90。⼀般来说，如果CUDA版本是X.Y ，那么相应安
+装mxnet-cuXY。
+pip uninstall mxnet
+pip install mxnet-cu90==X.Y.Z
+# X.Y.Z应替换为本书的代码依赖的版本号
+11.4.5 运⾏Jupyter记事本
+现在就可以运⾏Jupyter记事本了：
+jupyter notebook
+图11.18显⽰了运⾏后可能的输出，其中最后⼀⾏为8888端口下的URL。
+516
+11. 附录
+
+图11.18: 运⾏Jupyter记事本后的输出，其中最后⼀⾏为8888端口下的URL
+由于创建的实例并没有暴露8888端口，我们可以在本地命令⾏启动ssh从实例映射到本地8889端
+口。
+# 该命令须在本地命令⾏运⾏
+ssh -i "/path/to/key.pem" ubuntu@ec2-xx-xxx-xxx-xxx.y.compute.amazonaws.com -L
+,→8889:localhost:8888
+最后，把图11.18中运⾏Jupyter记事本后输出的最后⼀⾏URL复制到本地浏览器，并将8888改
+为8889，点击回⻋键即可从本地浏览器通过Jupyter记事本运⾏实例上的代码。
+11.4.6 关闭不使⽤的实例
+因为云服务按使⽤时⻓计费，我们通常会在不使⽤实例时将其关闭。
+如果较短时间内还会重新开启实例，右击图11.16中的⽰例，选择“Instance State”→“Stop”将
+实例停⽌，等下次使⽤时选择“Instance State”→“Start”重新开启实例。这种情况下，开启的
+实例将保留其停⽌前硬盘上的存储（例如，⽆须再安装CUDA和其他运⾏环境）。然而，停⽌状态
+的实例也会因其所保留的硬盘空间而产⽣少量计费。
+如果较⻓时间内不会重新开启实例，右击图11.16中的⽰例，选择“Image”→“Create”创建镜
+像。然后，选择“Instance State”→“Terminate”将实例终⽌（硬盘不再产⽣计费）。当下次使
+⽤时，可按本节中创建并运⾏EC2实例的步骤重新创建⼀个基于保存的镜像的实例。唯⼀的区别
+在于，在图11.10的第⼀步“1. Choose AMI”中，需要通过左栏“My AMIs”选择之前保存的镜
+像。这样创建的实例将保留镜像上硬盘的存储，例如，⽆须再安装CUDA和其他运⾏环境。
+11.4. 使⽤AWS运⾏代码
+517
+
+⼩结
+• 可以通过云计算服务获取更强⼤的计算资源来运⾏本书中的深度学习代码。
+练习
+• 云很⽅便，但不便宜。研究⼀下它的价格，看看如何节省开销。
+扫码直达讨论区
+11.5 GPU购买指南
+深度学习训练通常需要⼤量的计算资源。GPU⽬前是深度学习最常使⽤的计算加速硬件。相对
+于CPU来说，GPU更便宜且计算更加密集。⼀⽅⾯，相同计算能⼒的GPU的价格⼀般是CPU价格
+的⼗分之⼀；另⼀⽅⾯，⼀台服务器通常可以搭载8块或者16块GPU。因此，GPU数量可以看作是
+衡量⼀台服务器的深度学习计算能⼒的⼀个指标。
+11.5.1 选择GPU
+⽬前独⽴显卡主要有AMD和NVIDIA两家⼚商。其中NVIDIA在深度学习布局较早，对深度学习框
+架⽀持更好。因此，⽬前⼤家主要会选择NVIDIA的GPU。
+NVIDIA有⾯向个⼈⽤⼾（如GTX系列）和企业⽤⼾（如Tesla系列）的两类GPU。这两类GPU的
+计算能⼒相当。然而，⾯向企业⽤⼾的GPU通常使⽤被动散热并增加了显存校验，从而更适合数
+据中⼼，并通常要⽐⾯向个⼈⽤⼾的GPU贵上10倍。
+如果是拥有100台机器以上的⼤公司⽤⼾，通常可以考虑针对企业⽤⼾的NVIDIA Tesla系列。如果
+是拥有10~100台机器的实验室和中小公司⽤⼾，预算充⾜的情况下可以考虑NVIDIA DGX系列，否
+则可以考虑购买如Supermicro之类的性价⽐⽐较⾼的服务器，然后再购买安装GTX系列的GPU。
+518
+11. 附录
+
+NVIDIA⼀般每⼀两年发布⼀次新版本的GPU，例如2016年发布的GTX 1000系列以及2018年发布
+的RTX 2000系列。每个系列中会有数个不同的型号，分别对应不同的性能。
+GPU的性能主要由以下3个参数构成。
+1. 计算能⼒。通常我们关⼼的是32位浮点计算能⼒。16位浮点训练也开始流⾏，如果只做预
+测的话也可以⽤8位整数。
+2. 显存⼤小。当模型越⼤或者训练时的批量越⼤时，所需要的显存就越多。
+3. 显存带宽。只有当显存带宽⾜够时才能充分发挥计算能⼒。
+对⼤部分⽤⼾来说，只要考虑计算能⼒就可以了。显存尽量不小于4 GB。但如果GPU要同时显⽰
+图形界⾯，那么推荐的显存⼤小⾄少为6 GB。显存带宽通常相对固定，选择空间较小。
+图11.19描绘了GTX 900和GTX 1000系列⾥各个型号的32位浮点计算能⼒和价格的对⽐（其中的价
+格为Wikipedia的建议价格）。
+图11.19: 浮点计算能⼒和价格的对⽐
+我们可以从图11.19中读出以下两点信息。
+11.5. GPU购买指南
+519
+
+1. 在同⼀个系列⾥⾯，价格和性能⼤体上成正⽐。但后发布的型号性价⽐更⾼，如980 Ti和1080
+Ti。
+2. GTX 1000系列⽐900系列在性价⽐上⾼出2倍左右。
+如果⼤家继续⽐较NVIDIA的⼀些其他系列，也可以发现类似的规律。据此，我们推荐⼤家在能
+⼒范围内尽可能买较新的GPU。
+11.5.2 整机配置
+通常，我们主要⽤GPU做深度学习训练。因此，不需要购买⾼端的CPU。⾄于整机配置，尽量参
+考⽹上推荐的中⾼档的配置就好。不过，考虑到GPU的功耗、散热和体积，在整机配置上也需要
+考虑以下3个额外因素。
+1. 机箱体积。显卡尺⼨较⼤，通常考虑较⼤且⾃带⻛扇的机箱。
+2. 电源。购买GPU时需要查⼀下GPU的功耗，如50 W到300 W不等。购买电源要确保功率⾜够，
+且不会造成机房供电过载。
+3. 主板的PCIe卡槽。推荐使⽤PCIe 3.0 16x来保证充⾜的GPU到内存的带宽。如果搭载多块GPU，
+要仔细阅读主板说明，以确保多块GPU⼀起使⽤时仍然是16倍带宽。注意，有些主板搭
+载4块GPU时会降到8倍甚⾄4倍带宽。
+⼩结
+• 在预算范围内，尽可能买较新的GPU。
+• 整机配置需要考虑到GPU的功耗、散热和体积。
+练习
+• 浏览本节讨论区中⼤家有关机器配置⽅⾯的交流。
+520
+11. 附录
+
+扫码直达讨论区
+11.6 如何为本书贡献
+我们在“致谢”部分感谢了本书的所有贡献者，并列出他们的GitHub ID或姓名。每位贡献者也
+将在本书出版时获得⼀本贡献者专享的赠书。
+你可以在本书的GitHub代码库查看贡献者列表[1]。如果你希望成为本书的贡献者之⼀，需要安
+装Git并为本书的GitHub代码库提交pull request [2]。当你的pull request被本书作者合并进了代
+码库后，你就成为了本书的贡献者。
+本节介绍为本书贡献的基本Git操作步骤。
+下列操作步骤假设贡献者的GitHub ID为“astonzhang”。
+第⼀步，安装Git。Git的开源书⾥详细介绍了安装Git的⽅法[3]。如果你没有GitHub账号，需要
+注册⼀个账号[4]。
+第⼆步，登录GitHub。在浏览器输⼊本书的代码库地址[2]。点击图11.20右上⽅红框中的“Fork”
+按钮获得⼀份本书的代码库。
+11.6. 如何为本书贡献
+521
+
+图11.20: 代码库的⻚⾯
+这时，本书的代码库会复制到你的⽤⼾名下，例如图11.21左上⽅显⽰的“你的GitHub⽤⼾名/d2l-
+zh”。
+图11.21: 复制代码库
+第三步，点击图11.21右⽅的“Clone or download”绿⾊按钮，并点击红框中的按钮复制位于你
+522
+11. 附录
+
+的⽤⼾名下的代码库地址。按“获取和运⾏本书的代码”⼀节中介绍的⽅法进⼊命令⾏模式。假
+设我们希望将代码库保存在本地的~/repo路径之下。进⼊该路径，键⼊git clone并粘贴位于
+你的⽤⼾名下的代码库地址。执⾏以下命令：
+# 将your_GitHub_ID替换成你的GitHub⽤⼾名
+git clone https://github.com/your_GitHub_ID/d2l-zh.git
+这时，本地的~/repo/d2l-zh路径下将包含本书的代码库中的所有⽂件。
+第四步，编辑本地路径下的本书的代码库。假设我们修改了~/repo/d2l-zh/chapter_deep-
+learning-basics/linear-regression.md⽂件中的⼀个错别字。在命令⾏模式中进⼊路
+径~/repo/d2l-zh，执⾏命令
+git status
+此时Git将提⽰chapter_deep-learning-basics/linear-regression.md⽂件已被修改，如图11.22所
+⽰。
+图11.22: Git提⽰“chapter_deep-learning-basics/linear-regression.md”⽂件已被修改
+确认将提交该修改的⽂件后，执⾏以下命令：
+git add chapter_deep-learning-basics/linear-regression.md
+git commit -m 'fix typo in linear-regression.md'
+git push
+其中的'fix typo in linear-regression.md'是描述提交改动的信息，也可以替换为其
+他有意义的描述信息。
+第五步，再次在浏览器输⼊本书的代码库地址[2]。点击图11.20左⽅红框中的“New pull request”
+按钮。在弹出的⻚⾯中，点击图11.23右⽅红框中的“compare across forks”链接，再点击下⽅
+11.6. 如何为本书贡献
+523
+
+红框中的“head fork: d2l-ai/d2l-zh”按钮。在弹出的⽂本框中输⼊你的GitHub⽤⼾名，在下拉
+菜单中选择“你的GitHub⽤⼾名/d2l-zh”，如图11.23所⽰。
+图11.23: 选择改动来源所在的代码库
+第六步，如图11.24所⽰，在标题和正⽂的⽂本框中描述想要提交的pull request。点击红框中的
+“Create pull request”绿⾊按钮提交pull request。
+524
+11. 附录
+
+图11.24: 描述并提交pull request
+提交完成后，我们会看到图11.25所⽰的⻚⾯中显⽰pull request已提交。
+11.6. 如何为本书贡献
+525
+
+图11.25: 显⽰pull request已提交
+⼩结
+• 可以通过使⽤GitHub为本书做贡献。
+练习
+• 如果你觉得本书某些地⽅可以改进，尝试提交⼀个pull request。
+参考⽂献
+[1] 本书的贡献者列表。https://github.com/d2l-ai/d2l-zh/graphs/contributors
+[2] 本书的代码库地址。https://github.com/d2l-ai/d2l-zh
+[3] 安装Git。https://git-scm.com/book/zh/v2
+[4] GitHub⽹址。https://github.com/
+526
+11. 附录
+
+扫码直达讨论区
+11.7 d2lzh包索引
+函数、类等名称：定义所在章节
+• bbox_to_rect：物体检测和边界框
+• Benchmark：异步计算
+• corr2d：⼆维卷积层
+• count_tokens：⽂本情感分类：使⽤循环神经⽹络
+• data_iter：线性回归的从零开始实现
+• data_iter_consecutive：语⾔模型数据集（周杰伦专辑歌词）
+• data_iter_random：语⾔模型数据集（周杰伦专辑歌词）
+• download_imdb：⽂本情感分类：使⽤循环神经⽹络
+• download_voc_pascal：语义分割和数据集
+• evaluate_accuracy：图像增⼴
+• get_data_ch7：小批量随机梯度下降
+• get_fashion_mnist_labels：图像分类数据集（Fashion-MNIST）
+• get_tokenized_imdb：⽂本情感分类：使⽤循环神经⽹络
+• get_vocab_imdb：⽂本情感分类：使⽤循环神经⽹络
+• grad_clipping：循环神经⽹络的从零开始实现
+• linreg：线性回归的从零开始实现
+• load_data_fashion_mnist：深度卷积神经⽹络（AlexNet）
+11.7. d2lzh包索引
+527
+
+• load_data_jay_lyrics：语⾔模型数据集（周杰伦专辑歌词）
+• load_data_pikachu：物体检测数据集（⽪卡丘）
+• mkdir_if_not_exist：实战Kaggle⽐赛：图像分类（CIFAR-10）
+• plt：线性回归的从零开始实现
+• predict_rnn：循环神经⽹络的从零开始实现
+• predict_rnn_gluon：循环神经⽹络的简洁实现
+• predict_sentiment：⽂本情感分类：使⽤循环神经⽹络
+• preprocess_imdb：⽂本情感分类：使⽤循环神经⽹络
+• read_imdb：⽂本情感分类：使⽤循环神经⽹络
+• read_voc_images：语义分割和数据集
+• Residual：残差⽹络（ResNet）
+• resnet18：多GPU计算的简洁实现
+• RNNModel：循环神经⽹络的简洁实现
+• semilogy：模型选择、⽋拟合和过拟合
+• set_figsize：线性回归的从零开始实现
+• sgd：线性回归的从零开始实现
+• show_bboxes：锚框
+• show_fashion_mnist：图像分类数据集（Fashion-MNIST）
+• show_images：图像增⼴
+• show_trace_2d：梯度下降和随机梯度下降
+• squared_loss：线性回归的从零开始实现
+• to_onehot：循环神经⽹络的从零开始实现
+• train：图像增⼴
+• train_2d：梯度下降和随机梯度下降
+• train_and_predict_rnn：循环神经⽹络的从零开始实现
+528
+11. 附录
+
+• train_and_predict_rnn_gluon：循环神经⽹络的简洁实现
+• train_ch3：softmax回归的从零开始实现
+• train_ch5：卷积神经⽹络（LeNet）
+• train_ch7：小批量随机梯度下降
+• train_gluon_ch7：小批量随机梯度下降
+• try_all_gpus：图像增⼴
+• try_gpu：卷积神经⽹络（LeNet）
+• use_svg_display：线性回归的从零开始实现
+• VOC_CLASSES：语义分割和数据集
+• VOC_COLORMAP：语义分割和数据集
+• voc_label_indices：语义分割和数据集
+• voc_rand_crop：语义分割和数据集
+• VOCSegDataset：语义分割和数据集
+11.7. d2lzh包索引
+529

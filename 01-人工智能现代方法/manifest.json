@@ -1,0 +1,2385 @@
+{
+  "slug": "aima4",
+  "title": "人工智能：现代方法（第 4 版）",
+  "subtitle": "整套知识库的骨架：28 章给出 AI 的完整地图，其余四本按图深挖",
+  "book": {
+    "title": "人工智能：现代方法（第4版）",
+    "author": "Stuart Russell、Peter Norvig",
+    "source": [
+      "人工智能：现代方法（第4版）（精装版） (Stuart Russell).pdf"
+    ]
+  },
+  "audience": "大一：会微积分与概率基础，线性代数需补",
+  "goal": "拿到任何 AI 概念时，能说出它在地图的哪一块、依赖什么、别的书在哪里展开它",
+  "learningPath": [
+    {
+      "step": "01",
+      "title": "地图与坐标",
+      "chapterIds": [
+        "ch01",
+        "ch02"
+      ],
+      "prereq": "无",
+      "checkpoint": "用 PEAS 描述一个你熟悉的 AI 产品",
+      "goal": "建立全书坐标与智能体框架"
+    },
+    {
+      "step": "02",
+      "title": "确定环境下的求解",
+      "chapterIds": [
+        "ch03",
+        "ch04",
+        "ch05",
+        "ch06"
+      ],
+      "prereq": "ch01、ch02、图论基础",
+      "checkpoint": "手跑一次 A*，手算一次 α-β 剪枝",
+      "goal": "掌握搜索、博弈与约束求解"
+    },
+    {
+      "step": "03",
+      "title": "符号知识与规划",
+      "chapterIds": [
+        "ch07",
+        "ch08",
+        "ch09",
+        "ch10",
+        "ch11"
+      ],
+      "prereq": "ch03、命题逻辑",
+      "checkpoint": "用归结证明一个简单蕴含",
+      "goal": "理解逻辑方法与它的边界"
+    },
+    {
+      "step": "04",
+      "title": "不确定性",
+      "chapterIds": [
+        "ch12",
+        "ch13",
+        "ch14",
+        "ch15"
+      ],
+      "prereq": "ch07、概率论",
+      "checkpoint": "手算一次贝叶斯后验与一次滤波更新",
+      "goal": "掌握概率表示与推断"
+    },
+    {
+      "step": "05",
+      "title": "决策",
+      "chapterIds": [
+        "ch16",
+        "ch17",
+        "ch18"
+      ],
+      "prereq": "ch14",
+      "checkpoint": "算一次信息价值，解释 POMDP 为何用信念",
+      "goal": "掌握从信念到动作的转换"
+    },
+    {
+      "step": "06",
+      "title": "从数据学习",
+      "chapterIds": [
+        "ch19",
+        "ch20"
+      ],
+      "prereq": "ch12、微积分",
+      "checkpoint": "手算一次信息增益与一次 EM 迭代",
+      "goal": "掌握学习的基本范式"
+    },
+    {
+      "step": "07",
+      "title": "深度学习",
+      "chapterIds": [
+        "ch21"
+      ],
+      "prereq": "ch19、线代与微积分",
+      "checkpoint": "手推两层网络的反向传播",
+      "goal": "掌握表示学习"
+    },
+    {
+      "step": "08",
+      "title": "强化学习",
+      "chapterIds": [
+        "ch22"
+      ],
+      "prereq": "ch17",
+      "checkpoint": "写出贝尔曼方程并说明三要素风险",
+      "goal": "掌握交互学习"
+    },
+    {
+      "step": "09",
+      "title": "语言与视觉",
+      "chapterIds": [
+        "ch23",
+        "ch24",
+        "ch25"
+      ],
+      "prereq": "ch21",
+      "checkpoint": "说明自注意力为何优于 RNN",
+      "goal": "掌握感知与语言的主流架构"
+    },
+    {
+      "step": "10",
+      "title": "行动与反思",
+      "chapterIds": [
+        "ch26",
+        "ch27",
+        "ch28"
+      ],
+      "prereq": "ch17、ch25",
+      "checkpoint": "说出对齐问题的技术版本",
+      "goal": "把 AI 放回物理与社会语境"
+    }
+  ],
+  "chapters": [
+    {
+      "id": "ch01",
+      "title": "第 1 章：绪论",
+      "file": "chapters/ch01.md",
+      "difficulty": 1
+    },
+    {
+      "id": "ch02",
+      "title": "第 2 章：智能体",
+      "file": "chapters/ch02.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch03",
+      "title": "第 3 章：通过搜索进行问题求解",
+      "file": "chapters/ch03.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch04",
+      "title": "第 4 章：复杂环境中的搜索",
+      "file": "chapters/ch04.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch05",
+      "title": "第 5 章：对抗搜索和博弈",
+      "file": "chapters/ch05.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch06",
+      "title": "第 6 章：约束满足问题",
+      "file": "chapters/ch06.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch07",
+      "title": "第 7 章：逻辑智能体",
+      "file": "chapters/ch07.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch08",
+      "title": "第 8 章：一阶逻辑",
+      "file": "chapters/ch08.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch09",
+      "title": "第 9 章：一阶逻辑中的推断",
+      "file": "chapters/ch09.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch10",
+      "title": "第 10 章：知识表示",
+      "file": "chapters/ch10.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch11",
+      "title": "第 11 章：自动规划",
+      "file": "chapters/ch11.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch12",
+      "title": "第 12 章：不确定性的量化",
+      "file": "chapters/ch12.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch13",
+      "title": "第 13 章：概率推理",
+      "file": "chapters/ch13.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch14",
+      "title": "第 14 章：时间上的概率推理",
+      "file": "chapters/ch14.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch15",
+      "title": "第 15 章：概率编程",
+      "file": "chapters/ch15.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch16",
+      "title": "第 16 章：做简单决策",
+      "file": "chapters/ch16.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch17",
+      "title": "第 17 章：做复杂决策",
+      "file": "chapters/ch17.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch18",
+      "title": "第 18 章：多智能体决策",
+      "file": "chapters/ch18.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch19",
+      "title": "第 19 章：样例学习",
+      "file": "chapters/ch19.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch20",
+      "title": "第 20 章：概率模型学习",
+      "file": "chapters/ch20.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch21",
+      "title": "第 21 章：深度学习",
+      "file": "chapters/ch21.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch22",
+      "title": "第 22 章：强化学习",
+      "file": "chapters/ch22.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch23",
+      "title": "第 23 章：自然语言处理",
+      "file": "chapters/ch23.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch24",
+      "title": "第 24 章：自然语言处理中的深度学习",
+      "file": "chapters/ch24.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch25",
+      "title": "第 25 章：计算机视觉",
+      "file": "chapters/ch25.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch26",
+      "title": "第 26 章：机器人学",
+      "file": "chapters/ch26.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch27",
+      "title": "第 27 章：人工智能的哲学、伦理和安全性",
+      "file": "chapters/ch27.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch28",
+      "title": "第 28 章：人工智能的未来",
+      "file": "chapters/ch28.md",
+      "difficulty": 2
+    }
+  ],
+  "concepts": [
+    {
+      "id": "c01",
+      "title": "智能体的环境画像",
+      "file": "concepts/c01.md",
+      "chapterIds": [
+        "ch02",
+        "ch22"
+      ]
+    },
+    {
+      "id": "c02",
+      "title": "从符号到统计的转向",
+      "file": "concepts/c02.md",
+      "chapterIds": [
+        "ch07",
+        "ch12",
+        "ch21"
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "理性智能体",
+      "def": "在给定感知与目标下选择能最大化期望性能的动作的智能体。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "性能度量",
+      "def": "评价智能体行为好坏的外部标准。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "感知序列",
+      "def": "智能体从开始到当前收到的全部感知输入。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "PEAS",
+      "def": "描述任务的四要素：性能度量、环境、执行器、传感器。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "基于模型的反射智能体",
+      "def": "维护内部状态以应对部分可观测环境的智能体。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "效用函数",
+      "def": "在多个目标冲突时衡量整体偏好程度的函数。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "状态空间",
+      "def": "由所有可达状态与转移构成的问题表示。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "启发函数",
+      "def": "估计从某节点到目标剩余代价的函数。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "可采纳",
+      "def": "启发函数从不高估真实剩余代价的性质。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "A* 搜索",
+      "def": "以 g+h 为优先级的最优启发式搜索算法。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "局部搜索",
+      "def": "只保留当前状态、在邻居中改进的搜索方法。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "模拟退火",
+      "def": "按温度控制的概率接受劣解的随机搜索算法。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "在线搜索",
+      "def": "在执行过程中边行动边学习的搜索方式。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "极小化极大",
+      "def": "假设对手最优时选择最坏情况最优动作的搜索算法。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "α-β 剪枝",
+      "def": "利用已确定边界剪掉不影响结果分支的优化。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "蒙特卡洛树搜索",
+      "def": "用大量模拟与 UCB 选择构建博弈树的搜索方法。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "约束满足问题",
+      "def": "由变量、值域与约束构成、求满足全部约束赋值的问题。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "弧相容",
+      "def": "任何变量的取值都能在邻居中找到相容支持的性质。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "回溯搜索",
+      "def": "逐步赋值、冲突则回退的搜索方法。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "蕴含",
+      "def": "一个公式在所有满足前提的世界中都为真的关系。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "归结",
+      "def": "消去互补文字、从两个子句推出新子句的推理规则。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "可靠性",
+      "def": "推理规则只推出真结论的性质。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "完备性",
+      "def": "能推出所有被蕴含结论的性质。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "一阶逻辑",
+      "def": "引入对象、谓词与量词、能表达关系的逻辑系统。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "量词",
+      "def": "表示“所有”或“存在”的符号 ∀ 与 ∃。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "合一",
+      "def": "寻找替换使两个表达式相同的算法。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "前向链接",
+      "def": "从已知事实出发推出新事实的数据驱动推理。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "反向链接",
+      "def": "从目标出发寻找规则前提的目标驱动推理。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "Horn 子句",
+      "def": "最多含一个正文字的子句，推理效率高。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "本体论",
+      "def": "关于世界由哪些类别构成及其关系的约定体系。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "默认推理",
+      "def": "无相反证据时接受默认结论、可被新信息撤回的推理。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "描述逻辑",
+      "def": "表达力受限但推理可判定的逻辑片段。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "STRIPS",
+      "def": "用前提与添加/删除列表表示动作的规划语言。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "松弛问题",
+      "def": "去掉部分约束使问题变易、用于生成启发式的问题。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "分层规划",
+      "def": "在抽象层与具体层分别规划再细化的方法。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "条件概率",
+      "def": "在给定事件发生时另一事件的概率。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "贝叶斯公式",
+      "def": "用似然与先验计算后验的公式。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "条件独立",
+      "def": "给定某变量后两变量联合概率等于边缘概率乘积。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "贝叶斯网",
+      "def": "用有向无环图与条件概率表表示联合分布的概率模型。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "变量消去",
+      "def": "按顺序对变量求和、复用中间因子的精确推理算法。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "似然加权",
+      "def": "按证据固定、按先验采样并用权重修正的近似推理方法。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "滤波",
+      "def": "根据至今证据估计当前状态后验的推理任务。",
+      "chapterId": "ch14"
+    },
+    {
+      "term": "卡尔曼滤波",
+      "def": "在线性高斯假设下递归更新均值与协方差的滤波算法。",
+      "chapterId": "ch14"
+    },
+    {
+      "term": "粒子滤波",
+      "def": "用加权样本近似后验的非参数滤波方法。",
+      "chapterId": "ch14"
+    },
+    {
+      "term": "概率编程",
+      "def": "用程序写生成过程、由后端自动推断的概率建模方式。",
+      "chapterId": "ch15"
+    },
+    {
+      "term": "变分推断",
+      "def": "用可优化的简单分布逼近后验的推断方法。",
+      "chapterId": "ch15"
+    },
+    {
+      "term": "MCMC",
+      "def": "通过长期采样逼近后验分布的推断方法。",
+      "chapterId": "ch15"
+    },
+    {
+      "term": "期望效用",
+      "def": "在信念分布下某动作带来的效用期望值。",
+      "chapterId": "ch16"
+    },
+    {
+      "term": "效用函数",
+      "def": "把结果状态映射为偏好程度的函数。",
+      "chapterId": "ch16"
+    },
+    {
+      "term": "信息价值",
+      "def": "获得某信息后决策改善的期望幅度。",
+      "chapterId": "ch16"
+    },
+    {
+      "term": "POMDP",
+      "def": "部分可观测马尔可夫决策过程，需在信念空间上决策。",
+      "chapterId": "ch17"
+    },
+    {
+      "term": "信念状态",
+      "def": "对当前世界状态的概率分布估计。",
+      "chapterId": "ch17"
+    },
+    {
+      "term": "风险敏感决策",
+      "def": "考虑收益分布尾部而非仅期望的决策方式。",
+      "chapterId": "ch17"
+    },
+    {
+      "term": "纳什均衡",
+      "def": "无人能通过单方改变策略获益的策略组合。",
+      "chapterId": "ch18"
+    },
+    {
+      "term": "零和博弈",
+      "def": "一方收益等于另一方损失的博弈。",
+      "chapterId": "ch18"
+    },
+    {
+      "term": "机制设计",
+      "def": "设计规则使自利行为产生良好集体结果的方法。",
+      "chapterId": "ch18"
+    },
+    {
+      "term": "监督学习",
+      "def": "从带标签的输入输出对学习映射的方法。",
+      "chapterId": "ch19"
+    },
+    {
+      "term": "信息增益",
+      "def": "分裂前后熵的减少量。",
+      "chapterId": "ch19"
+    },
+    {
+      "term": "归纳偏置",
+      "def": "学习器为泛化而预设的偏好假设。",
+      "chapterId": "ch19"
+    },
+    {
+      "term": "过拟合",
+      "def": "模型拟合训练数据噪声、泛化变差的现象。",
+      "chapterId": "ch19"
+    },
+    {
+      "term": "最大似然估计",
+      "def": "使观测数据出现概率最大的参数估计。",
+      "chapterId": "ch20"
+    },
+    {
+      "term": "最大后验估计",
+      "def": "在参数先验下使后验最大的参数估计。",
+      "chapterId": "ch20"
+    },
+    {
+      "term": "EM 算法",
+      "def": "在含隐变量时交替求后验与更新参数的迭代算法。",
+      "chapterId": "ch20"
+    },
+    {
+      "term": "反向传播",
+      "def": "用链式法则从输出向输入逐层计算梯度的算法。",
+      "chapterId": "ch21"
+    },
+    {
+      "term": "卷积",
+      "def": "用共享卷积核在空间上滑动提取局部特征的运算。",
+      "chapterId": "ch21"
+    },
+    {
+      "term": "注意力机制",
+      "def": "按查询与键的相似度对值加权聚合的机制。",
+      "chapterId": "ch21"
+    },
+    {
+      "term": "梯度消失",
+      "def": "深层网络中梯度逐层衰减导致浅层难以训练的现象。",
+      "chapterId": "ch21"
+    },
+    {
+      "term": "马尔可夫决策过程",
+      "def": "用状态、动作、转移与奖励刻画序贯决策的框架。",
+      "chapterId": "ch22"
+    },
+    {
+      "term": "贝尔曼方程",
+      "def": "把价值函数写成即时奖励与后继价值折扣和的递归关系。",
+      "chapterId": "ch22"
+    },
+    {
+      "term": "探索与利用",
+      "def": "尝试未知动作与选择已知最优动作之间的权衡。",
+      "chapterId": "ch22"
+    },
+    {
+      "term": "语言模型",
+      "def": "估计词序列概率分布的模型。",
+      "chapterId": "ch23"
+    },
+    {
+      "term": "n-gram",
+      "def": "只依赖前 n-1 个词的简化语言模型。",
+      "chapterId": "ch23"
+    },
+    {
+      "term": "词向量",
+      "def": "把词映射为低维连续向量的表示。",
+      "chapterId": "ch23"
+    },
+    {
+      "term": "循环神经网络",
+      "def": "用隐状态沿时间传递信息的序列模型。",
+      "chapterId": "ch24"
+    },
+    {
+      "term": "长短期记忆",
+      "def": "用门控与加性细胞状态缓解长依赖的 RNN 变体。",
+      "chapterId": "ch24"
+    },
+    {
+      "term": "自注意力",
+      "def": "序列内部各位置互相关注的注意力形式。",
+      "chapterId": "ch24"
+    },
+    {
+      "term": "语义分割",
+      "def": "为每个像素分配类别标签的视觉任务。",
+      "chapterId": "ch25"
+    },
+    {
+      "term": "数据增广",
+      "def": "通过对训练样本做变换来扩充数据分布的方法。",
+      "chapterId": "ch25"
+    },
+    {
+      "term": "平移等变性",
+      "def": "输入平移时输出相应平移的性质。",
+      "chapterId": "ch25"
+    },
+    {
+      "term": "SLAM",
+      "def": "同时估计机器人位姿与环境地图的问题。",
+      "chapterId": "ch26"
+    },
+    {
+      "term": "配置空间",
+      "def": "由机器人所有自由度构成的抽象空间。",
+      "chapterId": "ch26"
+    },
+    {
+      "term": "阻抗控制",
+      "def": "控制末端与环境之间力与位移关系的控制方式。",
+      "chapterId": "ch26"
+    },
+    {
+      "term": "强人工智能",
+      "def": "拥有真正心智而非仅表现智能行为的人工系统。",
+      "chapterId": "ch27"
+    },
+    {
+      "term": "对齐问题",
+      "def": "使系统目标与人类真实意图一致的问题。",
+      "chapterId": "ch27"
+    },
+    {
+      "term": "算法偏见",
+      "def": "模型因数据或设计产生的系统性不公正输出。",
+      "chapterId": "ch27"
+    },
+    {
+      "term": "分布外泛化",
+      "def": "在训练分布之外的数据上仍保持性能的能力。",
+      "chapterId": "ch28"
+    },
+    {
+      "term": "具身智能",
+      "def": "通过物理交互获取知识与技能的智能形态。",
+      "chapterId": "ch28"
+    }
+  ],
+  "patterns": {
+    "file": "patterns.md"
+  },
+  "cheatsheet": {
+    "file": "cheatsheet.md"
+  },
+  "quizzes": [
+    {
+      "id": "q01",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "现代 AI 主流定义属于哪一格？",
+      "explain": "智能体框架以最大化性能度量为目标。",
+      "options": [
+        "像人思考",
+        "像人行动",
+        "理性思考",
+        "理性行动"
+      ],
+      "answer": 3
+    },
+    {
+      "id": "q02",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "两次 AI 寒冬的共同成因？",
+      "explain": "每一轮都过度承诺，随后能力不足暴露。",
+      "options": [
+        "算力过剩",
+        "承诺超出能力",
+        "数据不足",
+        "缺乏理论"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q03",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "PEAS 中的 E 指什么？",
+      "explain": "Environment。",
+      "options": [
+        "执行器",
+        "环境",
+        "评估",
+        "经验"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q04",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "部分可观测环境最少需要哪种结构？",
+      "explain": "需要内部状态记住看不到的部分。",
+      "options": [
+        "简单反射",
+        "基于目标",
+        "基于模型的反射",
+        "学习型"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q05",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "A* 树搜索保证最优的条件？",
+      "explain": "可采纳即从不高估真实代价。",
+      "options": [
+        "h 一致",
+        "h 可采纳",
+        "h 单调",
+        "h 为 0"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q06",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "DFS 的主要缺陷？",
+      "explain": "可能沿无限路径不返回。",
+      "options": [
+        "空间太大",
+        "时间太长",
+        "不完备且不最优",
+        "需要启发函数"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q07",
+      "chapterId": "ch04",
+      "type": "single",
+      "question": "模拟退火接受变差解的概率随温度如何变化？",
+      "explain": "温度降低，概率趋近 0。",
+      "options": [
+        "增大",
+        "减小",
+        "不变",
+        "先增后不变"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q08",
+      "chapterId": "ch04",
+      "type": "single",
+      "question": "LRTA* 与 A* 的关键差别？",
+      "explain": "在线只维护启发值表。",
+      "options": [
+        "是否用启发函数",
+        "是否完备",
+        "在线更新而非建搜索树",
+        "是否需要目标"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q09",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "α-β 剪枝对根节点值的影响？",
+      "explain": "只剪掉不影响根值的分支。",
+      "options": [
+        "不变",
+        "变大",
+        "变小",
+        "不确定"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q10",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "深度受限搜索失去的保证？",
+      "explain": "评价函数近似导致最优性不保证。",
+      "options": [
+        "完备性",
+        "最优性",
+        "终止性",
+        "正确性定义"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q11",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "MRV 启发式选择什么变量？",
+      "explain": "优先处理最受约束的变量。",
+      "options": [
+        "值域最大的",
+        "剩余可选值最少的",
+        "最先出现的",
+        "约束最少的"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q12",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "弧相容的作用？",
+      "explain": "删除邻居中无相容支持的值。",
+      "options": [
+        "剪掉不可能取值",
+        "直接求解",
+        "排序变量",
+        "生成新约束"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q13",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "KB ⊨ α 的含义？",
+      "explain": "语义蕴含的定义。",
+      "options": [
+        "KB 为真",
+        "α 可证明",
+        "所有 KB 为真的世界 α 也为真",
+        "KB 与 α 等价"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q14",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "归结法完备性指？",
+      "explain": "归结完备性定理。",
+      "options": [
+        "一定最短证明",
+        "蕴含成立时必能推出空子句",
+        "只处理简单公式",
+        "不需要前提"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q15",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "¬∀x P(x) 等价于？",
+      "explain": "否定全称得到存在否定。",
+      "options": [
+        "∀x¬P(x)",
+        "¬∃xP(x)",
+        "∃x¬P(x)",
+        "∃xP(x)"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q16",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "∀x∃y 爱(x,y) 的含义？",
+      "explain": "y 依赖于 x，故每人各有其爱。",
+      "options": [
+        "每个人都有爱的人",
+        "存在一个人被所有人爱",
+        "所有人爱同一个人",
+        "没有人相爱"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q17",
+      "chapterId": "ch09",
+      "type": "single",
+      "question": "Prolog 采用的推理方式？",
+      "explain": "从目标出发找规则前提。",
+      "options": [
+        "前向链接",
+        "反向链接",
+        "真值表",
+        "归结反驳"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q18",
+      "chapterId": "ch09",
+      "type": "single",
+      "question": "Horn 子句高效的原因？",
+      "explain": "最多一个正文字，避免完整合一搜索。",
+      "options": [
+        "更短",
+        "不需要变量",
+        "归结可退化为链接",
+        "一定可满足"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q19",
+      "chapterId": "ch10",
+      "type": "single",
+      "question": "“鸟通常会飞”最适合的表示方式？",
+      "explain": "存在企鹅等例外，需默认推理。",
+      "options": [
+        "全称量词",
+        "存在量词",
+        "默认规则",
+        "真值表"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q20",
+      "chapterId": "ch10",
+      "type": "single",
+      "question": "非单调逻辑中“非单调”的含义？",
+      "explain": "加入前提可能使原结论失效。",
+      "options": [
+        "推理速度不均匀",
+        "新信息可撤回旧结论",
+        "结论不确定",
+        "不能重复使用"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q21",
+      "chapterId": "ch11",
+      "type": "single",
+      "question": "STRIPS 动作的三要素？",
+      "explain": "前提与效果两部分，效果再分删除与添加。",
+      "options": [
+        "名称、参数、代价",
+        "前提、删除列表、添加列表",
+        "输入、输出、状态",
+        "变量、约束、目标"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q22",
+      "chapterId": "ch11",
+      "type": "single",
+      "question": "忽略删除列表得到的启发式性质？",
+      "explain": "松弛问题更易解，其代价不超过原问题。",
+      "options": [
+        "不可采纳",
+        "高估代价",
+        "可采纳的下界",
+        "精确值"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q23",
+      "chapterId": "ch12",
+      "type": "single",
+      "question": "患病率 1%、灵敏度 90%、假阳性 5%，阳性时患病概率约？",
+      "explain": "0.009/(0.009+0.0495)≈15.4%。",
+      "options": [
+        "90%",
+        "15.4%",
+        "50%",
+        "1%"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q24",
+      "chapterId": "ch12",
+      "type": "single",
+      "question": "条件独立的定义？",
+      "explain": "P(a∧b|c)=P(a|c)P(b|c)。",
+      "options": [
+        "给定 c 时联合等于边缘乘积",
+        "无条件联合等于乘积",
+        "P(a)=P(b)",
+        "互斥"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q25",
+      "chapterId": "ch13",
+      "type": "single",
+      "question": "贝叶斯网联合分布的分解依据？",
+      "explain": "P(X)=ΠP(Xi|Parents(Xi))。",
+      "options": [
+        "全概率公式",
+        "局部条件概率相乘",
+        "贝叶斯公式",
+        "独立性假设"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q26",
+      "chapterId": "ch13",
+      "type": "single",
+      "question": "变量消去比枚举快的原因？",
+      "explain": "消元过程中因子被复用，避免重复求和。",
+      "options": [
+        "用了近似",
+        "变量更少",
+        "复用中间因子",
+        "不需要证据"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q27",
+      "chapterId": "ch14",
+      "type": "single",
+      "question": "滤波计算的是什么？",
+      "explain": "P(X_t|e_{1:t})。",
+      "options": [
+        "未来状态",
+        "当前状态后验",
+        "过去状态",
+        "整条序列"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q28",
+      "chapterId": "ch14",
+      "type": "single",
+      "question": "卡尔曼滤波闭式解依赖的假设？",
+      "explain": "线性高斯使后验保持高斯，参数有限。",
+      "options": [
+        "状态离散",
+        "观测连续",
+        "线性高斯",
+        "马尔可夫性"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q29",
+      "chapterId": "ch15",
+      "type": "single",
+      "question": "概率编程相对贝叶斯网建模的最大优势？",
+      "explain": "直接写生成过程，结构由代码隐含。",
+      "options": [
+        "更快",
+        "更准",
+        "可表达手工画图困难的结构",
+        "不需要数据"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q30",
+      "chapterId": "ch15",
+      "type": "single",
+      "question": "高维模型通常首选哪种推断？",
+      "explain": "变分速度快，高维 MCMC 难收敛。",
+      "options": [
+        "MCMC",
+        "变分",
+        "枚举",
+        "变量消去"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q31",
+      "chapterId": "ch16",
+      "type": "single",
+      "question": "期望效用决策选择的对象？",
+      "explain": "EU(a)=ΣP(s|e)U(s) 取最大。",
+      "options": [
+        "概率最大的状态",
+        "期望效用最大的动作",
+        "效用最大的状态",
+        "成本最低的动作"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q32",
+      "chapterId": "ch16",
+      "type": "single",
+      "question": "信息价值的下界？",
+      "explain": "可以选择忽略信息，故价值不会为负。",
+      "options": [
+        "0",
+        "-1",
+        "无穷小",
+        "不确定"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q33",
+      "chapterId": "ch17",
+      "type": "single",
+      "question": "POMDP 中策略的输入是？",
+      "explain": "部分可观测下只能基于信念决策。",
+      "options": [
+        "真实状态",
+        "观测序列",
+        "信念状态",
+        "动作历史"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q34",
+      "chapterId": "ch17",
+      "type": "single",
+      "question": "POMDP 难解的根本原因？",
+      "explain": "信念是单纯形上的连续分布。",
+      "options": [
+        "信念空间连续无穷维",
+        "动作太多",
+        "奖励稀疏",
+        "没有模型"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q35",
+      "chapterId": "ch18",
+      "type": "single",
+      "question": "囚徒困境说明的核心现象？",
+      "explain": "都招供是均衡但结果差于都不招。",
+      "options": [
+        "合作总是最优",
+        "个体理性导致集体次优",
+        "均衡唯一",
+        "零和"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q36",
+      "chapterId": "ch18",
+      "type": "single",
+      "question": "机制设计的关键要求？",
+      "explain": "参与者没有谎报动机。",
+      "options": [
+        "收益最大",
+        "计算最快",
+        "防策略性",
+        "均衡唯一"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q37",
+      "chapterId": "ch19",
+      "type": "single",
+      "question": "信息增益的公式？",
+      "explain": "父节点熵减去子节点熵的加权和。",
+      "options": [
+        "H(parent)-Σ(n_i/n)H(child_i)",
+        "ΣH(child)",
+        "H(parent)+ΣH(child)",
+        "信息增益即熵"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q38",
+      "chapterId": "ch19",
+      "type": "single",
+      "question": "没有免费的午餐定理说明什么？",
+      "explain": "性能需对所有问题平均，任何偏置都有代价。",
+      "options": [
+        "深度学习最好",
+        "数据越多越好",
+        "不存在对所有问题最优的学习器",
+        "特征越多越好"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q39",
+      "chapterId": "ch20",
+      "type": "single",
+      "question": "朴素贝叶斯的“朴素”指什么？",
+      "explain": "给定类别下假设特征相互独立。",
+      "options": [
+        "模型简单",
+        "特征条件独立假设",
+        "只用朴素特征",
+        "不用概率"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q40",
+      "chapterId": "ch20",
+      "type": "single",
+      "question": "EM 的 E 步做什么？",
+      "explain": "用当前参数估计隐变量分布。",
+      "options": [
+        "算隐变量后验",
+        "更新参数",
+        "计算梯度",
+        "选模型"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q41",
+      "chapterId": "ch21",
+      "type": "single",
+      "question": "没有非线性激活的多层网络等价于什么？",
+      "explain": "线性复合仍是线性。",
+      "options": [
+        "单层线性模型",
+        "深层网络",
+        "卷积网络",
+        "决策树"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q42",
+      "chapterId": "ch21",
+      "type": "single",
+      "question": "注意力缩放 √d_k 的原因？",
+      "explain": "点积方差随维度线性增长。",
+      "options": [
+        "加快计算",
+        "减少参数",
+        "控制点积方差避免 softmax 饱和",
+        "增加表达力"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q43",
+      "chapterId": "ch21",
+      "type": "single",
+      "question": "反向传播的本质？",
+      "explain": "它只负责算梯度。",
+      "options": [
+        "另一种优化算法",
+        "链式法则加复用前向中间值",
+        "随机搜索",
+        "模型选择"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q44",
+      "chapterId": "ch22",
+      "type": "single",
+      "question": "贝尔曼方程把价值写成什么？",
+      "explain": "递归形式 r+γv(s')。",
+      "options": [
+        "全部奖励之和",
+        "一步奖励加后继价值折扣",
+        "平均奖励",
+        "最大奖励"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q45",
+      "chapterId": "ch22",
+      "type": "single",
+      "question": "哪一组同时出现容易发散？",
+      "explain": "致命三要素。",
+      "options": [
+        "探索、奖励、策略",
+        "状态、动作、折扣",
+        "函数逼近、自举、离轨",
+        "采样、规划、学习"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q46",
+      "chapterId": "ch23",
+      "type": "single",
+      "question": "n-gram 模型的主要问题？",
+      "explain": "组合数量随词表指数增长。",
+      "options": [
+        "太慢",
+        "稀疏与参数爆炸",
+        "不能生成",
+        "需要语法树"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q47",
+      "chapterId": "ch23",
+      "type": "single",
+      "question": "分布假设的内容？",
+      "explain": "相似上下文中的词含义相近。",
+      "options": [
+        "词频决定含义",
+        "语法决定含义",
+        "上下文决定词义",
+        "长度决定词义"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q48",
+      "chapterId": "ch24",
+      "type": "single",
+      "question": "自注意力相对 RNN 的根本优势？",
+      "explain": "路径长度从 O(n) 降到 O(1)。",
+      "options": [
+        "参数更少",
+        "任意两位置直连",
+        "不用激活函数",
+        "不需要数据"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q49",
+      "chapterId": "ch24",
+      "type": "single",
+      "question": "LSTM 缓解梯度消失的关键？",
+      "explain": "加性路径使梯度可远传。",
+      "options": [
+        "输出门",
+        "输入门",
+        "加性细胞状态更新",
+        "词嵌入"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q50",
+      "chapterId": "ch25",
+      "type": "single",
+      "question": "卷积的两个核心先验？",
+      "explain": "这两条大幅降低参数量。",
+      "options": [
+        "深度与宽度",
+        "局部连接与参数共享",
+        "归一化与残差",
+        "注意力与门控"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q51",
+      "chapterId": "ch25",
+      "type": "single",
+      "question": "语义分割与实例分割的差别？",
+      "explain": "实例分割还要区分个体。",
+      "options": [
+        "输入不同",
+        "输出尺寸不同",
+        "是否区分同类不同实例",
+        "是否需要标签"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q52",
+      "chapterId": "ch26",
+      "type": "single",
+      "question": "SLAM 的核心困难？",
+      "explain": "鸡与蛋问题，需联合估计。",
+      "options": [
+        "传感器太贵",
+        "计算太慢",
+        "定位与建图互为前提",
+        "没有算法"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q53",
+      "chapterId": "ch26",
+      "type": "single",
+      "question": "配置空间的维度等于？",
+      "explain": "每个自由度构成一维。",
+      "options": [
+        "障碍物数",
+        "机器人自由度",
+        "传感器数",
+        "路径长度"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q54",
+      "chapterId": "ch27",
+      "type": "single",
+      "question": "奖励黑客的本质？",
+      "explain": "优化器钻字面目标的空子。",
+      "options": [
+        "算法缺陷",
+        "数据不足",
+        "目标设定与真实意图不一致",
+        "算力不够"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q55",
+      "chapterId": "ch27",
+      "type": "single",
+      "question": "算法偏见的首要来源？",
+      "explain": "数据里的偏见被模型学到并放大。",
+      "options": [
+        "训练数据中的历史偏见",
+        "学习率太大",
+        "模型太大",
+        "显存不足"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q56",
+      "chapterId": "ch28",
+      "type": "single",
+      "question": "判断 AI 宣称可信的标准不包括？",
+      "explain": "参数量大不代表能力强或可用。",
+      "options": [
+        "训练测试分布是否一致",
+        "基线是否公平",
+        "参数量是否最大",
+        "失败案例是否公开"
+      ],
+      "answer": 2
+    }
+  ],
+  "flashcards": [
+    {
+      "id": "f01",
+      "chapterId": "ch01",
+      "front": "AI 的四种取向？",
+      "back": "像人/理性 × 思考/行动，共四格。",
+      "tags": [
+        "intro"
+      ]
+    },
+    {
+      "id": "f02",
+      "chapterId": "ch01",
+      "front": "智能体的构成？",
+      "back": "架构 + 程序，通过感知与动作与环境交互。",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "id": "f03",
+      "chapterId": "ch01",
+      "front": "性能度量、环境、动作空间各定义什么？",
+      "back": "好坏标准、问题难度、可做什么。",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "id": "f04",
+      "chapterId": "ch02",
+      "front": "PEAS 四项？",
+      "back": "性能度量、环境、执行器、传感器。",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "id": "f05",
+      "chapterId": "ch02",
+      "front": "环境的六个维度？",
+      "back": "可观测性、确定性、片段/连续、静态/动态、离散/连续、单/多智能体。",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "id": "f06",
+      "chapterId": "ch02",
+      "front": "学习型智能体的四个部件？",
+      "back": "性能元件、critic、学习元件、问题生成器。",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "id": "f07",
+      "chapterId": "ch03",
+      "front": "问题形式化的五要素？",
+      "back": "初始状态、动作、转移模型、目标测试、路径代价。",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "id": "f08",
+      "chapterId": "ch03",
+      "front": "A* 的评价函数？",
+      "back": "f(n)=g(n)+h(n)。",
+      "tags": [
+        "astar"
+      ]
+    },
+    {
+      "id": "f09",
+      "chapterId": "ch03",
+      "front": "可采纳与一致的定义？",
+      "back": "可采纳=不高估；一致=h(n)≤c+h(n')。",
+      "tags": [
+        "heuristic"
+      ]
+    },
+    {
+      "id": "f10",
+      "chapterId": "ch03",
+      "front": "迭代加深为什么实用？",
+      "back": "兼具 BFS 的最优与 DFS 的空间。",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "id": "f11",
+      "chapterId": "ch04",
+      "front": "爬山法的主要问题？",
+      "back": "局部极大与平台。",
+      "tags": [
+        "local"
+      ]
+    },
+    {
+      "id": "f12",
+      "chapterId": "ch04",
+      "front": "模拟退火的接受准则？",
+      "back": "以 exp(ΔE/T) 概率接受变差解，T 递减。",
+      "tags": [
+        "annealing"
+      ]
+    },
+    {
+      "id": "f13",
+      "chapterId": "ch04",
+      "front": "LRTA* 的更新式？",
+      "back": "H(s)=min_a[c(s,a)+H(s')]。",
+      "tags": [
+        "online"
+      ]
+    },
+    {
+      "id": "f14",
+      "chapterId": "ch05",
+      "front": "Minimax 的递归式？",
+      "back": "自己回合取 max，对手回合取 min。",
+      "tags": [
+        "game"
+      ]
+    },
+    {
+      "id": "f15",
+      "chapterId": "ch05",
+      "front": "α 与 β 的含义？",
+      "back": "α 是 MAX 已知下界，β 是 MIN 已知上界。",
+      "tags": [
+        "alphabeta"
+      ]
+    },
+    {
+      "id": "f16",
+      "chapterId": "ch05",
+      "front": "MCTS 四个步骤？",
+      "back": "选择、扩展、模拟、回传。",
+      "tags": [
+        "mcts"
+      ]
+    },
+    {
+      "id": "f17",
+      "chapterId": "ch05",
+      "front": "地平线效应是什么？",
+      "back": "深度边界外的局面变化看不到，导致误判。",
+      "tags": [
+        "game"
+      ]
+    },
+    {
+      "id": "f18",
+      "chapterId": "ch06",
+      "front": "CSP 的三要素？",
+      "back": "变量、值域、约束。",
+      "tags": [
+        "csp"
+      ]
+    },
+    {
+      "id": "f19",
+      "chapterId": "ch06",
+      "front": "前向检验做什么？",
+      "back": "赋值后删除邻居值域中冲突的取值。",
+      "tags": [
+        "csp"
+      ]
+    },
+    {
+      "id": "f20",
+      "chapterId": "ch06",
+      "front": "LCV 为什么有效？",
+      "back": "给邻居留更多余地，减少后续回溯。",
+      "tags": [
+        "csp"
+      ]
+    },
+    {
+      "id": "f21",
+      "chapterId": "ch07",
+      "front": "蕴含的定义？",
+      "back": "所有使 KB 为真的世界也使 α 为真。",
+      "tags": [
+        "logic"
+      ]
+    },
+    {
+      "id": "f22",
+      "chapterId": "ch07",
+      "front": "归结规则？",
+      "back": "(A∨B),(¬B∨C) 得 (A∨C)。",
+      "tags": [
+        "resolution"
+      ]
+    },
+    {
+      "id": "f23",
+      "chapterId": "ch07",
+      "front": "逻辑智能体的两步？",
+      "back": "TELL 更新知识库，ASK 查询该做什么。",
+      "tags": [
+        "agent"
+      ]
+    },
+    {
+      "id": "f24",
+      "chapterId": "ch08",
+      "front": "一阶逻辑相比命题逻辑增加了什么？",
+      "back": "对象、谓词、函数与量词。",
+      "tags": [
+        "fol"
+      ]
+    },
+    {
+      "id": "f25",
+      "chapterId": "ch08",
+      "front": "量词否定的两条规则？",
+      "back": "¬∀xP≡∃x¬P；¬∃xP≡∀x¬P。",
+      "tags": [
+        "fol"
+      ]
+    },
+    {
+      "id": "f26",
+      "chapterId": "ch08",
+      "front": "合一是做什么的？",
+      "back": "找替换使两个表达式相同，用于归结匹配。",
+      "tags": [
+        "unification"
+      ]
+    },
+    {
+      "id": "f27",
+      "chapterId": "ch08",
+      "front": "一阶逻辑的可判定性？",
+      "back": "半可判定：真命题可证，假命题未必。",
+      "tags": [
+        "fol"
+      ]
+    },
+    {
+      "id": "f28",
+      "chapterId": "ch09",
+      "front": "前向与反向链接的差别？",
+      "back": "前者数据驱动，后者目标驱动。",
+      "tags": [
+        "inference"
+      ]
+    },
+    {
+      "id": "f29",
+      "chapterId": "ch09",
+      "front": "归结反驳的流程？",
+      "back": "把 ¬α 加入 KB，反复归结直到空子句。",
+      "tags": [
+        "resolution"
+      ]
+    },
+    {
+      "id": "f30",
+      "chapterId": "ch09",
+      "front": "Horn 子句的定义？",
+      "back": "最多含一个正文字的子句。",
+      "tags": [
+        "horn"
+      ]
+    },
+    {
+      "id": "f31",
+      "chapterId": "ch10",
+      "front": "本体论工程的作用？",
+      "back": "约定世界由哪些类构成、如何关联，决定可推理的内容。",
+      "tags": [
+        "kr"
+      ]
+    },
+    {
+      "id": "f32",
+      "chapterId": "ch10",
+      "front": "事件演算怎么表示“某时拥有”？",
+      "back": "把时间作为显式参数，Owns(John,Car,T)。",
+      "tags": [
+        "kr"
+      ]
+    },
+    {
+      "id": "f33",
+      "chapterId": "ch10",
+      "front": "描述逻辑的取舍？",
+      "back": "牺牲表达力换推理可判定。",
+      "tags": [
+        "dl"
+      ]
+    },
+    {
+      "id": "f34",
+      "chapterId": "ch11",
+      "front": "STRIPS 的三部分？",
+      "back": "前提、删除列表、添加列表。",
+      "tags": [
+        "planning"
+      ]
+    },
+    {
+      "id": "f35",
+      "chapterId": "ch11",
+      "front": "后向规划为什么要处理删除效果？",
+      "back": "要保证新动作不破坏已达成目标。",
+      "tags": [
+        "planning"
+      ]
+    },
+    {
+      "id": "f36",
+      "chapterId": "ch11",
+      "front": "松弛启发式为什么可采纳？",
+      "back": "忽略删除列表使问题变易，解代价是下界。",
+      "tags": [
+        "heuristic"
+      ]
+    },
+    {
+      "id": "f37",
+      "chapterId": "ch12",
+      "front": "贝叶斯公式？",
+      "back": "P(a|b)=P(b|a)P(a)/P(b)。",
+      "tags": [
+        "probability"
+      ]
+    },
+    {
+      "id": "f38",
+      "chapterId": "ch12",
+      "front": "先验与后验的差别？",
+      "back": "看到证据前 vs 看到证据后的信念。",
+      "tags": [
+        "probability"
+      ]
+    },
+    {
+      "id": "f39",
+      "chapterId": "ch12",
+      "front": "条件独立为什么关键？",
+      "back": "把联合分布的参数从指数级降到线性。",
+      "tags": [
+        "probability"
+      ]
+    },
+    {
+      "id": "f40",
+      "chapterId": "ch13",
+      "front": "贝叶斯网分解公式？",
+      "back": "P(X1..Xn)=Π P(Xi|Parents(Xi))。",
+      "tags": [
+        "bayesnet"
+      ]
+    },
+    {
+      "id": "f41",
+      "chapterId": "ch13",
+      "front": "枚举法的复杂度？",
+      "back": "随未观测变量数指数增长。",
+      "tags": [
+        "inference"
+      ]
+    },
+    {
+      "id": "f42",
+      "chapterId": "ch13",
+      "front": "变量消去的瓶颈？",
+      "back": "消元顺序，复杂度对应图的树宽。",
+      "tags": [
+        "inference"
+      ]
+    },
+    {
+      "id": "f43",
+      "chapterId": "ch14",
+      "front": "滤波的两步？",
+      "back": "预测：用转移模型推；更新：用观测似然校正。",
+      "tags": [
+        "temporal"
+      ]
+    },
+    {
+      "id": "f44",
+      "chapterId": "ch14",
+      "front": "平滑与滤波的差别？",
+      "back": "平滑用全部证据，包括未来。",
+      "tags": [
+        "temporal"
+      ]
+    },
+    {
+      "id": "f45",
+      "chapterId": "ch14",
+      "front": "卡尔曼滤波的核心假设？",
+      "back": "状态连续、转移与观测线性、噪声高斯。",
+      "tags": [
+        "kalman"
+      ]
+    },
+    {
+      "id": "f46",
+      "chapterId": "ch14",
+      "front": "粒子滤波的思想？",
+      "back": "用加权样本表示后验，传播、加权、重采样。",
+      "tags": [
+        "particle"
+      ]
+    },
+    {
+      "id": "f47",
+      "chapterId": "ch15",
+      "front": "概率编程与贝叶斯网建模的差别？",
+      "back": "前者写生成过程，后者先画图再填表。",
+      "tags": [
+        "ppl"
+      ]
+    },
+    {
+      "id": "f48",
+      "chapterId": "ch15",
+      "front": "MCMC 与变分的取舍？",
+      "back": "MCMC 准而慢，变分快而有偏。",
+      "tags": [
+        "ppl"
+      ]
+    },
+    {
+      "id": "f49",
+      "chapterId": "ch15",
+      "front": "生成式模型的两项能力？",
+      "back": "处理缺失数据、生成新样本。",
+      "tags": [
+        "generative"
+      ]
+    },
+    {
+      "id": "f50",
+      "chapterId": "ch16",
+      "front": "期望效用的公式？",
+      "back": "EU(a)=Σ_s P(s|e)U(s)。",
+      "tags": [
+        "decision"
+      ]
+    },
+    {
+      "id": "f51",
+      "chapterId": "ch16",
+      "front": "为什么不用期望金额？",
+      "back": "效用对金额非线性，反映风险态度。",
+      "tags": [
+        "utility"
+      ]
+    },
+    {
+      "id": "f52",
+      "chapterId": "ch16",
+      "front": "信息价值的定义？",
+      "back": "有新信息后的最优期望效用减去当前最优。",
+      "tags": [
+        "vpi"
+      ]
+    },
+    {
+      "id": "f53",
+      "chapterId": "ch17",
+      "front": "POMDP 的策略输入是什么？",
+      "back": "信念状态 b，即状态的概率分布。",
+      "tags": [
+        "pomdp"
+      ]
+    },
+    {
+      "id": "f54",
+      "chapterId": "ch17",
+      "front": "信念更新的本质？",
+      "back": "就是第 14 章的递归滤波。",
+      "tags": [
+        "pomdp"
+      ]
+    },
+    {
+      "id": "f55",
+      "chapterId": "ch17",
+      "front": "多目标决策的难点？",
+      "back": "目标冲突需要显式定义权衡。",
+      "tags": [
+        "decision"
+      ]
+    },
+    {
+      "id": "f56",
+      "chapterId": "ch18",
+      "front": "纳什均衡的定义？",
+      "back": "没有任何参与者能单方改变策略而获益的组合。",
+      "tags": [
+        "game"
+      ]
+    },
+    {
+      "id": "f57",
+      "chapterId": "ch18",
+      "front": "纳什均衡的局限？",
+      "back": "可能不存在、可能多个、未必社会最优。",
+      "tags": [
+        "game"
+      ]
+    },
+    {
+      "id": "f58",
+      "chapterId": "ch18",
+      "front": "多智能体 RL 的核心困难？",
+      "back": "环境非平稳，单智能体收敛证明失效。",
+      "tags": [
+        "marl"
+      ]
+    },
+    {
+      "id": "f59",
+      "chapterId": "ch19",
+      "front": "三种学习设定的差别？",
+      "back": "监督有标签、无监督无标签、强化只有延迟奖励。",
+      "tags": [
+        "learning"
+      ]
+    },
+    {
+      "id": "f60",
+      "chapterId": "ch19",
+      "front": "信息增益怎么算？",
+      "back": "父熵减去子节点熵的加权平均。",
+      "tags": [
+        "tree"
+      ]
+    },
+    {
+      "id": "f61",
+      "chapterId": "ch19",
+      "front": "归纳偏置是什么？",
+      "back": "学习器在假设空间中的偏好，决定泛化方向。",
+      "tags": [
+        "bias"
+      ]
+    },
+    {
+      "id": "f62",
+      "chapterId": "ch19",
+      "front": "过拟合的四种对策？",
+      "back": "剪枝、正则、早停、增加数据。",
+      "tags": [
+        "overfit"
+      ]
+    },
+    {
+      "id": "f63",
+      "chapterId": "ch20",
+      "front": "MLE 与 MAP 的差别？",
+      "back": "MAP 多乘一个参数先验。",
+      "tags": [
+        "mle"
+      ]
+    },
+    {
+      "id": "f64",
+      "chapterId": "ch20",
+      "front": "EM 两步各做什么？",
+      "back": "E 算隐变量后验，M 最大化期望似然更新参数。",
+      "tags": [
+        "em"
+      ]
+    },
+    {
+      "id": "f65",
+      "chapterId": "ch20",
+      "front": "EM 的收敛性质？",
+      "back": "观测似然单调不降，但只到局部最优。",
+      "tags": [
+        "em"
+      ]
+    },
+    {
+      "id": "f66",
+      "chapterId": "ch21",
+      "front": "为什么需要非线性激活？",
+      "back": "否则多层等价于单层线性变换。",
+      "tags": [
+        "dl"
+      ]
+    },
+    {
+      "id": "f67",
+      "chapterId": "ch21",
+      "front": "反向传播的核心？",
+      "back": "链式法则逐层回传，复用前向保存的激活值。",
+      "tags": [
+        "bp"
+      ]
+    },
+    {
+      "id": "f68",
+      "chapterId": "ch21",
+      "front": "卷积的两个好处？",
+      "back": "参数共享、捕捉局部空间模式。",
+      "tags": [
+        "cnn"
+      ]
+    },
+    {
+      "id": "f69",
+      "chapterId": "ch21",
+      "front": "注意力的公式？",
+      "back": "softmax(QKᵀ/√d_k)V。",
+      "tags": [
+        "attention"
+      ]
+    },
+    {
+      "id": "f70",
+      "chapterId": "ch21",
+      "front": "缩放 √d_k 的原因？",
+      "back": "点积方差随维度增长，不缩放会 softmax 饱和。",
+      "tags": [
+        "attention"
+      ]
+    },
+    {
+      "id": "f71",
+      "chapterId": "ch22",
+      "front": "RL 与监督学习的三个差别？",
+      "back": "延迟奖励、数据自产、必须探索。",
+      "tags": [
+        "rl"
+      ]
+    },
+    {
+      "id": "f72",
+      "chapterId": "ch22",
+      "front": "贝尔曼期望方程？",
+      "back": "v_π(s)=Σπ(a|s)Σp[r+γv_π(s')]。",
+      "tags": [
+        "rl"
+      ]
+    },
+    {
+      "id": "f73",
+      "chapterId": "ch22",
+      "front": "三条技术路线？",
+      "back": "基于模型、无模型值方法、策略梯度。",
+      "tags": [
+        "rl"
+      ]
+    },
+    {
+      "id": "f74",
+      "chapterId": "ch23",
+      "front": "语言模型的分解式？",
+      "back": "P(w1..wn)=ΠP(w_i|前文)。",
+      "tags": [
+        "nlp"
+      ]
+    },
+    {
+      "id": "f75",
+      "chapterId": "ch23",
+      "front": "n-gram 的稀疏问题怎么缓解？",
+      "back": "加一平滑等平滑技术，但不能根治。",
+      "tags": [
+        "nlp"
+      ]
+    },
+    {
+      "id": "f76",
+      "chapterId": "ch23",
+      "front": "分布假设是什么？",
+      "back": "词义由它的上下文决定。",
+      "tags": [
+        "embedding"
+      ]
+    },
+    {
+      "id": "f77",
+      "chapterId": "ch24",
+      "front": "RNN 的梯度问题根源？",
+      "back": "沿时间反复相乘导致消失或爆炸。",
+      "tags": [
+        "rnn"
+      ]
+    },
+    {
+      "id": "f78",
+      "chapterId": "ch24",
+      "front": "LSTM 三个门？",
+      "back": "遗忘门、输入门、输出门。",
+      "tags": [
+        "lstm"
+      ]
+    },
+    {
+      "id": "f79",
+      "chapterId": "ch24",
+      "front": "Transformer 编码器的三层？",
+      "back": "多头自注意力、前馈网络、残差与层归一化。",
+      "tags": [
+        "transformer"
+      ]
+    },
+    {
+      "id": "f80",
+      "chapterId": "ch24",
+      "front": "自注意力的复杂度？",
+      "back": "随序列长度平方增长。",
+      "tags": [
+        "transformer"
+      ]
+    },
+    {
+      "id": "f81",
+      "chapterId": "ch25",
+      "front": "分类、检测、分割的区别？",
+      "back": "整图标签、框出物体、逐像素标注。",
+      "tags": [
+        "cv"
+      ]
+    },
+    {
+      "id": "f82",
+      "chapterId": "ch25",
+      "front": "卷积为什么省参数？",
+      "back": "局部连接 + 参数共享。",
+      "tags": [
+        "cnn"
+      ]
+    },
+    {
+      "id": "f83",
+      "chapterId": "ch25",
+      "front": "数据增广为什么有效？",
+      "back": "扩充数据分布、抑制过拟合。",
+      "tags": [
+        "cv"
+      ]
+    },
+    {
+      "id": "f84",
+      "chapterId": "ch26",
+      "front": "SLAM 为什么难？",
+      "back": "定位需要地图、建图需要定位，互为前提。",
+      "tags": [
+        "robotics"
+      ]
+    },
+    {
+      "id": "f85",
+      "chapterId": "ch26",
+      "front": "配置空间是什么？",
+      "back": "把关节角度组成的高维空间，障碍物映射其中。",
+      "tags": [
+        "robotics"
+      ]
+    },
+    {
+      "id": "f86",
+      "chapterId": "ch26",
+      "front": "阻抗控制适合什么任务？",
+      "back": "需要与环境接触、控制力与位移关系的任务。",
+      "tags": [
+        "control"
+      ]
+    },
+    {
+      "id": "f87",
+      "chapterId": "ch27",
+      "front": "强 AI 与弱 AI 的争论焦点？",
+      "back": "行为等价是否意味着心智等价。",
+      "tags": [
+        "ethics"
+      ]
+    },
+    {
+      "id": "f88",
+      "chapterId": "ch27",
+      "front": "奖励黑客是什么？",
+      "back": "优化器找到满足字面目标但违背意图的解。",
+      "tags": [
+        "alignment"
+      ]
+    },
+    {
+      "id": "f89",
+      "chapterId": "ch27",
+      "front": "AI 安全的四条工程原则？",
+      "back": "明确问责、人类否决、监控漂移、可回滚。",
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "f90",
+      "chapterId": "ch28",
+      "front": "AI 发展的三条路线？",
+      "back": "规模、结构、具身交互。",
+      "tags": [
+        "future"
+      ]
+    },
+    {
+      "id": "f91",
+      "chapterId": "ch28",
+      "front": "判断 AI 宣称的三条标准？",
+      "back": "分布一致性、公平基线、公开失败案例。",
+      "tags": [
+        "future"
+      ]
+    },
+    {
+      "id": "f92",
+      "chapterId": "ch28",
+      "front": "能力与理解的差别？",
+      "back": "答对测试题 vs 掌握机制，后者能外推与被纠正。",
+      "tags": [
+        "future"
+      ]
+    }
+  ],
+  "companion": "aima4学习伴侣.html"
+}

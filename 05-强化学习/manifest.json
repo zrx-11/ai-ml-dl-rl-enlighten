@@ -1,0 +1,1830 @@
+{
+  "slug": "rl-sutton",
+  "title": "强化学习（Sutton & Barto 第 2 版）",
+  "subtitle": "从贝尔曼方程到策略梯度，把“延迟奖励下的决策”讲透",
+  "book": {
+    "title": "强化学习（第2版）",
+    "author": "Richard S. Sutton、Andrew G. Barto（俞凯 等译）",
+    "source": [
+      "强化学习(第2版)-Reinforcement Learning An Introduction Second edition (Sutton & Barto).pdf"
+    ]
+  },
+  "audience": "大一：会微积分与概率基础，线性代数需补",
+  "goal": "能从贝尔曼方程出发推导 TD、Sarsa、Q-learning 与策略梯度，并判断在什么条件下会发散",
+  "learningPath": [
+    {
+      "step": "01",
+      "title": "问题与要素",
+      "chapterIds": [
+        "ch01"
+      ],
+      "prereq": "无",
+      "checkpoint": "用井字棋例子说清价值与自举",
+      "goal": "建立强化学习的问题意识"
+    },
+    {
+      "step": "02",
+      "title": "探索与利用",
+      "chapterIds": [
+        "ch02"
+      ],
+      "prereq": "ch01",
+      "checkpoint": "手算一次 UCB 的选择",
+      "goal": "掌握最简形态下的权衡"
+    },
+    {
+      "step": "03",
+      "title": "MDP 与贝尔曼方程",
+      "chapterIds": [
+        "ch03"
+      ],
+      "prereq": "ch02、概率",
+      "checkpoint": "手解两状态互相转移的价值方程",
+      "goal": "掌握形式化语言"
+    },
+    {
+      "step": "04",
+      "title": "动态规划",
+      "chapterIds": [
+        "ch04"
+      ],
+      "prereq": "ch03",
+      "checkpoint": "说出策略迭代与价值迭代的差别",
+      "goal": "掌握有模型时的求解"
+    },
+    {
+      "step": "05",
+      "title": "蒙特卡洛",
+      "chapterIds": [
+        "ch05"
+      ],
+      "prereq": "ch04",
+      "checkpoint": "区分首次访问与每次访问，说明 IS 的风险",
+      "goal": "掌握无模型评估"
+    },
+    {
+      "step": "06",
+      "title": "时序差分",
+      "chapterIds": [
+        "ch06"
+      ],
+      "prereq": "ch05",
+      "checkpoint": "写出 Sarsa 与 Q-learning 并说出行为差异",
+      "goal": "掌握在线自举"
+    },
+    {
+      "step": "07",
+      "title": "n 步自举",
+      "chapterIds": [
+        "ch07"
+      ],
+      "prereq": "ch06",
+      "checkpoint": "说明 n 如何连续调节偏差与方差",
+      "goal": "掌握 TD 与 MC 的统一视角"
+    },
+    {
+      "step": "08",
+      "title": "规划与学习",
+      "chapterIds": [
+        "ch08"
+      ],
+      "prereq": "ch04、ch06",
+      "checkpoint": "画出 Dyna 结构并解释优先级扫描",
+      "goal": "掌握模型的使用"
+    },
+    {
+      "step": "09",
+      "title": "函数逼近预测",
+      "chapterIds": [
+        "ch09"
+      ],
+      "prereq": "ch06、线代",
+      "checkpoint": "写出半梯度 TD 并说明“半”在哪",
+      "goal": "掌握大规模状态的处理"
+    },
+    {
+      "step": "10",
+      "title": "函数逼近控制",
+      "chapterIds": [
+        "ch10"
+      ],
+      "prereq": "ch09",
+      "checkpoint": "解释 Baird 反例与目标网络的作用",
+      "goal": "掌握控制中的稳定性问题"
+    },
+    {
+      "step": "11",
+      "title": "离轨策略",
+      "chapterIds": [
+        "ch11"
+      ],
+      "prereq": "ch09、ch10",
+      "checkpoint": "写出重要性采样比率并说明致命三要素",
+      "goal": "掌握数据复用与风险"
+    },
+    {
+      "step": "12",
+      "title": "资格迹",
+      "chapterIds": [
+        "ch12"
+      ],
+      "prereq": "ch07、ch09",
+      "checkpoint": "说明 λ 回报与 TD(λ) 两端的关系",
+      "goal": "掌握信用分配"
+    },
+    {
+      "step": "13",
+      "title": "策略梯度",
+      "chapterIds": [
+        "ch13"
+      ],
+      "prereq": "ch09、微积分",
+      "checkpoint": "推出 REINFORCE 并解释基线为何不引入偏差",
+      "goal": "掌握直接优化策略"
+    },
+    {
+      "step": "14",
+      "title": "心理学与神经科学",
+      "chapterIds": [
+        "ch14",
+        "ch15"
+      ],
+      "prereq": "ch06",
+      "checkpoint": "说清多巴胺与 TD 误差的对应",
+      "goal": "建立跨学科直觉"
+    },
+    {
+      "step": "15",
+      "title": "应用与前沿",
+      "chapterIds": [
+        "ch16",
+        "ch17"
+      ],
+      "prereq": "ch13",
+      "checkpoint": "判断一个场景是否适合 RL",
+      "goal": "把方法落到真实问题"
+    }
+  ],
+  "chapters": [
+    {
+      "id": "ch01",
+      "title": "第 1 章：导论",
+      "file": "chapters/ch01.md",
+      "difficulty": 1
+    },
+    {
+      "id": "ch02",
+      "title": "第 2 章：多臂赌博机",
+      "file": "chapters/ch02.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch03",
+      "title": "第 3 章：有限马尔可夫决策过程",
+      "file": "chapters/ch03.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch04",
+      "title": "第 4 章：动态规划",
+      "file": "chapters/ch04.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch05",
+      "title": "第 5 章：蒙特卡洛方法",
+      "file": "chapters/ch05.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch06",
+      "title": "第 6 章：时序差分学习",
+      "file": "chapters/ch06.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch07",
+      "title": "第 7 章：n 步自举法",
+      "file": "chapters/ch07.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch08",
+      "title": "第 8 章：基于表格型方法的规划和学习",
+      "file": "chapters/ch08.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch09",
+      "title": "第 9 章：基于函数逼近的同轨策略预测",
+      "file": "chapters/ch09.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch10",
+      "title": "第 10 章：基于函数逼近的同轨策略控制",
+      "file": "chapters/ch10.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch11",
+      "title": "第 11 章：基于函数逼近的离轨策略方法",
+      "file": "chapters/ch11.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch12",
+      "title": "第 12 章：资格迹",
+      "file": "chapters/ch12.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch13",
+      "title": "第 13 章：策略梯度方法",
+      "file": "chapters/ch13.md",
+      "difficulty": 3
+    },
+    {
+      "id": "ch14",
+      "title": "第 14 章：心理学",
+      "file": "chapters/ch14.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch15",
+      "title": "第 15 章：神经科学",
+      "file": "chapters/ch15.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch16",
+      "title": "第 16 章：应用及案例分析",
+      "file": "chapters/ch16.md",
+      "difficulty": 2
+    },
+    {
+      "id": "ch17",
+      "title": "第 17 章：前沿技术",
+      "file": "chapters/ch17.md",
+      "difficulty": 3
+    }
+  ],
+  "concepts": [
+    {
+      "id": "c01",
+      "title": "自举与采样",
+      "file": "concepts/c01.md",
+      "chapterIds": [
+        "ch06",
+        "ch09"
+      ]
+    },
+    {
+      "id": "c02",
+      "title": "探索与利用",
+      "file": "concepts/c02.md",
+      "chapterIds": [
+        "ch02",
+        "ch13"
+      ]
+    }
+  ],
+  "glossary": [
+    {
+      "term": "策略",
+      "def": "在每个状态下选择动作的规则或概率分布。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "价值函数",
+      "def": "从某状态或状态动作对出发的长期累积奖励期望。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "自举",
+      "def": "用当前的估计值去更新另一个估计值，而不等真实回报。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "强化学习",
+      "def": "在延迟奖励与自产数据下学习决策的范式。",
+      "chapterId": "ch01"
+    },
+    {
+      "term": "动作价值",
+      "def": "选择某个动作的期望即时奖励。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "ε-贪心",
+      "def": "以 ε 概率随机探索、否则贪心选择的策略。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "UCB",
+      "def": "按价值加不确定性奖励选择动作的探索算法。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "乐观初始值",
+      "def": "把价值初值设得偏高以驱动早期探索的技巧。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "关联搜索",
+      "def": "带状态、不同状态下最优动作不同的赌博机式任务。",
+      "chapterId": "ch02"
+    },
+    {
+      "term": "马尔可夫决策过程",
+      "def": "由状态、动作、转移概率、奖励构成的决策问题形式化。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "回报",
+      "def": "从某时刻起折扣累积的奖励总和。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "折扣因子",
+      "def": "控制未来奖励权重的系数 γ。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "贝尔曼方程",
+      "def": "把价值函数写成即时奖励与后继价值折扣和的关系式。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "最优价值函数",
+      "def": "在所有策略中能达到的最大状态价值。",
+      "chapterId": "ch03"
+    },
+    {
+      "term": "策略评估",
+      "def": "在给定策略下迭代计算其状态价值函数。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "策略迭代",
+      "def": "交替做策略评估与策略改进直到策略稳定。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "价值迭代",
+      "def": "把评估压缩为一步、直接迭代最优价值函数的算法。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "广义策略迭代",
+      "def": "评估与改进任意粒度交替的通用框架。",
+      "chapterId": "ch04"
+    },
+    {
+      "term": "蒙特卡洛方法",
+      "def": "用完整一幕的实际回报估计价值的无模型方法。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "首次访问",
+      "def": "每幕只在该状态首次出现时更新一次估计。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "重要性采样",
+      "def": "用比率修正不同分布下样本权重的方法。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "离轨策略",
+      "def": "评估或改进的策略与产生数据的策略不同。",
+      "chapterId": "ch05"
+    },
+    {
+      "term": "时序差分",
+      "def": "用一步奖励加下一状态估计更新价值的自举方法。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "TD 误差",
+      "def": "一步目标估计与当前估计之差。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "Sarsa",
+      "def": "用实际下一动作价值更新的同轨 TD 控制算法。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "Q-learning",
+      "def": "用下一状态最大动作价值更新的离轨 TD 控制算法。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "最大化偏差",
+      "def": "max 运算系统性高估带噪声价值的现象。",
+      "chapterId": "ch06"
+    },
+    {
+      "term": "n 步回报",
+      "def": "前 n 步用真实奖励、末端用估计收尾的回报。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "树回溯",
+      "def": "对分支按策略概率展开加权、避免重要性采样的 n 步方法。",
+      "chapterId": "ch07"
+    },
+    {
+      "term": "模型",
+      "def": "对环境转移与奖励分布的估计或采样器。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "规划",
+      "def": "用模型生成的模拟经验更新价值函数。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "Dyna",
+      "def": "结合直接强化学习、模型学习与规划的统一架构。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "优先级扫描",
+      "def": "按 TD 误差大小优先更新状态的规划方法。",
+      "chapterId": "ch08"
+    },
+    {
+      "term": "函数逼近",
+      "def": "用参数化函数近似价值函数以避免枚举所有状态。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "半梯度",
+      "def": "把自举目标当作常数、只对当前估计求导的更新方式。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "状态聚合",
+      "def": "把多个状态合并为一个单元共用同一价值。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "粗编码",
+      "def": "用多个重叠感受野表示状态以平滑泛化的编码方式。",
+      "chapterId": "ch09"
+    },
+    {
+      "term": "半梯度 Sarsa",
+      "def": "用函数逼近 q 并以半梯度方式更新的同轨控制算法。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "平均收益",
+      "def": "持续式任务中单位时间的期望奖励。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "差分价值",
+      "def": "相对平均收益定义的偏差累积价值。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "目标网络",
+      "def": "用滞后参数计算自举目标以稳定训练的机制。",
+      "chapterId": "ch10"
+    },
+    {
+      "term": "离轨策略",
+      "def": "用与目标策略不同的行为策略采集数据。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "重要性采样比率",
+      "def": "目标策略与行为策略动作概率的连乘比。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "致命三要素",
+      "def": "函数逼近、自举、离轨同时存在导致发散风险的组合。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "GTD",
+      "def": "带梯度修正项、对离轨学习有收敛保证的算法族。",
+      "chapterId": "ch11"
+    },
+    {
+      "term": "λ 回报",
+      "def": "所有权 n 步回报按 λ 几何加权的平均。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "资格迹",
+      "def": "记录最近访问状态、用于回溯分配信用的短期记忆。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "替换迹",
+      "def": "每次访问把迹置为该值而非累加的迹形式。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "TD(λ)",
+      "def": "用资格迹统一 TD 与 MC 的时序差分算法族。",
+      "chapterId": "ch12"
+    },
+    {
+      "term": "策略梯度",
+      "def": "直接对策略参数求梯度以最大化期望回报的方法。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "REINFORCE",
+      "def": "用整幕回报作为权重的蒙特卡洛策略梯度算法。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "基线",
+      "def": "与动作无关、用于降低策略梯度方差的状态函数。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "Actor-Critic",
+      "def": "策略网络与价值网络联合训练的结构。",
+      "chapterId": "ch13"
+    },
+    {
+      "term": "操作性条件反射",
+      "def": "行为与其后果之间形成联结的学习过程。",
+      "chapterId": "ch14"
+    },
+    {
+      "term": "次级强化物",
+      "def": "本身无强化作用、但因预测奖励而获得强化能力的刺激。",
+      "chapterId": "ch14"
+    },
+    {
+      "term": "奖励预测误差",
+      "def": "实际奖励与预测奖励之差，对应 TD 误差。",
+      "chapterId": "ch15"
+    },
+    {
+      "term": "模型-free 决策",
+      "def": "不依赖环境模型、凭经验直接反应的习惯性决策。",
+      "chapterId": "ch15"
+    },
+    {
+      "term": "TD-Gammon",
+      "def": "用 TD(λ) 与自我对弈训练价值网络的西洋双陆棋程序。",
+      "chapterId": "ch16"
+    },
+    {
+      "term": "蒙特卡洛树搜索",
+      "def": "用采样与价值估计在博弈树中分配访问次数的搜索算法。",
+      "chapterId": "ch16"
+    },
+    {
+      "term": "经验回放",
+      "def": "存储历史转移并随机采样以打破相关性的机制。",
+      "chapterId": "ch17"
+    },
+    {
+      "term": "内在奖励",
+      "def": "由好奇心或计数等构造的、用于驱动探索的附加奖励。",
+      "chapterId": "ch17"
+    },
+    {
+      "term": "元学习",
+      "def": "学习如何学习，使模型能快速适应新任务。",
+      "chapterId": "ch17"
+    }
+  ],
+  "patterns": {
+    "file": "patterns.md"
+  },
+  "cheatsheet": {
+    "file": "cheatsheet.md"
+  },
+  "quizzes": [
+    {
+      "id": "q01",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "强化学习与监督学习最本质的差别？",
+      "explain": "奖励延迟、数据自产、必须探索。",
+      "options": [
+        "用了神经网络",
+        "数据更多",
+        "无即时标签且数据分布随策略变化",
+        "需要 GPU"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q02",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "四要素中直接决定行为的是？",
+      "explain": "π(a|s) 就是行为规则。",
+      "options": [
+        "策略",
+        "奖励",
+        "价值函数",
+        "模型"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q03",
+      "chapterId": "ch01",
+      "type": "single",
+      "question": "自举的含义？",
+      "explain": "用 V(s') 更新 V(s) 即自举。",
+      "options": [
+        "用奖励更新",
+        "用自己的估计更新自己的估计",
+        "用对手策略更新",
+        "用随机数更新"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q04",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "增量式均值第 n 步的步长？",
+      "explain": "Q_{n+1}=Q_n+(1/n)(R_n-Q_n)。",
+      "options": [
+        "α 固定",
+        "1/n",
+        "n",
+        "1"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q05",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "UCB 探索项何时变大？",
+      "explain": "√(ln t/N) 随 N 减小而增大。",
+      "options": [
+        "该臂尝试次数少",
+        "该臂价值高",
+        "总步数少",
+        "c 取负"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q06",
+      "chapterId": "ch02",
+      "type": "single",
+      "question": "乐观初始值为什么能驱动探索？",
+      "explain": "每个臂首次尝试都会低于初值，算法转向未试的臂。",
+      "options": [
+        "随机扰动",
+        "衰减学习率",
+        "高初值导致失望后转向其他臂",
+        "梯度上升"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q07",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "折扣因子 γ 的作用不包括？",
+      "explain": "γ 不打折奖励尺度，只做折扣与收敛保证。",
+      "options": [
+        "保证无穷和收敛",
+        "控制短视程度",
+        "放大即时奖励",
+        "使持续式任务有定义"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q08",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "贝尔曼最优方程的 max 取在哪一维？",
+      "explain": "策略在动作上选择，故 max 在动作上。",
+      "options": [
+        "动作",
+        "状态",
+        "时间",
+        "奖励"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q09",
+      "chapterId": "ch03",
+      "type": "single",
+      "question": "v_π 与 q_π 的关系？",
+      "explain": "v_π(s)=Σ_a π(a|s)q_π(s,a)。",
+      "options": [
+        "q 是 v 的期望",
+        "v 是 q 按策略加权平均",
+        "两者相等",
+        "无法关联"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q10",
+      "chapterId": "ch03",
+      "type": "blank",
+      "question": "两状态互相转移得奖励 1、γ=0.9 时，v(A) 约为____（保留两位小数）。",
+      "explain": "x=0.9(1+0.9x) 解得 x≈4.7368。",
+      "options": [],
+      "answer": "4.74"
+    },
+    {
+      "id": "q11",
+      "chapterId": "ch04",
+      "type": "single",
+      "question": "策略评估收敛的理论依据？",
+      "explain": "贝尔曼更新是 γ-压缩映射。",
+      "options": [
+        "凸性",
+        "压缩映射不动点定理",
+        "大数定律",
+        "中心极限定理"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q12",
+      "chapterId": "ch04",
+      "type": "single",
+      "question": "价值迭代与策略迭代的核心差别？",
+      "explain": "价值迭代评估一步就改进。",
+      "options": [
+        "是否需要模型",
+        "是否用 max",
+        "评估做几步",
+        "是否需要探索"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q13",
+      "chapterId": "ch04",
+      "type": "single",
+      "question": "策略改进定理保证什么？",
+      "explain": "贪婪策略在每个状态一步收益不低于原策略。",
+      "options": [
+        "新策略不差于旧策略",
+        "新策略一定最优",
+        "收敛速度",
+        "探索充分"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q14",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "MC 与 DP 的核心差别？",
+      "explain": "MC 用实际回报估计，不需要模型。",
+      "options": [
+        "是否用神经网络",
+        "用真实回报代替期望",
+        "是否有偏",
+        "是否用 max"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q15",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "普通重要性采样的主要风险？",
+      "explain": "比率连乘可爆炸，导致方差无界。",
+      "options": [
+        "有偏",
+        "需要模型",
+        "方差可能极大",
+        "无法收敛"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q16",
+      "chapterId": "ch05",
+      "type": "single",
+      "question": "MC 控制为何必须保持探索？",
+      "explain": "纯贪婪策略下未访问的 (s,a) 永远得不到更新。",
+      "options": [
+        "否则部分动作永不探索",
+        "否则方差太大",
+        "否则需要模型",
+        "否则无法分幕"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q17",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "TD 误差的定义？",
+      "explain": "δ=R+γV(S')-V(S)。",
+      "options": [
+        "目标估计减当前估计",
+        "奖励减学习率",
+        "价值减动作价值",
+        "折扣减奖励"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q18",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "Sarsa 学的是哪种策略的价值？",
+      "explain": "用实际选择的下一动作价值，属同轨。",
+      "options": [
+        "最优策略",
+        "当前策略",
+        "平均收益",
+        "模型"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q19",
+      "chapterId": "ch06",
+      "type": "single",
+      "question": "最大化偏差的来源？",
+      "explain": "max 运算系统性偏向高估。",
+      "options": [
+        "学习率太大",
+        "折扣太小",
+        "max 选中被噪声高估的动作",
+        "探索不足"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q20",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "n=1 的 n 步回报等价于？",
+      "explain": "R+γV(S') 即 TD(0)。",
+      "options": [
+        "TD(0)",
+        "MC",
+        "动态规划",
+        "树回溯"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q21",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "n 增大时偏差与方差如何变化？",
+      "explain": "更依赖真实奖励，偏差下降但采样波动更大。",
+      "options": [
+        "都减",
+        "都增",
+        "偏差减方差增",
+        "不变"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q22",
+      "chapterId": "ch07",
+      "type": "single",
+      "question": "树回溯不需要重要性采样的原因？",
+      "explain": "按策略概率展开所有分支，避免采样偏差。",
+      "options": [
+        "不需要模型",
+        "中间动作全部展开加权",
+        "只用 TD",
+        "只用于同轨"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q23",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "规划的数据来源？",
+      "explain": "规划用模型生成的模拟经验。",
+      "options": [
+        "真实交互",
+        "模型模拟",
+        "人工标注",
+        "随机噪声"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q24",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "Dyna 的核心优势？",
+      "explain": "每步真实经验后做多次模拟更新。",
+      "options": [
+        "不需要模型",
+        "不需要探索",
+        "样本效率更高",
+        "一定收敛更快"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q25",
+      "chapterId": "ch08",
+      "type": "single",
+      "question": "分支因子很大时更划算的更新方式？",
+      "explain": "采样只算一个分支，期望要算全部。",
+      "options": [
+        "采样更新",
+        "期望更新",
+        "两者等价",
+        "都不划算"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q26",
+      "chapterId": "ch09",
+      "type": "single",
+      "question": "半梯度 TD 中“半”的含义？",
+      "explain": "把 v(S';w) 当常数，未对其求导。",
+      "options": [
+        "学习率减半",
+        "目标项不求导",
+        "只用一半样本",
+        "只用正向"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q27",
+      "chapterId": "ch09",
+      "type": "single",
+      "question": "线性半梯度 TD 的收敛保证？",
+      "explain": "线性情形有严格收敛证明。",
+      "options": [
+        "收敛到 TD 不动点",
+        "一定全局最优",
+        "一定发散",
+        "无任何保证"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q28",
+      "chapterId": "ch09",
+      "type": "single",
+      "question": "函数逼近引入的新问题？",
+      "explain": "参数共享使更新互相影响。",
+      "options": [
+        "需要模型",
+        "无法探索",
+        "状态间相互干扰",
+        "无法计算"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q29",
+      "chapterId": "ch10",
+      "type": "single",
+      "question": "控制任务中函数逼近的对象通常是？",
+      "explain": "无模型时必须估动作价值才能选动作。",
+      "options": [
+        "v(s)",
+        "q(s,a)",
+        "模型 p",
+        "奖励函数"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q30",
+      "chapterId": "ch10",
+      "type": "single",
+      "question": "平均收益形式下价值定义为？",
+      "explain": "差分价值把无穷和变成有限偏差。",
+      "options": [
+        "总奖励",
+        "折扣总奖励",
+        "相对平均收益的偏差累积",
+        "最大奖励"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q31",
+      "chapterId": "ch10",
+      "type": "single",
+      "question": "目标网络稳定训练的原理？",
+      "explain": "滞后目标切断自举正反馈。",
+      "options": [
+        "用滞后参数算目标",
+        "加快学习率",
+        "增加探索",
+        "减少状态"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q32",
+      "chapterId": "ch11",
+      "type": "single",
+      "question": "离轨学习的核心问题？",
+      "explain": "行为策略与目标策略不同，分布不匹配。",
+      "options": [
+        "计算太慢",
+        "数据分布与目标策略不匹配",
+        "需要模型",
+        "无法探索"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q33",
+      "chapterId": "ch11",
+      "type": "single",
+      "question": "重要性采样比率方差随长度如何变化？",
+      "explain": "连乘使比率指数级波动。",
+      "options": [
+        "减小",
+        "不变",
+        "迅速增大",
+        "先增后减"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q34",
+      "chapterId": "ch11",
+      "type": "single",
+      "question": "致命三要素是？",
+      "explain": "三者同时出现时更新算子可能不稳定。",
+      "options": [
+        "逼近、自举、离轨",
+        "探索、奖励、策略",
+        "学习率、折扣、批大小",
+        "状态、动作、奖励"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q35",
+      "chapterId": "ch12",
+      "type": "single",
+      "question": "λ=0 的 λ 回报等价于？",
+      "explain": "只剩一步回报，即 TD(0)。",
+      "options": [
+        "TD(0)",
+        "MC",
+        "动态规划",
+        "树回溯"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q36",
+      "chapterId": "ch12",
+      "type": "single",
+      "question": "资格迹的作用？",
+      "explain": "迹累积最近访问，按迹分账。",
+      "options": [
+        "加速探索",
+        "记录信用并反向分配",
+        "减少状态数",
+        "替代模型"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q37",
+      "chapterId": "ch12",
+      "type": "single",
+      "question": "替换迹相对累积迹的优势？",
+      "explain": "每次访问置位而非累加。",
+      "options": [
+        "计算更快",
+        "内存更小",
+        "避免重复访问过度更新",
+        "不需要 λ"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q38",
+      "chapterId": "ch13",
+      "type": "single",
+      "question": "策略梯度定理不需要模型的关键？",
+      "explain": "定理中状态分布对参数的导数项恰好消掉。",
+      "options": [
+        "用了神经网络",
+        "状态分布导数项被消去",
+        "用了采样",
+        "用了基线"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q39",
+      "chapterId": "ch13",
+      "type": "single",
+      "question": "减去基线后期望与方差如何变化？",
+      "explain": "E[b∇logπ]=0。",
+      "options": [
+        "期望不变方差降低",
+        "期望变大",
+        "期望变小",
+        "方差变大"
+      ],
+      "answer": 0
+    },
+    {
+      "id": "q40",
+      "chapterId": "ch13",
+      "type": "single",
+      "question": "Actor-Critic 中 critic 的作用？",
+      "explain": "critic 降低 actor 更新的方差。",
+      "options": [
+        "选动作",
+        "探索",
+        "提供价值与优势估计",
+        "存储经验"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q41",
+      "chapterId": "ch14",
+      "type": "single",
+      "question": "强化学习最接近哪类条件反射？",
+      "explain": "行为与后果的联结。",
+      "options": [
+        "经典条件反射",
+        "操作性条件反射",
+        "观察学习",
+        "顿悟"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q42",
+      "chapterId": "ch15",
+      "type": "single",
+      "question": "多巴胺信号最接近哪个量？",
+      "explain": "未预期奖励上升、预期落空下降，正是 TD 误差模式。",
+      "options": [
+        "累积奖励",
+        "TD 误差",
+        "学习率",
+        "折扣因子"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q43",
+      "chapterId": "ch16",
+      "type": "single",
+      "question": "TD-Gammon 用 TD(λ) 而非 MC 的主因？",
+      "explain": "回报稀疏延迟，TD 可逐步更新。",
+      "options": [
+        "TD 更准",
+        "样本效率更高",
+        "MC 不能用于棋类",
+        "TD 不需要探索"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q44",
+      "chapterId": "ch16",
+      "type": "single",
+      "question": "AlphaGo 价值网络的作用？",
+      "explain": "价值网络替代深搜到底。",
+      "options": [
+        "生成棋谱",
+        "缩小搜索宽度",
+        "评估局面减少搜索深度",
+        "存储经验"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "q45",
+      "chapterId": "ch17",
+      "type": "single",
+      "question": "经验回放的主要作用？",
+      "explain": "随机采样历史转移，降低相关性。",
+      "options": [
+        "增加探索",
+        "打破样本时间相关性",
+        "减少内存",
+        "替代目标网络"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "q46",
+      "chapterId": "ch17",
+      "type": "single",
+      "question": "稀疏奖励下最直接的困难？",
+      "explain": "随机探索几乎碰不到奖励。",
+      "options": [
+        "计算太慢",
+        "内存不够",
+        "探索效率极低",
+        "无法并行"
+      ],
+      "answer": 2
+    }
+  ],
+  "flashcards": [
+    {
+      "id": "f01",
+      "chapterId": "ch01",
+      "front": "强化学习的三个关键特征？",
+      "back": "延迟奖励、数据由策略产生、必须探索。",
+      "tags": [
+        "intro"
+      ]
+    },
+    {
+      "id": "f02",
+      "chapterId": "ch01",
+      "front": "四个要素？",
+      "back": "策略、奖励、价值函数、模型。",
+      "tags": [
+        "intro"
+      ]
+    },
+    {
+      "id": "f03",
+      "chapterId": "ch01",
+      "front": "奖励黑客是什么？",
+      "back": "奖励设计不当导致智能体学出荒诞但高奖励的行为。",
+      "tags": [
+        "intro"
+      ]
+    },
+    {
+      "id": "f04",
+      "chapterId": "ch02",
+      "front": "增量式均值更新式？",
+      "back": "Q←Q+(1/n)(R-Q)。",
+      "tags": [
+        "bandit"
+      ]
+    },
+    {
+      "id": "f05",
+      "chapterId": "ch02",
+      "front": "ε-贪心的两种动作？",
+      "back": "1-ε 选最优，ε 随机。",
+      "tags": [
+        "bandit"
+      ]
+    },
+    {
+      "id": "f06",
+      "chapterId": "ch02",
+      "front": "UCB 选择公式？",
+      "back": "argmax Q(a)+c√(ln t/N(a))。",
+      "tags": [
+        "bandit"
+      ]
+    },
+    {
+      "id": "f07",
+      "chapterId": "ch02",
+      "front": "乐观初始值的原理？",
+      "back": "初值偏高，尝试后失望，驱动探索其他臂。",
+      "tags": [
+        "bandit"
+      ]
+    },
+    {
+      "id": "f08",
+      "chapterId": "ch02",
+      "front": "关联搜索与赌博机的差别？",
+      "back": "关联搜索有状态，不同状态最优动作不同。",
+      "tags": [
+        "bandit"
+      ]
+    },
+    {
+      "id": "f09",
+      "chapterId": "ch03",
+      "front": "回报的定义？",
+      "back": "G_t=R_{t+1}+γR_{t+2}+γ²R_{t+3}+…",
+      "tags": [
+        "mdp"
+      ]
+    },
+    {
+      "id": "f10",
+      "chapterId": "ch03",
+      "front": "贝尔曼期望方程？",
+      "back": "v_π(s)=Σπ(a|s)Σp(s',r|s,a)[r+γv_π(s')]。",
+      "tags": [
+        "mdp"
+      ]
+    },
+    {
+      "id": "f11",
+      "chapterId": "ch03",
+      "front": "贝尔曼最优方程？",
+      "back": "v_*(s)=max_aΣp[r+γv_*(s')]。",
+      "tags": [
+        "mdp"
+      ]
+    },
+    {
+      "id": "f12",
+      "chapterId": "ch03",
+      "front": "为什么最优方程无闭式解？",
+      "back": "含 max 运算，非线性，只能迭代。",
+      "tags": [
+        "mdp"
+      ]
+    },
+    {
+      "id": "f13",
+      "chapterId": "ch03",
+      "front": "episodic 与 continuing 的差别？",
+      "back": "前者有终止状态、回报有限；后者需折扣保证收敛。",
+      "tags": [
+        "mdp"
+      ]
+    },
+    {
+      "id": "f14",
+      "chapterId": "ch04",
+      "front": "策略评估迭代式？",
+      "back": "V(s)←Σπ(a|s)Σp[r+γV(s')]。",
+      "tags": [
+        "dp"
+      ]
+    },
+    {
+      "id": "f15",
+      "chapterId": "ch04",
+      "front": "策略改进的做法？",
+      "back": "每个状态取 argmax_a Σp[r+γV(s')]。",
+      "tags": [
+        "dp"
+      ]
+    },
+    {
+      "id": "f16",
+      "chapterId": "ch04",
+      "front": "价值迭代更新式？",
+      "back": "V(s)←max_aΣp[r+γV(s')]。",
+      "tags": [
+        "dp"
+      ]
+    },
+    {
+      "id": "f17",
+      "chapterId": "ch04",
+      "front": "DP 的两个前提？",
+      "back": "完整模型已知、状态空间可枚举。",
+      "tags": [
+        "dp"
+      ]
+    },
+    {
+      "id": "f18",
+      "chapterId": "ch05",
+      "front": "MC 与 DP 的偏差方差对比？",
+      "back": "MC 无偏高方差，DP 有偏低方差。",
+      "tags": [
+        "mc"
+      ]
+    },
+    {
+      "id": "f19",
+      "chapterId": "ch05",
+      "front": "首次访问与每次访问 MC 的差别？",
+      "back": "每幕只更新首次出现 vs 每次出现都更新。",
+      "tags": [
+        "mc"
+      ]
+    },
+    {
+      "id": "f20",
+      "chapterId": "ch05",
+      "front": "重要性采样比率公式？",
+      "back": "ρ=Π π(a_t|s_t)/b(a_t|s_t)。",
+      "tags": [
+        "is"
+      ]
+    },
+    {
+      "id": "f21",
+      "chapterId": "ch05",
+      "front": "加权重要性采样的优点？",
+      "back": "有偏但方差小，实践中更稳。",
+      "tags": [
+        "is"
+      ]
+    },
+    {
+      "id": "f22",
+      "chapterId": "ch06",
+      "front": "TD(0) 更新式？",
+      "back": "V(S)←V(S)+α[R+γV(S')-V(S)]。",
+      "tags": [
+        "td"
+      ]
+    },
+    {
+      "id": "f23",
+      "chapterId": "ch06",
+      "front": "Sarsa 更新式？",
+      "back": "Q(S,A)←Q(S,A)+α[R+γQ(S',A')-Q(S,A)]。",
+      "tags": [
+        "td"
+      ]
+    },
+    {
+      "id": "f24",
+      "chapterId": "ch06",
+      "front": "Q-learning 更新式？",
+      "back": "Q(S,A)←Q(S,A)+α[R+γmax Q(S',a)-Q(S,A)]。",
+      "tags": [
+        "td"
+      ]
+    },
+    {
+      "id": "f25",
+      "chapterId": "ch06",
+      "front": "双学习怎么消偏差？",
+      "back": "两套 Q 表，一套选动作另一套评估。",
+      "tags": [
+        "td"
+      ]
+    },
+    {
+      "id": "f26",
+      "chapterId": "ch06",
+      "front": "悬崖行走例子说明什么？",
+      "back": "Sarsa 考虑探索风险更保守，Q-learning 贴边最优。",
+      "tags": [
+        "td"
+      ]
+    },
+    {
+      "id": "f27",
+      "chapterId": "ch07",
+      "front": "n 步回报公式？",
+      "back": "G=R1+γR2+…+γ^{n-1}Rn+γ^nV(Sn)。",
+      "tags": [
+        "nstep"
+      ]
+    },
+    {
+      "id": "f28",
+      "chapterId": "ch07",
+      "front": "n 步在偏差方差上怎么调？",
+      "back": "n 小偏差大方差小，n 大方差大偏差小。",
+      "tags": [
+        "nstep"
+      ]
+    },
+    {
+      "id": "f29",
+      "chapterId": "ch07",
+      "front": "树回溯的核心做法？",
+      "back": "对中间层所有动作按策略概率加权求和，不采样。",
+      "tags": [
+        "treebackup"
+      ]
+    },
+    {
+      "id": "f30",
+      "chapterId": "ch08",
+      "front": "学习与规划的根本差别？",
+      "back": "数据来源不同：真实经验 vs 模型模拟，更新规则相同。",
+      "tags": [
+        "planning"
+      ]
+    },
+    {
+      "id": "f31",
+      "chapterId": "ch08",
+      "front": "Dyna-Q 的流程？",
+      "back": "真实一步→直接更新→存模型→做 n 次模拟更新。",
+      "tags": [
+        "dyna"
+      ]
+    },
+    {
+      "id": "f32",
+      "chapterId": "ch08",
+      "front": "优先级扫描的优先级怎么定？",
+      "back": "按 TD 误差绝对值排序。",
+      "tags": [
+        "prioritized"
+      ]
+    },
+    {
+      "id": "f33",
+      "chapterId": "ch08",
+      "front": "期望更新与采样更新的取舍？",
+      "back": "期望精确但贵，采样便宜但方差大。",
+      "tags": [
+        "planning"
+      ]
+    },
+    {
+      "id": "f34",
+      "chapterId": "ch09",
+      "front": "半梯度 TD 更新式？",
+      "back": "w←w+α[R+γv(S';w)-v(S;w)]∇v(S;w)。",
+      "tags": [
+        "fa"
+      ]
+    },
+    {
+      "id": "f35",
+      "chapterId": "ch09",
+      "front": "半梯度为什么不保证收敛？",
+      "back": "目标项未求导，不是真梯度。",
+      "tags": [
+        "fa"
+      ]
+    },
+    {
+      "id": "f36",
+      "chapterId": "ch09",
+      "front": "Tile coding 的思路？",
+      "back": "多套错位网格的指示特征叠加，计算快且可控泛化。",
+      "tags": [
+        "fa"
+      ]
+    },
+    {
+      "id": "f37",
+      "chapterId": "ch09",
+      "front": "致命三要素指什么？",
+      "back": "函数逼近、自举、离轨同时出现易发散。",
+      "tags": [
+        "fa"
+      ]
+    },
+    {
+      "id": "f38",
+      "chapterId": "ch10",
+      "front": "半梯度 Sarsa 更新式？",
+      "back": "w←w+α[R+γq(S',A';w)-q(S,A;w)]∇q(S,A;w)。",
+      "tags": [
+        "control"
+      ]
+    },
+    {
+      "id": "f39",
+      "chapterId": "ch10",
+      "front": "为什么控制任务要估 q？",
+      "back": "没有模型时 v 无法推出动作优劣。",
+      "tags": [
+        "control"
+      ]
+    },
+    {
+      "id": "f40",
+      "chapterId": "ch10",
+      "front": "平均收益形式的价值定义？",
+      "back": "v(s)=E[Σ(R-r(π))]，相对平均收益的偏差。",
+      "tags": [
+        "average"
+      ]
+    },
+    {
+      "id": "f41",
+      "chapterId": "ch10",
+      "front": "Baird 反例说明什么？",
+      "back": "同轨 + 函数逼近 + 自举也会发散。",
+      "tags": [
+        "divergence"
+      ]
+    },
+    {
+      "id": "f42",
+      "chapterId": "ch11",
+      "front": "重要性采样比率公式？",
+      "back": "ρ=Π π(A_k|S_k)/b(A_k|S_k)。",
+      "tags": [
+        "offpolicy"
+      ]
+    },
+    {
+      "id": "f43",
+      "chapterId": "ch11",
+      "front": "普通与加权 IS 的取舍？",
+      "back": "普通无偏但方差无界，加权有偏但方差小。",
+      "tags": [
+        "offpolicy"
+      ]
+    },
+    {
+      "id": "f44",
+      "chapterId": "ch11",
+      "front": "致命三要素？",
+      "back": "函数逼近、自举、离轨。",
+      "tags": [
+        "offpolicy"
+      ]
+    },
+    {
+      "id": "f45",
+      "chapterId": "ch11",
+      "front": "GTD 靠什么保证收敛？",
+      "back": "加入梯度修正项使更新对齐真梯度。",
+      "tags": [
+        "gtd"
+      ]
+    },
+    {
+      "id": "f46",
+      "chapterId": "ch12",
+      "front": "λ 回报的定义？",
+      "back": "G^λ=(1-λ)Σλ^{n-1}G_{t:t+n}。",
+      "tags": [
+        "trace"
+      ]
+    },
+    {
+      "id": "f47",
+      "chapterId": "ch12",
+      "front": "前向与后向视角的关系？",
+      "back": "线性情形下数学等价，非线性下不等价。",
+      "tags": [
+        "trace"
+      ]
+    },
+    {
+      "id": "f48",
+      "chapterId": "ch12",
+      "front": "累积迹与替换迹的差别？",
+      "back": "前者累加，后者置位。",
+      "tags": [
+        "trace"
+      ]
+    },
+    {
+      "id": "f49",
+      "chapterId": "ch12",
+      "front": "TD(λ) 两个端点分别是什么？",
+      "back": "λ=0 是 TD(0)，λ=1 是 MC。",
+      "tags": [
+        "trace"
+      ]
+    },
+    {
+      "id": "f50",
+      "chapterId": "ch13",
+      "front": "策略梯度定理的表达式？",
+      "back": "∇J=E[Σ∇logπ(A|S,θ)q(S,A)]。",
+      "tags": [
+        "pg"
+      ]
+    },
+    {
+      "id": "f51",
+      "chapterId": "ch13",
+      "front": "REINFORCE 的更新式？",
+      "back": "θ←θ+αΣG_t∇logπ(A_t|S_t,θ)。",
+      "tags": [
+        "pg"
+      ]
+    },
+    {
+      "id": "f52",
+      "chapterId": "ch13",
+      "front": "基线为什么不引入偏差？",
+      "back": "E[b(s)∇logπ]=0。",
+      "tags": [
+        "pg"
+      ]
+    },
+    {
+      "id": "f53",
+      "chapterId": "ch13",
+      "front": "连续动作策略怎么参数化？",
+      "back": "输出高斯均值与标准差，动作从中采样。",
+      "tags": [
+        "pg"
+      ]
+    },
+    {
+      "id": "f54",
+      "chapterId": "ch13",
+      "front": "Actor-Critic 的分工？",
+      "back": "actor 选动作，critic 估价值提供优势。",
+      "tags": [
+        "actorcritic"
+      ]
+    },
+    {
+      "id": "f55",
+      "chapterId": "ch14",
+      "front": "经典与操作性条件反射的差别？",
+      "back": "前者是刺激—刺激联结，后者是行为—结果联结。",
+      "tags": [
+        "psychology"
+      ]
+    },
+    {
+      "id": "f56",
+      "chapterId": "ch14",
+      "front": "次级强化物与价值函数的关系？",
+      "back": "次级强化物预测未来奖励，等价于价值估计。",
+      "tags": [
+        "psychology"
+      ]
+    },
+    {
+      "id": "f57",
+      "chapterId": "ch15",
+      "front": "多巴胺峰值为什么会前移？",
+      "back": "价值从奖励时刻转移到预测刺激，对应 TD 学习收敛。",
+      "tags": [
+        "neuro"
+      ]
+    },
+    {
+      "id": "f58",
+      "chapterId": "ch15",
+      "front": "大脑与人工 RL 的主要差异？",
+      "back": "大脑同时运行模型-free 与模型-based 两套决策。",
+      "tags": [
+        "neuro"
+      ]
+    },
+    {
+      "id": "f59",
+      "chapterId": "ch16",
+      "front": "AlphaGo 的三个组件？",
+      "back": "策略网络、价值网络、蒙特卡洛树搜索。",
+      "tags": [
+        "application"
+      ]
+    },
+    {
+      "id": "f60",
+      "chapterId": "ch16",
+      "front": "策略网络与价值网络各解决什么问题？",
+      "back": "前者缩搜索宽度，后者缩深度。",
+      "tags": [
+        "application"
+      ]
+    },
+    {
+      "id": "f61",
+      "chapterId": "ch16",
+      "front": "什么场景不适合用 RL？",
+      "back": "一次性决策、标签充足、错误代价高且不可模拟。",
+      "tags": [
+        "application"
+      ]
+    },
+    {
+      "id": "f62",
+      "chapterId": "ch17",
+      "front": "深度 RL 的三个瓶颈？",
+      "back": "样本效率、稳定性、探索。",
+      "tags": [
+        "frontier"
+      ]
+    },
+    {
+      "id": "f63",
+      "chapterId": "ch17",
+      "front": "DQN 的两个稳定化支柱？",
+      "back": "经验回放与目标网络。",
+      "tags": [
+        "frontier"
+      ]
+    },
+    {
+      "id": "f64",
+      "chapterId": "ch17",
+      "front": "稀疏奖励的四种对策？",
+      "back": "内在奖励、课程学习、示范数据、分层 RL。",
+      "tags": [
+        "frontier"
+      ]
+    }
+  ],
+  "companion": "rl-sutton学习伴侣.html"
+}

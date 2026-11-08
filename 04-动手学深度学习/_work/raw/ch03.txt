@@ -1,0 +1,2560 @@
+3
+深度学习基础
+从本章开始，我们将探索深度学习的奥秘。作为机器学习的⼀类，深度学习通常基于神经⽹络模
+型逐级表⽰越来越抽象的概念或模式。我们先从线性回归和softmax 回归这两种单层神经⽹络⼊
+⼿，简要介绍机器学习中的基本概念。然后，我们由单层神经⽹络延伸到多层神经⽹络，并通过
+多层感知机引⼊深度学习模型。在观察和了解了模型的过拟合现象后，我们将介绍深度学习中应
+对过拟合的常⽤⽅法：权重衰减和丢弃法。接着，为了进⼀步理解深度学习模型训练的本质，我
+们将详细解释正向传播和反向传播。掌握这两个概念后，我们能更好地认识深度学习中的数值稳
+定性和初始化的⼀些问题。最后，我们通过⼀个深度学习应⽤案例对本章内容学以致⽤。
+在本章的前⼏节，我们先介绍单层神经⽹络：线性回归和softmax回归。
+3.1 线性回归
+线性回归输出是⼀个连续值，因此适⽤于回归问题。回归问题在实际中很常⻅，如预测房屋价
+格、⽓温、销售额等连续值的问题。与回归问题不同，分类问题中模型的最终输出是⼀个离散值。
+我们所说的图像分类、垃圾邮件识别、疾病检测等输出为离散值的问题都属于分类问题的范畴。
+softmax回归则适⽤于分类问题。
+45
+
+由于线性回归和softmax回归都是单层神经⽹络，它们涉及的概念和技术同样适⽤于⼤多数的深
+度学习模型。我们⾸先以线性回归为例，介绍⼤多数深度学习模型的基本要素和表⽰⽅法。
+3.1.1 线性回归的基本要素
+我们以⼀个简单的房屋价格预测作为例⼦来解释线性回归的基本要素。这个应⽤的⽬标是预测⼀
+栋房⼦的售出价格（元）。我们知道这个价格取决于很多因素，如房屋状况、地段、市场⾏情等。
+为了简单起⻅，这⾥我们假设价格只取决于房屋状况的两个因素，即⾯积（平⽅⽶）和房龄（年）。
+接下来我们希望探索价格与这两个因素的具体关系。
+模型
+设房屋的⾯积为x1，房龄为x2，售出价格为y。我们需要建⽴基于输⼊x1和x2来计算输出y的表达
+式，也就是模型（model）。顾名思义，线性回归假设输出与各个输⼊之间是线性关系：
+ˆy = x1w1 + x2w2 + b,
+其中w1和w2是权重（weight），b是偏差（bias），且均为标量。它们是线性回归模型的参数（pa-
+rameter）。模型输出ˆy是线性回归对真实价格y的预测或估计。我们通常允许它们之间有⼀定误
+差。
+模型训练
+接下来我们需要通过数据来寻找特定的模型参数值，使模型在数据上的误差尽可能小。这个过程
+叫作模型训练（model training）。下⾯我们介绍模型训练所涉及的3个要素。
+训练数据
+我们通常收集⼀系列的真实数据，例如多栋房屋的真实售出价格和它们对应的⾯积和房龄。我们
+希望在这个数据上⾯寻找模型参数来使模型的预测价格与真实价格的误差最小。在机器学习术
+语⾥，该数据集被称为训练数据集（training data set）或训练集（training set），⼀栋房屋被称
+为⼀个样本（sample），其真实售出价格叫作标签（label），⽤来预测标签的两个因素叫作特征
+（feature）。特征⽤来表征样本的特点。
+46
+3. 深度学习基础
+
+假设我们采集的样本数为n，索引为i的样本的特征为x(i)
+1 和x(i)
+2 ，标签为y(i)。对于索引为i的房屋，
+线性回归模型的房屋价格预测表达式为
+ˆy(i) = x(i)
+1 w1 + x(i)
+2 w2 + b.
+损失函数
+在模型训练中，我们需要衡量价格预测值与真实值之间的误差。通常我们会选取⼀个⾮负数作为
+误差，且数值越小表⽰误差越小。⼀个常⽤的选择是平⽅函数。它在评估索引为i的样本误差的表
+达式为
+ℓ(i)(w1, w2, b) = 1
+2
+(
+ˆy(i) −y(i))2
+,
+其中常数1/2使对平⽅项求导后的常数系数为1，这样在形式上稍微简单⼀些。显然，误差越小表
+⽰预测价格与真实价格越相近，且当⼆者相等时误差为0。给定训练数据集，这个误差只与模型
+参数相关，因此我们将它记为以模型参数为参数的函数。在机器学习⾥，将衡量误差的函数称为
+损失函数（loss function）。这⾥使⽤的平⽅误差函数也称为平⽅损失（square loss）。
+通常，我们⽤训练数据集中所有样本误差的平均来衡量模型预测的质量，即
+ℓ(w1, w2, b) = 1
+n
+n
+∑
+i=1
+ℓ(i)(w1, w2, b) = 1
+n
+n
+∑
+i=1
+1
+2
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))2
+.
+在模型训练中，我们希望找出⼀组模型参数，记为w∗
+1, w∗
+2, b∗，来使训练样本平均损失最小：
+w∗
+1, w∗
+2, b∗= argmin
+w1,w2,b
+ℓ(w1, w2, b).
+优化算法
+当模型和损失函数形式较为简单时，上⾯的误差最小化问题的解可以直接⽤公式表达出来。这类
+解叫作解析解（analytical solution）。本节使⽤的线性回归和平⽅误差刚好属于这个范畴。然而，
+⼤多数深度学习模型并没有解析解，只能通过优化算法有限次迭代模型参数来尽可能降低损失函
+数的值。这类解叫作数值解（numerical solution）。
+在求数值解的优化算法中，小批量随机梯度下降（mini-batch stochastic gradient descent）在深
+度学习中被⼴泛使⽤。它的算法很简单：先选取⼀组模型参数的初始值，如随机选取；接下来对
+参数进⾏多次迭代，使每次迭代都可能降低损失函数的值。在每次迭代中，先随机均匀采样⼀个
+3.1. 线性回归
+47
+
+由固定数⽬训练数据样本所组成的小批量（mini-batch）B，然后求小批量中数据样本的平均损
+失有关模型参数的导数（梯度），最后⽤此结果与预先设定的⼀个正数的乘积作为模型参数在本
+次迭代的减小量。
+在训练本节讨论的线性回归模型的过程中，模型的每个参数将作如下迭代：
+w1 ←w1 −η
+|B|
+∑
+i∈B
+∂ℓ(i)(w1, w2, b)
+∂w1
+= w1 −η
+|B|
+∑
+i∈B
+x(i)
+1
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+,
+w2 ←w2 −η
+|B|
+∑
+i∈B
+∂ℓ(i)(w1, w2, b)
+∂w2
+= w2 −η
+|B|
+∑
+i∈B
+x(i)
+2
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+,
+b ←b −η
+|B|
+∑
+i∈B
+∂ℓ(i)(w1, w2, b)
+∂b
+= b −η
+|B|
+∑
+i∈B
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+.
+在上式中，|B|代表每个小批量中的样本个数（批量⼤小，batch size），η称作学习率（learning
+rate）并取正数。需要强调的是，这⾥的批量⼤小和学习率的值是⼈为设定的，并不是通过模型
+训练学出的，因此叫作超参数（hyperparameter）。我们通常所说的“调参”指的正是调节超参
+数，例如通过反复试错来找到超参数合适的值。在少数情况下，超参数也可以通过模型训练学出。
+本书对此类情况不做讨论。
+模型预测
+模型训练完成后，我们将模型参数w1, w2, b在优化算法停⽌时的值分别记作ˆw1, ˆw2,ˆb。注意，这⾥
+我们得到的并不⼀定是最小化损失函数的最优解w∗
+1, w∗
+2, b∗，而是对最优解的⼀个近似。然后，我
+们就可以使⽤学出的线性回归模型x1 ˆw1 + x2 ˆw2 + ˆb来估算训练数据集以外任意⼀栋⾯积（平⽅
+⽶）为x1、房龄（年）为x2的房屋的价格了。这⾥的估算也叫作模型预测、模型推断或模型测试。
+3.1.2 线性回归的表⽰⽅法
+我们已经阐述了线性回归的模型表达式、训练和预测。下⾯我们解释线性回归与神经⽹络的联系，
+以及线性回归的⽮量计算表达式。
+神经⽹络图
+在深度学习中，我们可以使⽤神经⽹络图直观地表现模型结构。为了更清晰地展⽰线性回归作为
+神经⽹络的结构，图3.1使⽤神经⽹络图表⽰本节中介绍的线性回归模型。神经⽹络图隐去了模
+型参数权重和偏差。
+48
+3. 深度学习基础
+
+图3.1: 线性回归是⼀个单层神经⽹络
+在图3.1所⽰的神经⽹络中，输⼊分别为x1和x2，因此输⼊层的输⼊个数为2。输⼊个数也叫特征
+数或特征向量维度。图3.1中⽹络的输出为o，输出层的输出个数为1。需要注意的是，我们直接将
+图3.1中神经⽹络的输出o作为线性回归的输出，即ˆy = o。由于输⼊层并不涉及计算，按照惯例，
+图3.1所⽰的神经⽹络的层数为1。所以，线性回归是⼀个单层神经⽹络。输出层中负责计算o的
+单元⼜叫神经元。在线性回归中，o的计算依赖于x1和x2。也就是说，输出层中的神经元和输⼊
+层中各个输⼊完全连接。因此，这⾥的输出层⼜叫全连接层（fully-connected layer）或稠密层
+（dense layer）。
+⽮量计算表达式
+在模型训练或预测时，我们常常会同时处理多个数据样本并⽤到⽮量计算。在介绍线性回归的⽮
+量计算表达式之前，让我们先考虑对两个向量相加的两种⽅法。
+下⾯先定义两个1000维的向量。
+In [1]: from mxnet import nd
+from time import time
+a = nd.ones(shape=1000)
+b = nd.ones(shape=1000)
+向量相加的⼀种⽅法是，将这两个向量按元素逐⼀做标量加法。
+In [2]: start = time()
+c = nd.zeros(shape=1000)
+for i in range(1000):
+c[i] = a[i] + b[i]
+time() - start
+Out[2]: 0.15223002433776855
+向量相加的另⼀种⽅法是，将这两个向量直接做⽮量加法。
+3.1. 线性回归
+49
+
+In [3]: start = time()
+d = a + b
+time() - start
+Out[3]: 0.00029015541076660156
+结果很明显，后者⽐前者更省时。因此，我们应该尽可能采⽤⽮量计算，以提升计算效率。
+让我们再次回到本节的房价预测问题。如果我们对训练数据集⾥的3个房屋样本（索引分别为1、
+2和3）逐⼀预测价格，将得到
+ˆy(1) = x(1)
+1 w1 + x(1)
+2 w2 + b,
+ˆy(2) = x(2)
+1 w1 + x(2)
+2 w2 + b,
+ˆy(3) = x(3)
+1 w1 + x(3)
+2 w2 + b.
+现在，我们将上⾯3个等式转化成⽮量计算。设
+ˆy =
+
+
+ˆy(1)
+ˆy(2)
+ˆy(3)
+
+,
+X =
+
+
+x(1)
+1
+x(1)
+2
+x(2)
+1
+x(2)
+2
+x(3)
+1
+x(3)
+2
+
+,
+w =
+[
+w1
+w2
+]
+.
+对3个房屋样本预测价格的⽮量计算表达式为ˆy = Xw + b, 其中的加法运算使⽤了⼴播机制（参
+⻅“数据操作”⼀节）。例如：
+In [4]: a = nd.ones(shape=3)
+b = 10
+a + b
+Out[4]:
+[11. 11. 11.]
+<NDArray 3 @cpu(0)>
+⼴义上讲，当数据样本数为n，特征数为d时，线性回归的⽮量计算表达式为
+ˆy = Xw + b,
+其中模型输出ˆy ∈Rn×1，批量数据样本特征X ∈Rn×d，权重w ∈Rd×1，偏差b ∈R。相应地，批
+量数据样本标签y ∈Rn×1。设模型参数θ = [w1, w2, b]⊤，我们可以重写损失函数为
+ℓ(θ) = 1
+2n(ˆy −y)⊤(ˆy −y).
+小批量随机梯度下降的迭代步骤将相应地改写为
+θ ←θ −η
+|B|
+∑
+i∈B
+∇θℓ(i)(θ),
+50
+3. 深度学习基础
+
+其中梯度是损失有关3个为标量的模型参数的偏导数组成的向量：
+∇θℓ(i)(θ) =
+
+
+∂ℓ(i)(w1,w2,b)
+∂w1
+∂ℓ(i)(w1,w2,b)
+∂w2
+∂ℓ(i)(w1,w2,b)
+∂b
+
+=
+
+
+x(i)
+1 (x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+x(i)
+2 (x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i)
+
+=
+
+
+x(i)
+1
+x(i)
+2
+1
+
+(ˆy(i) −y(i)).
+⼩结
+• 和⼤多数深度学习模型⼀样，对于线性回归这样⼀种单层神经⽹络，它的基本要素包括模
+型、训练数据、损失函数和优化算法。
+• 既可以⽤神经⽹络图表⽰线性回归，⼜可以⽤⽮量计算表⽰该模型。
+• 应该尽可能采⽤⽮量计算，以提升计算效率。
+练习
+• 使⽤其他包（如NumPy）或其他编程语⾔（如MATLAB），⽐较相加两个向量的两种⽅法的
+运⾏时间。
+扫码直达讨论区
+3.2 线性回归的从零开始实现
+在了解了线性回归的背景知识之后，现在我们可以动⼿实现它了。尽管强⼤的深度学习框架可以
+减少⼤量重复性⼯作，但若过于依赖它提供的便利，会导致我们很难深⼊理解深度学习是如何⼯
+作的。因此，本节将介绍如何只利⽤NDArray和autograd来实现⼀个线性回归的训练。
+⾸先，导⼊本节中实验所需的包或模块，其中的matplotlib包可⽤于作图，且设置成嵌⼊显⽰。
+3.2. 线性回归的从零开始实现
+51
+
+In [1]: %matplotlib inline
+from IPython import display
+from matplotlib import pyplot as plt
+from mxnet import autograd, nd
+import random
+3.2.1 ⽣成数据集
+我们构造⼀个简单的⼈⼯训练数据集，它可以使我们能够直观⽐较学到的参数和真实的模型参
+数的区别。设训练数据集样本数为1000，输⼊个数（特征数）为2。给定随机⽣成的批量样本特
+征X ∈R1000×2，我们使⽤线性回归模型真实权重w = [2, −3.4]⊤和偏差b = 4.2，以及⼀个随机噪
+声项ϵ来⽣成标签
+y = Xw + b + ϵ,
+其中噪声项ϵ服从均值为0、标准差为0.01的正态分布。噪声代表了数据集中⽆意义的⼲扰。下⾯，
+让我们⽣成数据集。
+In [2]: num_inputs = 2
+num_examples = 1000
+true_w = [2, -3.4]
+true_b = 4.2
+features = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
+labels = true_w[0] * features[:, 0] + true_w[1] * features[:, 1] + true_b
+labels += nd.random.normal(scale=0.01, shape=labels.shape)
+注意，features的每⼀⾏是⼀个⻓度为2的向量，而labels的每⼀⾏是⼀个⻓度为1的向量（标
+量）。
+In [3]: features[0], labels[0]
+Out[3]: (
+[2.2122064 0.7740038]
+<NDArray 2 @cpu(0)>,
+[6.000587]
+<NDArray 1 @cpu(0)>)
+通过⽣成第⼆个特征features[:, 1]和标签labels 的散点图，可以更直观地观察两者间的
+线性关系。
+In [4]: def use_svg_display():
+# ⽤⽮量图显⽰
+display.set_matplotlib_formats('svg')
+52
+3. 深度学习基础
+
+def set_figsize(figsize=(3.5, 2.5)):
+use_svg_display()
+# 设置图的尺⼨
+plt.rcParams['figure.figsize'] = figsize
+set_figsize()
+plt.scatter(features[:, 1].asnumpy(), labels.asnumpy(), 1);
+# 加分号只显⽰图
+我们将上⾯的plt作图函数以及use_svg_display函数和set_figsize函数定义在d2lzh包
+⾥。以后在作图时，我们将直接调⽤d2lzh.plt。由于plt在d2lzh包中是⼀个全局变量，我们
+在作图前只需要调⽤d2lzh.set_figsize()即可打印⽮量图并设置图的尺⼨。
+3.2.2 读取数据
+在训练模型的时候，我们需要遍历数据集并不断读取小批量数据样本。这⾥我们定义⼀个函数：
+它每次返回batch_size（批量⼤小）个随机样本的特征和标签。
+In [5]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def data_iter(batch_size, features, labels):
+num_examples = len(features)
+indices = list(range(num_examples))
+random.shuffle(indices)
+# 样本的读取顺序是随机的
+for i in range(0, num_examples, batch_size):
+j = nd.array(indices[i: min(i + batch_size, num_examples)])
+yield features.take(j), labels.take(j)
+# take函数根据索引返回对应元素
+3.2. 线性回归的从零开始实现
+53
+
+让我们读取第⼀个小批量数据样本并打印。每个批量的特征形状为(10, 2)，分别对应批量⼤小和
+输⼊个数；标签形状为批量⼤小。
+In [6]: batch_size = 10
+for X, y in data_iter(batch_size, features, labels):
+print(X, y)
+break
+[[ 0.1037775
+-0.09160773]
+[-0.8720539
+0.6916261 ]
+[ 2.0719576
+0.29137844]
+[ 0.98115885
+0.51506495]
+[-1.0267551
+0.82085365]
+[-2.5899131
+-0.3166397 ]
+[-0.22001728 -1.617725
+]
+[ 0.3088816
+0.74587804]
+[-0.68202806
+0.3181509 ]
+[-0.1461925
+-0.3182019 ]]
+<NDArray 10x2 @cpu(0)>
+[ 4.728806
+0.09408624
+7.352827
+4.40581
+-0.65667355
+0.10322509
+9.249024
+2.2689395
+1.7428185
+4.9912653 ]
+<NDArray 10 @cpu(0)>
+3.2.3 初始化模型参数
+我们将权重初始化成均值为0、标准差为0.01的正态随机数，偏差则初始化成0。
+In [7]: w = nd.random.normal(scale=0.01, shape=(num_inputs, 1))
+b = nd.zeros(shape=(1,))
+之后的模型训练中，需要对这些参数求梯度来迭代参数的值，因此我们需要创建它们的梯度。
+In [8]: w.attach_grad()
+b.attach_grad()
+3.2.4 定义模型
+下⾯是线性回归的⽮量计算表达式的实现。我们使⽤dot函数做矩阵乘法。
+In [9]: def linreg(X, w, b):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+return nd.dot(X, w) + b
+54
+3. 深度学习基础
+
+3.2.5 定义损失函数
+我们使⽤上⼀节描述的平⽅损失来定义线性回归的损失函数。在实现中，我们需要把真实值y变
+形成预测值y_hat的形状。以下函数返回的结果也将和y_hat的形状相同。
+In [10]: def squared_loss(y_hat, y):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+return (y_hat - y.reshape(y_hat.shape)) ** 2 / 2
+3.2.6 定义优化算法
+以下的sgd函数实现了上⼀节中介绍的小批量随机梯度下降算法。它通过不断迭代模型参数来优
+化损失函数。这⾥⾃动求梯度模块计算得来的梯度是⼀个批量样本的梯度和。我们将它除以批量
+⼤小来得到平均值。
+In [11]: def sgd(params, lr, batch_size):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+for param in params:
+param[:] = param - lr * param.grad / batch_size
+3.2.7 训练模型
+在训练中，我们将多次迭代模型参数。在每次迭代中，我们根据当前读取的小批量数据样本（特
+征X和标签y），通过调⽤反向函数backward计算小批量随机梯度，并调⽤优化算法sgd迭代模型
+参数。由于我们之前设批量⼤小batch_size为10，每个小批量的损失l的形状为(10, 1)。回忆⼀
+下“⾃动求梯度”⼀节。由于变量l并不是⼀个标量，运⾏l.backward()将对l中元素求和得到
+新的变量，再求该变量有关模型参数的梯度。
+在⼀个迭代周期（epoch）中，我们将完整遍历⼀遍data_iter函数，并对训练数据集中所有
+样本都使⽤⼀次（假设样本数能够被批量⼤小整除）。这⾥的迭代周期个数num_epochs和学习
+率lr都是超参数，分别设3和0.03。在实践中，⼤多超参数都需要通过反复试错来不断调节。虽然
+迭代周期数设得越⼤模型可能越有效，但是训练时间可能过⻓。而有关学习率对模型的影响，我
+们会在后⾯“优化算法”⼀章中详细介绍。
+In [12]: lr = 0.03
+num_epochs = 3
+net = linreg
+loss = squared_loss
+for epoch in range(num_epochs):
+# 训练模型⼀共需要num_epochs个迭代周期
+# 在每⼀个迭代周期中，会使⽤训练数据集中所有样本⼀次（假设样本数能够被批量⼤⼩整除）。X
+3.2. 线性回归的从零开始实现
+55
+
+# 和y分别是⼩批量样本的特征和标签
+for X, y in data_iter(batch_size, features, labels):
+with autograd.record():
+l = loss(net(X, w, b), y)
+# l是有关⼩批量X和y的损失
+l.backward()
+# ⼩批量的损失对模型参数求梯度
+sgd([w, b], lr, batch_size)
+# 使⽤⼩批量随机梯度下降迭代模型参数
+train_l = loss(net(features, w, b), labels)
+print('epoch %d, loss %f' % (epoch + 1, train_l.mean().asnumpy()))
+epoch 1, loss 0.040656
+epoch 2, loss 0.000162
+epoch 3, loss 0.000050
+训练完成后，我们可以⽐较学到的参数和⽤来⽣成训练集的真实参数。它们应该很接近。
+In [13]: true_w, w
+Out[13]: ([2, -3.4],
+[[ 1.9995768]
+[-3.3997586]]
+<NDArray 2x1 @cpu(0)>)
+In [14]: true_b, b
+Out[14]: (4.2,
+[4.199486]
+<NDArray 1 @cpu(0)>)
+⼩结
+• 可以看出，仅使⽤NDArray和autograd模块就可以很容易地实现⼀个模型。接下来，本
+书会在此基础上描述更多深度学习模型，并介绍怎样使⽤更简洁的代码（⻅下⼀节）来实
+现它们。
+练习
+• 为什么squared_loss函数中需要使⽤reshape函数？
+• 尝试使⽤不同的学习率，观察损失函数值的下降快慢。
+• 如果样本个数不能被批量⼤小整除，data_iter函数的⾏为会有什么变化？
+56
+3. 深度学习基础
+
+扫码直达讨论区
+3.3 线性回归的简洁实现
+随着深度学习框架的发展，开发深度学习应⽤变得越来越便利。实践中，我们通常可以⽤⽐上⼀
+节更简洁的代码来实现同样的模型。在本节中，我们将介绍如何使⽤MXNet提供的Gluon接口更
+⽅便地实现线性回归的训练。
+3.3.1 ⽣成数据集
+我们⽣成与上⼀节中相同的数据集。其中features是训练数据特征，labels是标签。
+In [1]: from mxnet import autograd, nd
+num_inputs = 2
+num_examples = 1000
+true_w = [2, -3.4]
+true_b = 4.2
+features = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
+labels = true_w[0] * features[:, 0] + true_w[1] * features[:, 1] + true_b
+labels += nd.random.normal(scale=0.01, shape=labels.shape)
+3.3.2 读取数据
+Gluon提供了data包来读取数据。由于data常⽤作变量名，我们将导⼊的data模块⽤添加
+了Gluon⾸字⺟的假名gdata代替。在每⼀次迭代中，我们将随机读取包含10个数据样本的小
+批量。
+In [2]: from mxnet.gluon import data as gdata
+batch_size = 10
+# 将训练数据的特征和标签组合
+3.3. 线性回归的简洁实现
+57
+
+dataset = gdata.ArrayDataset(features, labels)
+# 随机读取⼩批量
+data_iter = gdata.DataLoader(dataset, batch_size, shuffle=True)
+这⾥data_iter的使⽤跟上⼀节中的⼀样。让我们读取并打印第⼀个小批量数据样本。
+In [3]: for X, y in data_iter:
+print(X, y)
+break
+[[ 0.80084276
+1.6435156 ]
+[-0.64220035
+0.77557075]
+[-0.5541078
+-0.02885367]
+[-2.338083
+-0.32677847]
+[-1.3031056
+0.64198005]
+[ 0.31445166 -0.3114319 ]
+[ 0.43465078
+0.02699922]
+[ 1.1807663
+1.4896834 ]
+[ 2.0085082
+-1.3542701 ]
+[-0.52480155
+0.3005414 ]]
+<NDArray 10x2 @cpu(0)>
+[ 0.1861284
+0.2710672
+3.1786947
+0.6198239
+-0.57668865
+5.881366
+4.966181
+1.5095915
+12.808897
+2.1383817 ]
+<NDArray 10 @cpu(0)>
+3.3.3 定义模型
+在上⼀节从零开始的实现中，我们需要定义模型参数，并使⽤它们⼀步步描述模型是怎样计算的。
+当模型结构变得更复杂时，这些步骤将变得更繁琐。其实，Gluon提供了⼤量预定义的层，这使
+我们只需关注使⽤哪些层来构造模型。下⾯将介绍如何使⽤Gluon更简洁地定义线性回归。
+⾸先，导⼊nn模块。实际上，“nn”是neural networks（神经⽹络）的缩写。顾名思义，该模块定
+义了⼤量神经⽹络的层。我们先定义⼀个模型变量net，它是⼀个Sequential实例。在Gluon中，
+Sequential实例可以看作是⼀个串联各个层的容器。在构造模型时，我们在该容器中依次添加
+层。当给定输⼊数据时，容器中的每⼀层将依次计算并将输出作为下⼀层的输⼊。
+In [4]: from mxnet.gluon import nn
+net = nn.Sequential()
+回顾图3.1中线性回归在神经⽹络图中的表⽰。作为⼀个单层神经⽹络，线性回归输出层中的神
+经元和输⼊层中各个输⼊完全连接。因此，线性回归的输出层⼜叫全连接层。在Gluon中，全连
+58
+3. 深度学习基础
+
+接层是⼀个Dense实例。我们定义该层输出个数为1。
+In [5]: net.add(nn.Dense(1))
+值得⼀提的是，在Gluon中我们⽆须指定每⼀层输⼊的形状，例如线性回归的输⼊个数。当模型
+得到数据时，例如后⾯执⾏net(X)时，模型将⾃动推断出每⼀层的输⼊个数。我们将在之后“深
+度学习计算”⼀章详细介绍这种机制。Gluon的这⼀设计为模型开发带来便利。
+3.3.4 初始化模型参数
+在使⽤net前，我们需要初始化模型参数，如线性回归模型中的权重和偏差。我们从MXNet导
+⼊init模块。该模块提供了模型参数初始化的各种⽅法。这⾥的init是initializer的缩写
+形式。我们通过init.Normal(sigma=0.01)指定权重参数每个元素将在初始化时随机采样于
+均值为0、标准差为0.01的正态分布。偏差参数默认会初始化为零。
+In [6]: from mxnet import init
+net.initialize(init.Normal(sigma=0.01))
+3.3.5 定义损失函数
+在Gluon中，loss模块定义了各种损失函数。我们⽤假名gloss代替导⼊的loss模块，并直接
+使⽤它提供的平⽅损失作为模型的损失函数。
+In [7]: from mxnet.gluon import loss as gloss
+loss = gloss.L2Loss()
+# 平⽅损失⼜称L2范数损失
+3.3.6 定义优化算法
+同样，我们也⽆须实现小批量随机梯度下降。在导⼊Gluon后，我们创建⼀个Trainer实例，并
+指定学习率为0.03的小批量随机梯度下降（sgd）为优化算法。该优化算法将⽤来迭代net实例所
+有通过add函数嵌套的层所包含的全部参数。这些参数可以通过collect_params函数获取。
+In [8]: from mxnet import gluon
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.03})
+3.3. 线性回归的简洁实现
+59
+
+3.3.7 训练模型
+在使⽤Gluon训练模型时，我们通过调⽤Trainer实例的step函数来迭代模型参数。上⼀节中我
+们提到，由于变量l是⻓度为batch_size的⼀维NDArray，执⾏l.backward()等价于执⾏l.
+sum().backward()。按照小批量随机梯度下降的定义，我们在step函数中指明批量⼤小，从
+而对批量中样本梯度求平均。
+In [9]: num_epochs = 3
+for epoch in range(1, num_epochs + 1):
+for X, y in data_iter:
+with autograd.record():
+l = loss(net(X), y)
+l.backward()
+trainer.step(batch_size)
+l = loss(net(features), labels)
+print('epoch %d, loss: %f' % (epoch, l.mean().asnumpy()))
+epoch 1, loss: 0.040774
+epoch 2, loss: 0.000153
+epoch 3, loss: 0.000051
+下⾯我们分别⽐较学到的模型参数和真实的模型参数。我们从net获得需要的层，并访问其权重
+（weight）和偏差（bias）。学到的参数和真实的参数很接近。
+In [10]: dense = net[0]
+true_w, dense.weight.data()
+Out[10]: ([2, -3.4],
+[[ 1.9993649 -3.399639 ]]
+<NDArray 1x2 @cpu(0)>)
+In [11]: true_b, dense.bias.data()
+Out[11]: (4.2,
+[4.199203]
+<NDArray 1 @cpu(0)>)
+⼩结
+• 使⽤Gluon可以更简洁地实现模型。
+• 在Gluon中，data模块提供了有关数据处理的⼯具，nn模块定义了⼤量神经⽹络的层，
+loss模块定义了各种损失函数。
+60
+3. 深度学习基础
+
+• MXNet的initializer模块提供了模型参数初始化的各种⽅法。
+练习
+• 如果将l = loss(net(X), y)替换成l = loss(net(X), y).mean()，我们需要
+将trainer.step(batch_size)相应地改成trainer.step(1)。这是为什么呢？
+• 查阅MXNet⽂档，看看gluon.loss和init模块⾥提供了哪些损失函数和初始化⽅法。
+• 如何访问dense.weight的梯度？
+扫码直达讨论区
+3.4 softmax回归
+前⼏节介绍的线性回归模型适⽤于输出为连续值的情景。在另⼀类情景中，模型输出可以是⼀个
+像图像类别这样的离散值。对于这样的离散值预测问题，我们可以使⽤诸如softmax回归在内的
+分类模型。和线性回归不同，softmax回归的输出单元从⼀个变成了多个，且引⼊了softmax运算
+使输出更适合离散值的预测和训练。本节以softmax回归模型为例，介绍神经⽹络中的分类模型。
+3.4.1 分类问题
+让我们考虑⼀个简单的图像分类问题，其输⼊图像的⾼和宽均为2像素，且⾊彩为灰度。这样每
+个像素值都可以⽤⼀个标量表⽰。我们将图像中的4像素分别记为x1, x2, x3, x4。假设训练数据集
+中图像的真实标签为狗、猫或鸡（假设可以⽤4像素表⽰出这3种动物），这些标签分别对应离散
+值y1, y2, y3。
+我们通常使⽤离散的数值来表⽰类别，例如y1 = 1, y2 = 2, y3 = 3。如此，⼀张图像的标签为1、
+2和3这3个数值中的⼀个。虽然我们仍然可以使⽤回归模型来进⾏建模，并将预测值就近定点化
+3.4. softmax回归
+61
+
+到1、2和3这3个离散值之⼀，但这种连续值到离散值的转化通常会影响到分类质量。因此我们⼀
+般使⽤更加适合离散值输出的模型来解决分类问题。
+3.4.2 softmax回归模型
+softmax回归跟线性回归⼀样将输⼊特征与权重做线性叠加。与线性回归的⼀个主要不同在于，
+softmax回归的输出值个数等于标签⾥的类别数。因为⼀共有4种特征和3种输出动物类别，所以
+权重包含12个标量（带下标的w）、偏差包含3个标量（带下标的b），且对每个输⼊计算o1, o2, o3这3个
+输出：
+o1 = x1w11 + x2w21 + x3w31 + x4w41 + b1,
+o2 = x1w12 + x2w22 + x3w32 + x4w42 + b2,
+o3 = x1w13 + x2w23 + x3w33 + x4w43 + b3.
+图3.2⽤神经⽹络图描绘了上⾯的计算。softmax回归同线性回归⼀样，也是⼀个单层神经⽹络。
+由于每个输出o1, o2, o3的计算都要依赖于所有的输⼊x1, x2, x3, x4，softmax回归的输出层也是⼀
+个全连接层。
+图3.2: softmax回归是⼀个单层神经⽹络
+softmax运算
+既然分类问题需要得到离散的预测输出，⼀个简单的办法是将输出值oi当作预测类别是i的置信
+度，并将值最⼤的输出所对应的类作为预测输出，即输出argmaxi oi。例如，如果o1, o2, o3分别
+为0.1, 10, 0.1，由于o2最⼤，那么预测类别为2，其代表猫。
+然而，直接使⽤输出层的输出有两个问题。⼀⽅⾯，由于输出层的输出值的范围不确定，我们难
+以直观上判断这些值的意义。例如，刚才举的例⼦中的输出值10表⽰“很置信”图像类别为猫，
+因为该输出值是其他两类的输出值的100倍。但如果o1 = o3 = 103，那么输出值10却⼜表⽰图像
+62
+3. 深度学习基础
+
+类别为猫的概率很低。另⼀⽅⾯，由于真实标签是离散值，这些离散值与不确定范围的输出值之
+间的误差难以衡量。
+softmax运算符（softmax operator）解决了以上两个问题。它通过下式将输出值变换成值为正且
+和为1的概率分布：
+ˆy1, ˆy2, ˆy3 = softmax(o1, o2, o3),
+其中
+ˆy1 =
+exp(o1)
+∑3
+i=1 exp(oi)
+,
+ˆy2 =
+exp(o2)
+∑3
+i=1 exp(oi)
+,
+ˆy3 =
+exp(o3)
+∑3
+i=1 exp(oi)
+.
+容易看出ˆy1 + ˆy2 + ˆy3 = 1且0 ≤ˆy1, ˆy2, ˆy3 ≤1，因此ˆy1, ˆy2, ˆy3是⼀个合法的概率分布。这时候，如
+果ˆy2 = 0.8，不管ˆy1和ˆy3的值是多少，我们都知道图像类别为猫的概率是80%。此外，我们注意到
+argmax
+i
+oi = argmax
+i
+ˆyi,
+因此softmax运算不改变预测类别输出。
+3.4.3 单样本分类的⽮量计算表达式
+为了提⾼计算效率，我们可以将单样本分类通过⽮量计算来表达。在上⾯的图像分类问题中，假
+设softmax回归的权重和偏差参数分别为
+W =
+
+
+w11
+w12
+w13
+w21
+w22
+w23
+w31
+w32
+w33
+w41
+w42
+w43
+
+
+,
+b =
+[
+b1
+b2
+b3
+]
+,
+设⾼和宽分别为2个像素的图像样本i的特征为
+x(i) =
+[
+x(i)
+1
+x(i)
+2
+x(i)
+3
+x(i)
+4
+]
+,
+输出层的输出为
+o(i) =
+[
+o(i)
+1
+o(i)
+2
+o(i)
+3
+]
+,
+预测为狗、猫或鸡的概率分布为
+ˆy(i) =
+[
+ˆy(i)
+1
+ˆy(i)
+2
+ˆy(i)
+3
+]
+.
+3.4. softmax回归
+63
+
+softmax回归对样本i分类的⽮量计算表达式为
+o(i) = x(i)W + b,
+ˆy(i) = softmax(o(i)).
+3.4.4 ⼩批量样本分类的⽮量计算表达式
+为了进⼀步提升计算效率，我们通常对小批量数据做⽮量计算。⼴义上讲，给定⼀个小批量样本，
+其批量⼤小为n，输⼊个数（特征数）为d，输出个数（类别数）为q。设批量特征为X ∈Rn×d。
+假设softmax回归的权重和偏差参数分别为W ∈Rd×q和b ∈R1×q。softmax回归的⽮量计算表达
+式为
+O = XW + b,
+ˆY = softmax(O),
+其中的加法运算使⽤了⼴播机制，O, ˆY ∈Rn×q且这两个矩阵的第i⾏分别为样本i的输出o(i)和概
+率分布ˆy(i)。
+3.4.5 交叉熵损失函数
+前⾯提到，使⽤softmax运算后可以更⽅便地与离散标签计算误差。我们已经知道，softmax运算
+将输出变换成⼀个合法的类别预测分布。实际上，真实标签也可以⽤类别分布表达：对于样本i，
+我们构造向量y(i) ∈Rq ，使其第y(i)（样本i类别的离散数值）个元素为1，其余为0。这样我们的
+训练⽬标可以设为使预测概率分布ˆy(i)尽可能接近真实的标签概率分布y(i)。
+我们可以像线性回归那样使⽤平⽅损失函数∥ˆy(i) −y(i)∥2/2。然而，想要预测分类结果正确，我
+们其实并不需要预测概率完全等于标签概率。例如，在图像分类的例⼦⾥，如果y(i) = 3，那么
+我们只需要ˆy(i)
+3 ⽐其他两个预测值ˆy(i)
+1 和ˆy(i)
+2 ⼤就⾏了。即使ˆy(i)
+3 值为0.6，不管其他两个预测值为多
+少，类别预测均正确。而平⽅损失则过于严格，例如ˆy(i)
+1
+= ˆy(i)
+2
+= 0.2⽐ˆy(i)
+1
+= 0, ˆy(i)
+2
+= 0.4的损失
+要小很多，虽然两者都有同样正确的分类预测结果。
+改善上述问题的⼀个⽅法是使⽤更适合衡量两个概率分布差异的测量函数。其中，交叉熵（cross
+entropy）是⼀个常⽤的衡量⽅法：
+H
+(
+y(i), ˆy(i))
+= −
+q
+∑
+j=1
+y(i)
+j
+log ˆy(i)
+j ,
+64
+3. 深度学习基础
+
+其中带下标的y(i)
+j 是向量y(i)中⾮0即1的元素，需要注意将它与样本i类别的离散数值，即不
+带下标的y(i)区分。在上式中，我们知道向量y(i)中只有第y(i)个元素y(i)
+y(i)为1，其余全为0，于
+是H(y(i), ˆy(i)) = −log ˆy(i)
+y(i)。也就是说，交叉熵只关⼼对正确类别的预测概率，因为只要其值⾜
+够⼤，就可以确保分类结果正确。当然，遇到⼀个样本有多个标签时，例如图像⾥含有不⽌⼀个
+物体时，我们并不能做这⼀步简化。但即便对于这种情况，交叉熵同样只关⼼对图像中出现的物
+体类别的预测概率。
+假设训练数据集的样本数为n，交叉熵损失函数定义为
+ℓ(Θ) = 1
+n
+n
+∑
+i=1
+H
+(
+y(i), ˆy(i))
+,
+其中Θ代表模型参数。同样地，如果每个样本只有⼀个标签，那么交叉熵损失可以简写成ℓ(Θ) =
+−(1/n) ∑n
+i=1 log ˆy(i)
+y(i)。从另⼀个⻆度来看，我们知道最小化ℓ(Θ)等价于最⼤化exp(−nℓ(Θ)) =
+∏n
+i=1 ˆy(i)
+y(i)，即最小化交叉熵损失函数等价于最⼤化训练数据集所有标签类别的联合预测概率。
+3.4.6 模型预测及评价
+在训练好softmax回归模型后，给定任⼀样本特征，就可以预测每个输出类别的概率。通常，我
+们把预测概率最⼤的类别作为输出类别。如果它与真实类别（标签）⼀致，说明这次预测是正确
+的。在之后“softmax回归的从零开始实现”⼀节的实验中，我们将使⽤准确率（accuracy）来评
+价模型的表现。它等于正确预测数量与总预测数量之⽐。
+⼩结
+• softmax回归适⽤于分类问题。它使⽤softmax运算输出类别的概率分布。
+• softmax回归是⼀个单层神经⽹络，输出个数等于分类问题中的类别个数。
+• 交叉熵适合衡量两个概率分布的差异。
+练习
+• 查阅资料，了解最⼤似然估计。它与最小化交叉熵损失函数有哪些异曲同⼯之妙？
+3.4. softmax回归
+65
+
+扫码直达讨论区
+3.5 图像分类数据集（Fashion-MNIST）
+在介绍softmax回归的实现前我们先引⼊⼀个多类图像分类数据集。它将在后⾯的章节中被多次
+使⽤，以⽅便我们观察⽐较算法之间在模型精度和计算效率上的区别。图像分类数据集中最常⽤
+的是⼿写数字识别数据集MNIST [1]。但⼤部分模型在MNIST上的分类精度都超过了95%。为了
+更直观地观察算法之间的差异，我们将使⽤⼀个图像内容更加复杂的数据集Fashion-MNIST [2]。
+3.5.1 获取数据集
+⾸先导⼊本节需要的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet.gluon import data as gdata
+import sys
+import time
+下⾯，我们通过Gluon的data包来下载这个数据集。第⼀次调⽤时会⾃动从⽹上获取数据。我们
+通过参数train来指定获取训练数据集或测试数据集（testing data set）。测试数据集也叫测试集
+（testing set），只⽤来评价模型的表现，并不⽤来训练模型。
+In [2]: mnist_train = gdata.vision.FashionMNIST(train=True)
+mnist_test = gdata.vision.FashionMNIST(train=False)
+训练集中和测试集中的每个类别的图像数分别为6,000和1,000。因为有10个类别，所以训练集和
+测试集的样本数分别为60,000和10,000。
+In [3]: len(mnist_train), len(mnist_test)
+Out[3]: (60000, 10000)
+我们可以通过⽅括号[]来访问任意⼀个样本，下⾯获取第⼀个样本的图像和标签。
+66
+3. 深度学习基础
+
+In [4]: feature, label = mnist_train[0]
+变量feature对应⾼和宽均为28像素的图像。每个像素的数值为0到255之间8位⽆符号整数
+（uint8）。它使⽤三维的NDArray存储。其中的最后⼀维是通道数。因为数据集中是灰度图像，
+所以通道数为1。为了表述简洁，我们将⾼和宽分别为h和w像素的图像的形状记为h×w或（h，w）
+。
+In [5]: feature.shape, feature.dtype
+Out[5]: ((28, 28, 1), numpy.uint8)
+图像的标签使⽤NumPy的标量表⽰。它的类型为32位整数（int32）。
+In [6]: label, type(label), label.dtype
+Out[6]: (2, numpy.int32, dtype('int32'))
+Fashion-MNIST中⼀共包括了10个类别，分别为t-shirt（T恤）、trouser（裤⼦）、pullover（套衫）、
+dress（连⾐裙）、coat（外套）、sandal（凉鞋）、shirt（衬衫）、sneaker（运动鞋）、bag（包）和ankle
+boot（短靴）。以下函数可以将数值标签转成相应的⽂本标签。
+In [7]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def get_fashion_mnist_labels(labels):
+text_labels = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
+'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
+return [text_labels[int(i)] for i in labels]
+下⾯定义⼀个可以在⼀⾏⾥画出多张图像和对应标签的函数。
+In [8]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def show_fashion_mnist(images, labels):
+d2l.use_svg_display()
+# 这⾥的_表⽰我们忽略（不使⽤）的变量
+_, figs = d2l.plt.subplots(1, len(images), figsize=(12, 12))
+for f, img, lbl in zip(figs, images, labels):
+f.imshow(img.reshape((28, 28)).asnumpy())
+f.set_title(lbl)
+f.axes.get_xaxis().set_visible(False)
+f.axes.get_yaxis().set_visible(False)
+现在，我们看⼀下训练数据集中前9个样本的图像内容和⽂本标签。
+In [9]: X, y = mnist_train[0:9]
+show_fashion_mnist(X, get_fashion_mnist_labels(y))
+3.5. 图像分类数据集（Fashion-MNIST）
+67
+
+3.5.2 读取⼩批量
+我们将在训练数据集上训练模型，并将训练好的模型在测试数据集上评价模型的表现。虽然我们可
+以像“线性回归的从零开始实现”⼀节中那样通过yield来定义读取小批量数据样本的函数，但为
+了代码简洁，这⾥我们直接创建DataLoader实例。该实例每次读取⼀个样本数为batch_size的
+小批量数据。这⾥的批量⼤小batch_size是⼀个超参数。
+在实践中，数据读取经常是训练的性能瓶颈，特别当模型较简单或者计算硬件性能较⾼
+时。Gluon的DataLoader中⼀个很⽅便的功能是允许使⽤多进程来加速数据读取（暂不⽀
+持Windows操作系统）。这⾥我们通过参数num_workers来设置4个进程读取数据。
+此外，我们通过ToTensor实例将图像数据从uint8格式变换成32位浮点数格式，并除以255使得
+所有像素的数值均在0到1之间。ToTensor实例还将图像通道从最后⼀维移到最前⼀维来⽅便之
+后介绍的卷积神经⽹络计算。通过数据集的transform_first函数，我们将ToTensor的变换
+应⽤在每个数据样本（图像和标签）的第⼀个元素，即图像之上。
+In [10]: batch_size = 256
+transformer = gdata.vision.transforms.ToTensor()
+if sys.platform.startswith('win'):
+num_workers = 0
+# 0表⽰不⽤额外的进程来加速读取数据
+else:
+num_workers = 4
+train_iter = gdata.DataLoader(mnist_train.transform_first(transformer),
+batch_size, shuffle=True,
+num_workers=num_workers)
+test_iter = gdata.DataLoader(mnist_test.transform_first(transformer),
+batch_size, shuffle=False,
+num_workers=num_workers)
+我
+们
+将
+获
+取
+并
+读
+取Fashion-MNIST数
+据
+集
+的
+逻
+辑
+封
+装
+在d2lzh.
+load_data_fashion_mnist函
+数
+中
+供
+后
+⾯
+章
+节
+调
+⽤。
+该
+函
+数
+将
+返
+回train_iter和test_iter两个变量。随着本书内容的不断深⼊，我们会进⼀步改进该
+函数。它的完整实现将在“深度卷积神经⽹络（AlexNet）”⼀节中描述。
+68
+3. 深度学习基础
+
+最后我们查看读取⼀遍训练数据需要的时间。
+In [11]: start = time.time()
+for X, y in train_iter:
+continue
+'%.2f sec' % (time.time() - start)
+Out[11]: '1.19 sec'
+⼩结
+• Fashion-MNIST是⼀个10类服饰分类数据集，之后章节⾥将使⽤它来检验不同算法的表现。
+• 我们将⾼和宽分别为h和w像素的图像的形状记为h × w或（h，w）。
+练习
+• 减小batch_size（如到1）会影响读取性能吗？
+• ⾮Windows⽤⼾请尝试修改num_workers来查看它对读取性能的影响。
+• 查阅MXNet⽂档，mxnet.gluon.data.vision⾥还提供了哪些别的数据集？
+• 查阅MXNet⽂档，mxnet.gluon.data.vision.transforms还提供了哪些别的变换⽅
+法？
+参考⽂献
+[1] LeCun, Y., Cortes, C., & Burges, C. http://yann.lecun.com/exdb/mnist/
+[2] Xiao, H., Rasul, K., & Vollgraf, R. (2017). Fashion-mnist: a novel image dataset for bench-
+marking machine learning algorithms. arXiv preprint arXiv:1708.07747.
+扫码直达讨论区
+3.5. 图像分类数据集（Fashion-MNIST）
+69
+
+3.6 softmax回归的从零开始实现
+这⼀节我们来动⼿实现softmax回归。⾸先导⼊本节实现所需的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, nd
+3.6.1 获取和读取数据
+我们将使⽤Fashion-MNIST数据集，并设置批量⼤小为256。
+In [2]: batch_size = 256
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+3.6.2 初始化模型参数
+跟线性回归中的例⼦⼀样，我们将使⽤向量表⽰每个样本。已知每个样本输⼊是⾼和宽均为28像
+素的图像。模型的输⼊向量的⻓度是28 × 28 = 784：该向量的每个元素对应图像中每个像素。由
+于图像有10个类别，单层神经⽹络输出层的输出个数为10，因此softmax回归的权重和偏差参数
+分别为784 × 10和1 × 10的矩阵。
+In [3]: num_inputs = 784
+num_outputs = 10
+W = nd.random.normal(scale=0.01, shape=(num_inputs, num_outputs))
+b = nd.zeros(num_outputs)
+同之前⼀样，我们要为模型参数附上梯度。
+In [4]: W.attach_grad()
+b.attach_grad()
+3.6.3 实现softmax运算
+在介绍如何定义softmax回归之前，我们先描述⼀下对如何对多维NDArray按维度操作。在下⾯
+的例⼦中，给定⼀个NDArray矩阵X。我们可以只对其中同⼀列（axis=0）或同⼀⾏（axis=1）
+的元素求和，并在结果中保留⾏和列这两个维度（keepdims=True）。
+70
+3. 深度学习基础
+
+In [5]: X = nd.array([[1, 2, 3], [4, 5, 6]])
+X.sum(axis=0, keepdims=True), X.sum(axis=1, keepdims=True)
+Out[5]: (
+[[5. 7. 9.]]
+<NDArray 1x3 @cpu(0)>,
+[[ 6.]
+[15.]]
+<NDArray 2x1 @cpu(0)>)
+下⾯我们就可以定义前⾯小节⾥介绍的softmax运算了。在下⾯的函数中，矩阵X的⾏数是样本数，
+列数是输出个数。为了表达样本预测各个输出的概率，softmax运算会先通过exp函数对每个元素
+做指数运算，再对exp矩阵同⾏元素求和，最后令矩阵每⾏各元素与该⾏元素之和相除。这样⼀
+来，最终得到的矩阵每⾏元素和为1且⾮负。因此，该矩阵每⾏都是合法的概率分布。softmax运
+算的输出矩阵中的任意⼀⾏元素代表了⼀个样本在各个输出类别上的预测概率。
+In [6]: def softmax(X):
+X_exp = X.exp()
+partition = X_exp.sum(axis=1, keepdims=True)
+return X_exp / partition
+# 这⾥应⽤了⼴播机制
+可以看到，对于随机输⼊，我们将每个元素变成了⾮负数，且每⼀⾏和为1。
+In [7]: X = nd.random.normal(shape=(2, 5))
+X_prob = softmax(X)
+X_prob, X_prob.sum(axis=1)
+Out[7]: (
+[[0.21324193 0.33961776 0.1239742
+0.27106097 0.05210521]
+[0.11462264 0.3461234
+0.19401033 0.29583326 0.04941036]]
+<NDArray 2x5 @cpu(0)>,
+[1.0000001 1.
+]
+<NDArray 2 @cpu(0)>)
+3.6.4 定义模型
+有了softmax运算，我们可以定义上节描述的softmax回归模型了。这⾥通过reshape函数将每张
+原始图像改成⻓度为num_inputs的向量。
+In [8]: def net(X):
+return softmax(nd.dot(X.reshape((-1, num_inputs)), W) + b)
+3.6. softmax回归的从零开始实现
+71
+
+3.6.5 定义损失函数
+上⼀节中，我们介绍了softmax回归使⽤的交叉熵损失函数。为了得到标签的预测概率，我们可
+以使⽤pick函数。在下⾯的例⼦中，变量y_hat是2个样本在3个类别的预测概率，变量y是这2个
+样本的标签类别。通过使⽤pick函数，我们得到了2个样本的标签的预测概率。与“softmax回归”
+⼀节数学表述中标签类别离散值从1开始逐⼀递增不同，在代码中，标签类别的离散值是从0开始
+逐⼀递增的。
+In [9]: y_hat = nd.array([[0.1, 0.3, 0.6], [0.3, 0.2, 0.5]])
+y = nd.array([0, 2], dtype='int32')
+nd.pick(y_hat, y)
+Out[9]:
+[0.1 0.5]
+<NDArray 2 @cpu(0)>
+下⾯实现了“softmax回归”⼀节中介绍的交叉熵损失函数。
+In [10]: def cross_entropy(y_hat, y):
+return -nd.pick(y_hat, y).log()
+3.6.6 计算分类准确率
+给定⼀个类别的预测概率分布y_hat，我们把预测概率最⼤的类别作为输出类别。如果它与真实
+类别y⼀致，说明这次预测是正确的。分类准确率即正确预测数量与总预测数量之⽐。
+为了演⽰准确率的计算，下⾯定义准确率accuracy函数。其中y_hat.argmax(axis=1)返回
+矩阵y_hat每⾏中最⼤元素的索引，且返回结果与变量y形状相同。我们在“数据操作”⼀节介
+绍过，相等条件判断式(y_hat.argmax(axis=1) == y)是⼀个值为0（相等为假）或1（相等
+为真）的NDArray。由于标签类型为整数，我们先将变量y变换为浮点数再进⾏相等条件判断。
+In [11]: def accuracy(y_hat, y):
+return (y_hat.argmax(axis=1) == y.astype('float32')).mean().asscalar()
+让我们继续使⽤在演⽰pick函数时定义的变量y_hat和y，并将它们分别作为预测概率分布和标
+签。可以看到，第⼀个样本预测类别为2（该⾏最⼤元素0.6在本⾏的索引为2），与真实标签0不⼀
+致；第⼆个样本预测类别为2（该⾏最⼤元素0.5在本⾏的索引为2），与真实标签2⼀致。因此，这
+两个样本上的分类准确率为0.5。
+In [12]: accuracy(y_hat, y)
+Out[12]: 0.5
+72
+3. 深度学习基础
+
+类似地，我们可以评价模型net在数据集data_iter上的准确率。
+In [13]: # 本函数已保存在d2lzh包中⽅便以后使⽤。该函数将被逐步改进：它的完整实现将在“图像增⼴”⼀节中
+# 描述
+def evaluate_accuracy(data_iter, net):
+acc_sum, n = 0.0, 0
+for X, y in data_iter:
+y = y.astype('float32')
+acc_sum += (net(X).argmax(axis=1) == y).sum().asscalar()
+n += y.size
+return acc_sum / n
+因为我们随机初始化了模型net，所以这个随机模型的准确率应该接近于类别个数10的倒数0.1。
+In [14]: evaluate_accuracy(test_iter, net)
+Out[14]: 0.0925
+3.6.7 训练模型
+训练softmax回归的实现跟“线性回归的从零开始实现”⼀节介绍的线性回归中的实现⾮常
+相似。我们同样使⽤小批量随机梯度下降来优化模型的损失函数。在训练模型时，迭代周期
+数num_epochs和学习率lr都是可以调的超参数。改变它们的值可能会得到分类更准确的模型。
+In [15]: num_epochs, lr = 5, 0.1
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+def train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size,
+params=None, lr=None, trainer=None):
+for epoch in range(num_epochs):
+train_l_sum, train_acc_sum, n = 0.0, 0.0, 0
+for X, y in train_iter:
+with autograd.record():
+y_hat = net(X)
+l = loss(y_hat, y).sum()
+l.backward()
+if trainer is None:
+d2l.sgd(params, lr, batch_size)
+else:
+trainer.step(batch_size)
+# “softmax回归的简洁实现”⼀节将⽤到
+y = y.astype('float32')
+train_l_sum += l.asscalar()
+train_acc_sum += (y_hat.argmax(axis=1) == y).sum().asscalar()
+n += y.size
+3.6. softmax回归的从零开始实现
+73
+
+test_acc = evaluate_accuracy(test_iter, net)
+print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f'
+% (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc))
+train_ch3(net, train_iter, test_iter, cross_entropy, num_epochs, batch_size,
+[W, b], lr)
+epoch 1, loss 0.7875, train acc 0.749, test acc 0.802
+epoch 2, loss 0.5740, train acc 0.810, test acc 0.816
+epoch 3, loss 0.5289, train acc 0.824, test acc 0.833
+epoch 4, loss 0.5052, train acc 0.830, test acc 0.837
+epoch 5, loss 0.4889, train acc 0.835, test acc 0.838
+3.6.8 预测
+训练完成后，现在就可以演⽰如何对图像进⾏分类了。给定⼀系列图像（第三⾏图像输出），我
+们⽐较⼀下它们的真实标签（第⼀⾏⽂本输出）和模型预测结果（第⼆⾏⽂本输出）。
+In [16]: for X, y in test_iter:
+break
+true_labels = d2l.get_fashion_mnist_labels(y.asnumpy())
+pred_labels = d2l.get_fashion_mnist_labels(net(X).argmax(axis=1).asnumpy())
+titles = [true + '\n' + pred for true, pred in zip(true_labels, pred_labels)]
+d2l.show_fashion_mnist(X[0:9], titles[0:9])
+⼩结
+• 可以使⽤softmax回归做多类别分类。与训练线性回归相⽐，你会发现训练softmax回归的
+步骤和它⾮常相似：获取并读取数据、定义模型和损失函数并使⽤优化算法训练模型。事
+实上，绝⼤多数深度学习模型的训练都有着类似的步骤。
+74
+3. 深度学习基础
+
+练习
+• 在本节中，我们直接按照softmax运算的数学定义来实现softmax函数。这可能会造成什么
+问题？（提⽰：试⼀试计算exp(50)的⼤小。）
+• 本节中的cross_entropy函数是按照“softmax回归”⼀节中的交叉熵损失函数的数学定
+义实现的。这样的实现⽅式可能有什么问题？（提⽰：思考⼀下对数函数的定义域。）
+• 你能想到哪些办法来解决上⾯的两个问题？
+扫码直达讨论区
+3.7 softmax回归的简洁实现
+我们在“线性回归的简洁实现”⼀节中已经了解了使⽤Gluon实现模型的便利。下⾯，让我们再
+次使⽤Gluon来实现⼀个softmax回归模型。⾸先导⼊所需的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import gluon, init
+from mxnet.gluon import loss as gloss, nn
+3.7.1 获取和读取数据
+我们仍然使⽤Fashion-MNIST数据集和上⼀节中设置的批量⼤小。
+In [2]: batch_size = 256
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+3.7. softmax回归的简洁实现
+75
+
+3.7.2 定义和初始化模型
+在“softmax回归”⼀节中提到，softmax回归的输出层是⼀个全连接层。因此，我们添加⼀个输出
+个数为10的全连接层。我们使⽤均值为0、标准差为0.01的正态分布随机初始化模型的权重参数。
+In [3]: net = nn.Sequential()
+net.add(nn.Dense(10))
+net.initialize(init.Normal(sigma=0.01))
+3.7.3 softmax和交叉熵损失函数
+如果做了上⼀节的练习，那么你可能意识到了分开定义softmax运算和交叉熵损失函数可能会造
+成数值不稳定。因此，Gluon提供了⼀个包括softmax运算和交叉熵损失计算的函数。它的数值稳
+定性更好。
+In [4]: loss = gloss.SoftmaxCrossEntropyLoss()
+3.7.4 定义优化算法
+我们使⽤学习率为0.1的小批量随机梯度下降作为优化算法。
+In [5]: trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.1})
+3.7.5 训练模型
+接下来，我们使⽤上⼀节中定义的训练函数来训练模型。
+In [6]: num_epochs = 5
+d2l.train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size, None,
+None, trainer)
+epoch 1, loss 0.7898, train acc 0.748, test acc 0.804
+epoch 2, loss 0.5736, train acc 0.811, test acc 0.825
+epoch 3, loss 0.5287, train acc 0.824, test acc 0.828
+epoch 4, loss 0.5044, train acc 0.831, test acc 0.834
+epoch 5, loss 0.4896, train acc 0.834, test acc 0.839
+76
+3. 深度学习基础
+
+⼩结
+• Gluon提供的函数往往具有更好的数值稳定性。
+• 可以使⽤Gluon更简洁地实现softmax回归。
+练习
+• 尝试调⼀调超参数，如批量⼤小、迭代周期和学习率，看看结果会怎样。
+扫码直达讨论区
+3.8 多层感知机
+我们已经介绍了包括线性回归和softmax回归在内的单层神经⽹络。然而深度学习主要关注多层
+模型。在本节中，我们将以多层感知机（multilayer perceptron，MLP）为例，介绍多层神经⽹
+络的概念。
+3.8.1 隐藏层
+多层感知机在单层神经⽹络的基础上引⼊了⼀到多个隐藏层（hidden layer）。隐藏层位于输⼊层
+和输出层之间。图3.3展⽰了⼀个多层感知机的神经⽹络图。
+3.8. 多层感知机
+77
+
+图3.3: 带有隐藏层的多层感知机。它含有⼀个隐藏层，该层中有5个隐藏单元
+在图3.3所⽰的多层感知机中，输⼊和输出个数分别为4和3，中间的隐藏层中包含了5个隐藏单元
+（hidden unit）。由于输⼊层不涉及计算，图3.3中的多层感知机的层数为2。由图3.3可⻅，隐藏层
+中的神经元和输⼊层中各个输⼊完全连接，输出层中的神经元和隐藏层中的各个神经元也完全连
+接。因此，多层感知机中的隐藏层和输出层都是全连接层。
+具体来说，给定⼀个小批量样本X ∈Rn×d，其批量⼤小为n，输⼊个数为d。假设多层感知机只
+有⼀个隐藏层，其中隐藏单元个数为h。记隐藏层的输出（也称为隐藏层变量或隐藏变量）为H，
+有H ∈Rn×h。因为隐藏层和输出层均是全连接层，可以设隐藏层的权重参数和偏差参数分别
+为W h ∈Rd×h和bh ∈R1×h，输出层的权重和偏差参数分别为W o ∈Rh×q和bo ∈R1×q。
+我们先来看⼀种含单隐藏层的多层感知机的设计。其输出O ∈Rn×q的计算为
+H = XW h + bh,
+O = HW o + bo,
+也就是将隐藏层的输出直接作为输出层的输⼊。如果将以上两个式⼦联⽴起来，可以得到
+O = (XW h + bh)W o + bo = XW hW o + bhW o + bo.
+从联⽴后的式⼦可以看出，虽然神经⽹络引⼊了隐藏层，却依然等价于⼀个单层神经⽹络：其中
+输出层权重参数为W hW o，偏差参数为bhW o + bo。不难发现，即便再添加更多的隐藏层，以上
+设计依然只能与仅含输出层的单层神经⽹络等价。
+78
+3. 深度学习基础
+
+3.8.2 激活函数
+上述问题的根源在于全连接层只是对数据做仿射变换（affine transformation），而多个仿射变换
+的叠加仍然是⼀个仿射变换。解决问题的⼀个⽅法是引⼊⾮线性变换，例如对隐藏变量使⽤按元
+素运算的⾮线性函数进⾏变换，然后再作为下⼀个全连接层的输⼊。这个⾮线性函数被称为激活
+函数（activation function）。下⾯我们介绍⼏个常⽤的激活函数。
+ReLU函数
+ReLU（rectified linear unit）函数提供了⼀个很简单的⾮线性变换。给定元素x，该函数定义为
+ReLU(x) = max(x, 0).
+可以看出，ReLU函数只保留正数元素，并将负数元素清零。为了直观地观察这⼀⾮线性变换，我
+们先定义⼀个绘图函数xyplot。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, nd
+def xyplot(x_vals, y_vals, name):
+d2l.set_figsize(figsize=(5, 2.5))
+d2l.plt.plot(x_vals.asnumpy(), y_vals.asnumpy())
+d2l.plt.xlabel('x')
+d2l.plt.ylabel(name + '(x)')
+我们接下来通过NDArray提供的relu函数来绘制ReLU函数。可以看到，该激活函数是⼀个两段
+线性函数。
+In [2]: x = nd.arange(-8.0, 8.0, 0.1)
+x.attach_grad()
+with autograd.record():
+y = x.relu()
+xyplot(x, y, 'relu')
+3.8. 多层感知机
+79
+
+显然，当输⼊为负数时，ReLU函数的导数为0；当输⼊为正数时，ReLU函数的导数为1。尽管输
+⼊为0时ReLU函数不可导，但是我们可以取此处的导数为0。下⾯绘制ReLU函数的导数。
+In [3]: y.backward()
+xyplot(x, x.grad, 'grad of relu')
+sigmoid函数
+sigmoid函数可以将元素的值变换到0和1之间：
+sigmoid(x) =
+1
+1 + exp(−x).
+80
+3. 深度学习基础
+
+sigmoid函数在早期的神经⽹络中较为普遍，但它⽬前逐渐被更简单的ReLU函数取代。在后⾯
+“循环神经⽹络”⼀章中我们会介绍如何利⽤它值域在0到1之间这⼀特性来控制信息在神经⽹络
+中的流动。下⾯绘制了sigmoid函数。当输⼊接近0时，sigmoid函数接近线性变换。
+In [4]: with autograd.record():
+y = x.sigmoid()
+xyplot(x, y, 'sigmoid')
+依据链式法则，sigmoid函数的导数
+sigmoid′(x) = sigmoid(x) (1 −sigmoid(x)) .
+下⾯绘制了sigmoid函数的导数。当输⼊为0时，sigmoid函数的导数达到最⼤值0.25；当输⼊越偏
+离0时，sigmoid函数的导数越接近0。
+In [5]: y.backward()
+xyplot(x, x.grad, 'grad of sigmoid')
+3.8. 多层感知机
+81
+
+tanh函数
+tanh（双曲正切）函数可以将元素的值变换到-1和1之间：
+tanh(x) = 1 −exp(−2x)
+1 + exp(−2x).
+我们接着绘制tanh函数。当输⼊接近0时，tanh函数接近线性变换。虽然该函数的形状和sigmoid函
+数的形状很像，但tanh函数在坐标系的原点上对称。
+In [6]: with autograd.record():
+y = x.tanh()
+xyplot(x, y, 'tanh')
+82
+3. 深度学习基础
+
+依据链式法则，tanh函数的导数
+tanh′(x) = 1 −tanh2(x).
+下⾯绘制了tanh函数的导数。当输⼊为0时，tanh函数的导数达到最⼤值1；当输⼊越偏离0时，
+tanh函数的导数越接近0。
+In [7]: y.backward()
+xyplot(x, x.grad, 'grad of tanh')
+3.8. 多层感知机
+83
+
+3.8.3 多层感知机
+多层感知机就是含有⾄少⼀个隐藏层的由全连接层组成的神经⽹络，且每个隐藏层的输出通过激
+活函数进⾏变换。多层感知机的层数和各隐藏层中隐藏单元个数都是超参数。以单隐藏层为例并
+沿⽤本节之前定义的符号，多层感知机按以下⽅式计算输出：
+H = ϕ(XW h + bh),
+O = HW o + bo,
+其中ϕ表⽰激活函数。在分类问题中，我们可以对输出O做softmax运算，并使⽤softmax回归中
+的交叉熵损失函数。在回归问题中，我们将输出层的输出个数设为1，并将输出O直接提供给线性
+回归中使⽤的平⽅损失函数。
+⼩结
+• 多层感知机在输出层与输⼊层之间加⼊了⼀个或多个全连接隐藏层，并通过激活函数对隐
+藏层输出进⾏变换。
+• 常⽤的激活函数包括ReLU函数、sigmoid函数和tanh函数。
+练习
+• 应⽤链式法则，推导出sigmoid函数和tanh函数的导数的数学表达式。
+• 查阅资料，了解其他的激活函数。
+扫码直达讨论区
+84
+3. 深度学习基础
+
+3.9 多层感知机的从零开始实现
+我们已经从上⼀节⾥了解了多层感知机的原理。下⾯，我们⼀起来动⼿实现⼀个多层感知机。⾸
+先导⼊实现所需的包或模块。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import nd
+from mxnet.gluon import loss as gloss
+3.9.1 获取和读取数据
+这⾥继续使⽤Fashion-MNIST数据集。我们将使⽤多层感知机对图像进⾏分类。
+In [2]: batch_size = 256
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+3.9.2 定义模型参数
+我们在“softmax回归的从零开始实现”⼀节⾥已经介绍了，Fashion-MNIST数据集中图像形状
+为28 × 28，类别数为10。本节中我们依然使⽤⻓度为28 × 28 = 784的向量表⽰每⼀张图像。因此，
+输⼊个数为784，输出个数为10。实验中，我们设超参数隐藏单元个数为256。
+In [3]: num_inputs, num_outputs, num_hiddens = 784, 10, 256
+W1 = nd.random.normal(scale=0.01, shape=(num_inputs, num_hiddens))
+b1 = nd.zeros(num_hiddens)
+W2 = nd.random.normal(scale=0.01, shape=(num_hiddens, num_outputs))
+b2 = nd.zeros(num_outputs)
+params = [W1, b1, W2, b2]
+for param in params:
+param.attach_grad()
+3.9.3 定义激活函数
+这⾥我们使⽤基础的maximum函数来实现ReLU，而⾮直接调⽤relu函数。
+In [4]: def relu(X):
+return nd.maximum(X, 0)
+3.9. 多层感知机的从零开始实现
+85
+
+3.9.4 定义模型
+同softmax回归⼀样，我们通过reshape函数将每张原始图像改成⻓度为num_inputs的向量。然
+后我们实现上⼀节中多层感知机的计算表达式。
+In [5]: def net(X):
+X = X.reshape((-1, num_inputs))
+H = relu(nd.dot(X, W1) + b1)
+return nd.dot(H, W2) + b2
+3.9.5 定义损失函数
+为了得到更好的数值稳定性，我们直接使⽤Gluon提供的包括softmax运算和交叉熵损失计算的
+函数。
+In [6]: loss = gloss.SoftmaxCrossEntropyLoss()
+3.9.6 训练模型
+训练多层感知机的步骤和“softmax回归的从零开始实现”⼀节中训练softmax回归的步骤没什么
+区别。我们直接调⽤d2lzh包中的train_ch3函数，它的实现已经在“softmax回归的从零开始
+实现”⼀节⾥介绍过。我们在这⾥设超参数迭代周期数为5，学习率为0.5。
+In [7]: num_epochs, lr = 5, 0.5
+d2l.train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size,
+params, lr)
+epoch 1, loss 0.7785, train acc 0.713, test acc 0.823
+epoch 2, loss 0.4897, train acc 0.819, test acc 0.851
+epoch 3, loss 0.4237, train acc 0.843, test acc 0.868
+epoch 4, loss 0.3973, train acc 0.852, test acc 0.859
+epoch 5, loss 0.3688, train acc 0.863, test acc 0.874
+⼩结
+• 可以通过⼿动定义模型及其参数来实现简单的多层感知机。
+• 当多层感知机的层数较多时，本节的实现⽅法会显得较烦琐，例如在定义模型参数的时候。
+86
+3. 深度学习基础
+
+练习
+• 改变超参数num_hiddens的值，看看对实验结果有什么影响。
+• 试着加⼊⼀个新的隐藏层，看看对实验结果有什么影响。
+扫码直达讨论区
+3.10 多层感知机的简洁实现
+下⾯我们使⽤Gluon来实现上⼀节中的多层感知机。⾸先导⼊所需的包或模块。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init
+from mxnet.gluon import loss as gloss, nn
+3.10.1 定义模型
+和softmax回归唯⼀的不同在于，我们多加了⼀个全连接层作为隐藏层。它的隐藏单元个数为256，
+并使⽤ReLU函数作为激活函数。
+In [2]: net = nn.Sequential()
+net.add(nn.Dense(256, activation='relu'),
+nn.Dense(10))
+net.initialize(init.Normal(sigma=0.01))
+3.10.2 读取数据并训练模型
+我们使⽤与“softmax回归的简洁实现”⼀节中训练softmax回归⼏乎相同的步骤来读取数据并训
+练模型。
+3.10. 多层感知机的简洁实现
+87
+
+In [3]: batch_size = 256
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+loss = gloss.SoftmaxCrossEntropyLoss()
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': 0.5})
+num_epochs = 5
+d2l.train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size, None,
+None, trainer)
+epoch 1, loss 0.8161, train acc 0.699, test acc 0.810
+epoch 2, loss 0.4860, train acc 0.818, test acc 0.823
+epoch 3, loss 0.4301, train acc 0.841, test acc 0.861
+epoch 4, loss 0.3942, train acc 0.853, test acc 0.860
+epoch 5, loss 0.3683, train acc 0.865, test acc 0.862
+⼩结
+• 通过Gluon可以更简洁地实现多层感知机。
+练习
+• 尝试多加⼊⼏个隐藏层，对⽐上⼀节中从零开始的实现。
+• 使⽤其他的激活函数，看看对结果的影响。
+扫码直达讨论区
+3.11 模型选择、⽋拟合和过拟合
+在前⼏节基于Fashion-MNIST数据集的实验中，我们评价了机器学习模型在训练数据集和测试数
+据集上的表现。如果你改变过实验中的模型结构或者超参数，你也许发现了：当模型在训练数据
+88
+3. 深度学习基础
+
+集上更准确时，它在测试数据集上却不⼀定更准确。这是为什么呢？
+3.11.1 训练误差和泛化误差
+在解释上述现象之前，我们需要区分训练误差（training error）和泛化误差（generalization error）。
+通俗来讲，前者指模型在训练数据集上表现出的误差，后者指模型在任意⼀个测试数据样本上表
+现出的误差的期望，并常常通过测试数据集上的误差来近似。计算训练误差和泛化误差可以使⽤
+之前介绍过的损失函数，例如线性回归⽤到的平⽅损失函数和softmax回归⽤到的交叉熵损失函
+数。
+让我们以⾼考为例来直观地解释训练误差和泛化误差这两个概念。训练误差可以认为是做往年⾼
+考试题（训练题）时的错误率，泛化误差则可以通过真正参加⾼考（测试题）时的答题错误率来
+近似。假设训练题和测试题都随机采样于⼀个未知的依照相同考纲的巨⼤试题库。如果让⼀名未
+学习中学知识的小学⽣去答题，那么测试题和训练题的答题错误率可能很相近。但如果换成⼀名
+反复练习训练题的⾼三备考⽣答题，即使在训练题上做到了错误率为0，也不代表真实的⾼考成
+绩会如此。
+在机器学习⾥，我们通常假设训练数据集（训练题）和测试数据集（测试题）⾥的每⼀个样本都
+是从同⼀个概率分布中相互独⽴地⽣成的。基于该独⽴同分布假设，给定任意⼀个机器学习模型
+（含参数），它的训练误差的期望和泛化误差都是⼀样的。例如，如果我们将模型参数设成随机值
+（小学⽣），那么训练误差和泛化误差会⾮常相近。但我们从前⾯⼏节中已经了解到，模型的参数
+是通过在训练数据集上训练模型而学习出的，参数的选择依据了最小化训练误差（⾼三备考⽣）。
+所以，训练误差的期望小于或等于泛化误差。也就是说，⼀般情况下，由训练数据集学到的模型
+参数会使模型在训练数据集上的表现优于或等于在测试数据集上的表现。由于⽆法从训练误差估
+计泛化误差，⼀味地降低训练误差并不意味着泛化误差⼀定会降低。
+机器学习模型应关注降低泛化误差。
+3.11.2 模型选择
+在机器学习中，通常需要评估若⼲候选模型的表现并从中选择模型。这⼀过程称为模型选择
+（model selection）。可供选择的候选模型可以是有着不同超参数的同类模型。以多层感知机为
+例，我们可以选择隐藏层的个数，以及每个隐藏层中隐藏单元个数和激活函数。为了得到有效的
+模型，我们通常要在模型选择上下⼀番功夫。下⾯，我们来描述模型选择中经常使⽤的验证数据
+集（validation data set）。
+3.11. 模型选择、⽋拟合和过拟合
+89
+
+验证数据集
+从严格意义上讲，测试集只能在所有超参数和模型参数选定后使⽤⼀次。不可以使⽤测试数据选
+择模型，如调参。由于⽆法从训练误差估计泛化误差，因此也不应只依赖训练数据选择模型。鉴
+于此，我们可以预留⼀部分在训练数据集和测试数据集以外的数据来进⾏模型选择。这部分数据
+被称为验证数据集，简称验证集（validation set）。例如，我们可以从给定的训练集中随机选取⼀
+小部分作为验证集，而将剩余部分作为真正的训练集。
+然而在实际应⽤中，由于数据不容易获取，测试数据极少只使⽤⼀次就丢弃。因此，实践中验证
+数据集和测试数据集的界限可能⽐较模糊。从严格意义上讲，除⾮明确说明，否则本书中实验所
+使⽤的测试集应为验证集，实验报告的测试结果（如测试准确率）应为验证结果（如验证准确率）。
+K 折交叉验证
+由于验证数据集不参与模型训练，当训练数据不够⽤时，预留⼤量的验证数据显得太奢侈。⼀种
+改善的⽅法是K折交叉验证（K-fold cross-validation）。在K折交叉验证中，我们把原始训练数
+据集分割成K个不重合的⼦数据集，然后我们做K次模型训练和验证。每⼀次，我们使⽤⼀个⼦
+数据集验证模型，并使⽤其他K −1个⼦数据集来训练模型。在这K次训练和验证中，每次⽤来
+验证模型的⼦数据集都不同。最后，我们对这K次训练误差和验证误差分别求平均。
+3.11.3 ⽋拟合和过拟合
+接下来，我们将探究模型训练中经常出现的两类典型问题：⼀类是模型⽆法得到较低的训练误差，
+我们将这⼀现象称作⽋拟合（underfitting）；另⼀类是模型的训练误差远小于它在测试数据集上
+的误差，我们称该现象为过拟合（overfitting）。在实践中，我们要尽可能同时应对⽋拟合和过拟
+合。虽然有很多因素可能导致这两种拟合问题，在这⾥我们重点讨论两个因素：模型复杂度和训
+练数据集⼤小。
+模型复杂度
+为了解释模型复杂度，我们以多项式函数拟合为例。给定⼀个由标量数据特征x和对应的标量标
+签y组成的训练数据集，多项式函数拟合的⽬标是找⼀个K阶多项式函数
+ˆy = b +
+K
+∑
+k=1
+xkwk
+90
+3. 深度学习基础
+
+来近似y。在上式中，wk是模型的权重参数，b是偏差参数。与线性回归相同，多项式函数拟合也
+使⽤平⽅损失函数。特别地，⼀阶多项式函数拟合⼜叫线性函数拟合。
+因为⾼阶多项式函数模型参数更多，模型函数的选择空间更⼤，所以⾼阶多项式函数⽐低阶多项
+式函数的复杂度更⾼。因此，⾼阶多项式函数⽐低阶多项式函数更容易在相同的训练数据集上得
+到更低的训练误差。给定训练数据集，模型复杂度和误差之间的关系通常如图3.4所⽰。给定训练
+数据集，如果模型的复杂度过低，很容易出现⽋拟合；如果模型复杂度过⾼，很容易出现过拟合。
+应对⽋拟合和过拟合的⼀个办法是针对数据集选择合适复杂度的模型。
+图3.4: 模型复杂度对⽋拟合和过拟合的影响
+训练数据集⼤⼩
+影响⽋拟合和过拟合的另⼀个重要因素是训练数据集的⼤小。⼀般来说，如果训练数据集中样本
+数过少，特别是⽐模型参数数量（按元素计）更少时，过拟合更容易发⽣。此外，泛化误差不会
+随训练数据集⾥样本数量增加而增⼤。因此，在计算资源允许的范围之内，我们通常希望训练数
+据集⼤⼀些，特别是在模型复杂度较⾼时，例如层数较多的深度学习模型。
+3.11.4 多项式函数拟合实验
+为了理解模型复杂度和训练数据集⼤小对⽋拟合和过拟合的影响，下⾯我们以多项式函数拟合为
+例来实验。⾸先导⼊实验需要的包或模块。
+3.11. 模型选择、⽋拟合和过拟合
+91
+
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, gluon, nd
+from mxnet.gluon import data as gdata, loss as gloss, nn
+⽣成数据集
+我们将⽣成⼀个⼈⼯数据集。在训练数据集和测试数据集中，给定样本特征x，我们使⽤如下的
+三阶多项式函数来⽣成该样本的标签：
+y = 1.2x −3.4x2 + 5.6x3 + 5 + ϵ,
+其中噪声项ϵ服从均值为0、标准差为0.1的正态分布。训练数据集和测试数据集的样本数都设为100。
+In [2]: n_train, n_test, true_w, true_b = 100, 100, [1.2, -3.4, 5.6], 5
+features = nd.random.normal(shape=(n_train + n_test, 1))
+poly_features = nd.concat(features, nd.power(features, 2),
+nd.power(features, 3))
+labels = (true_w[0] * poly_features[:, 0] + true_w[1] * poly_features[:, 1]
++ true_w[2] * poly_features[:, 2] + true_b)
+labels += nd.random.normal(scale=0.1, shape=labels.shape)
+看⼀看⽣成的数据集的前两个样本。
+In [3]: features[:2], poly_features[:2], labels[:2]
+Out[3]: (
+[[2.2122064]
+[0.7740038]]
+<NDArray 2x1 @cpu(0)>,
+[[ 2.2122064
+4.893857
+10.826221
+]
+[ 0.7740038
+0.5990819
+0.46369165]]
+<NDArray 2x3 @cpu(0)>,
+[51.674885
+6.3585763]
+<NDArray 2 @cpu(0)>)
+定义、训练和测试模型
+我们先定义作图函数semilogy，其中y轴使⽤了对数尺度。
+In [4]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def semilogy(x_vals, y_vals, x_label, y_label, x2_vals=None, y2_vals=None,
+legend=None, figsize=(3.5, 2.5)):
+92
+3. 深度学习基础
+
+d2l.set_figsize(figsize)
+d2l.plt.xlabel(x_label)
+d2l.plt.ylabel(y_label)
+d2l.plt.semilogy(x_vals, y_vals)
+if x2_vals and y2_vals:
+d2l.plt.semilogy(x2_vals, y2_vals, linestyle=':')
+d2l.plt.legend(legend)
+和线性回归⼀样，多项式函数拟合也使⽤平⽅损失函数。因为我们将尝试使⽤不同复杂度的模型
+来拟合⽣成的数据集，所以我们把模型定义部分放在fit_and_plot函数中。多项式函数拟合的
+训练和测试步骤与“softmax回归的从零开始实现”⼀节介绍的softmax回归中的相关步骤类似。
+In [5]: num_epochs, loss = 100, gloss.L2Loss()
+def fit_and_plot(train_features, test_features, train_labels, test_labels):
+net = nn.Sequential()
+net.add(nn.Dense(1))
+net.initialize()
+batch_size = min(10, train_labels.shape[0])
+train_iter = gdata.DataLoader(gdata.ArrayDataset(
+train_features, train_labels), batch_size, shuffle=True)
+trainer = gluon.Trainer(net.collect_params(), 'sgd',
+{'learning_rate': 0.01})
+train_ls, test_ls = [], []
+for _ in range(num_epochs):
+for X, y in train_iter:
+with autograd.record():
+l = loss(net(X), y)
+l.backward()
+trainer.step(batch_size)
+train_ls.append(loss(net(train_features),
+train_labels).mean().asscalar())
+test_ls.append(loss(net(test_features),
+test_labels).mean().asscalar())
+print('final epoch: train loss', train_ls[-1], 'test loss', test_ls[-1])
+semilogy(range(1, num_epochs + 1), train_ls, 'epochs', 'loss',
+range(1, num_epochs + 1), test_ls, ['train', 'test'])
+print('weight:', net[0].weight.data().asnumpy(),
+'\nbias:', net[0].bias.data().asnumpy())
+3.11. 模型选择、⽋拟合和过拟合
+93
+
+三阶多项式函数拟合（正常）
+我们先使⽤与数据⽣成函数同阶的三阶多项式函数拟合。实验表明，这个模型的训练误差和在测
+试数据集的误差都较低。训练出的模型参数也接近真实值：w1 = 1.2, w2 = −3.4, w3 = 5.6, b = 5。
+In [6]: fit_and_plot(poly_features[:n_train, :], poly_features[n_train:, :],
+labels[:n_train], labels[n_train:])
+final epoch: train loss 0.0069174296 test loss 0.0109656695
+weight: [[ 1.3228297 -3.3630803
+5.5647845]]
+bias: [4.952858]
+线性函数拟合（⽋拟合）
+我们再试试线性函数拟合。很明显，该模型的训练误差在迭代早期下降后便很难继续降低。在完
+成最后⼀次迭代周期后，训练误差依旧很⾼。线性模型在⾮线性模型（如三阶多项式函数）⽣成
+的数据集上容易⽋拟合。
+In [7]: fit_and_plot(features[:n_train, :], features[n_train:, :], labels[:n_train],
+labels[n_train:])
+final epoch: train loss 43.99771 test loss 160.70436
+weight: [[15.568693]]
+bias: [2.283565]
+94
+3. 深度学习基础
+
+训练样本不⾜（过拟合）
+事实上，即便使⽤与数据⽣成模型同阶的三阶多项式函数模型，如果训练样本不⾜，该模型依然
+容易过拟合。让我们只使⽤两个样本来训练模型。显然，训练样本过少了，甚⾄少于模型参数的
+数量。这使模型显得过于复杂，以⾄于容易被训练数据中的噪声影响。在迭代过程中，尽管训练
+误差较低，但是测试数据集上的误差却很⾼。这是典型的过拟合现象。
+In [8]: fit_and_plot(poly_features[0:2, :], poly_features[n_train:, :], labels[0:2],
+labels[n_train:])
+final epoch: train loss 0.4027369 test loss 103.314186
+weight: [[1.3872364 1.9376589 3.5085924]]
+bias: [1.2312856]
+3.11. 模型选择、⽋拟合和过拟合
+95
+
+我们将在接下来的两个小节继续讨论过拟合问题以及应对过拟合的⽅法。
+⼩结
+• 由于⽆法从训练误差估计泛化误差，⼀味地降低训练误差并不意味着泛化误差⼀定会降低。
+机器学习模型应关注降低泛化误差。
+• 可以使⽤验证数据集来进⾏模型选择。
+• ⽋拟合指模型⽆法得到较低的训练误差，过拟合指模型的训练误差远小于它在测试数据集
+上的误差。
+• 应选择复杂度合适的模型并避免使⽤过少的训练样本。
+练习
+• 如果⽤⼀个三阶多项式模型来拟合⼀个线性模型⽣成的数据，可能会有什么问题？为什么？
+• 在本节提到的三阶多项式拟合问题⾥，有没有可能把100个样本的训练误差的期望降到0，为
+什么？（提⽰：考虑噪声项的存在。）
+96
+3. 深度学习基础
+
+扫码直达讨论区
+3.12 权重衰减
+上⼀节中我们观察了过拟合现象，即模型的训练误差远小于它在测试集上的误差。虽然增⼤训练
+数据集可能会减轻过拟合，但是获取额外的训练数据往往代价⾼昂。本节介绍应对过拟合问题的
+常⽤⽅法：权重衰减（weight decay）。
+3.12.1 ⽅法
+权重衰减等价于L2范数正则化（regularization）。正则化通过为模型损失函数添加惩罚项使学出
+的模型参数值较小，是应对过拟合的常⽤⼿段。我们先描述L2范数正则化，再解释它为何⼜称权
+重衰减。
+L2范数正则化在模型原损失函数基础上添加L2范数惩罚项，从而得到训练所需要最小化的函数。
+L2范数惩罚项指的是模型权重参数每个元素的平⽅和与⼀个正的常数的乘积。以“线性回归”⼀
+节中的线性回归损失函数
+ℓ(w1, w2, b) = 1
+n
+n
+∑
+i=1
+1
+2
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))2
+为例，其中w1, w2是权重参数，b是偏差参数，样本i的输⼊为x(i)
+1 , x(i)
+2 ，标签为y(i)，样本数为n。将
+权重参数⽤向量w = [w1, w2]表⽰，带有L2范数惩罚项的新损失函数为
+ℓ(w1, w2, b) + λ
+2n∥w∥2,
+其中超参数λ > 0。当权重参数均为0时，惩罚项最小。当λ较⼤时，惩罚项在损失函数中的⽐重较
+⼤，这通常会使学到的权重参数的元素较接近0。当λ设为0时，惩罚项完全不起作⽤。上式中L2范
+数平⽅∥w∥2展开后得到w2
+1 + w2
+2。有了L2范数惩罚项后，在小批量随机梯度下降中，我们将“线
+3.12. 权重衰减
+97
+
+性回归”⼀节中权重w1和w2的迭代⽅式更改为
+w1 ←
+(
+1 −ηλ
+|B|
+)
+w1 −η
+|B|
+∑
+i∈B
+x(i)
+1
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+,
+w2 ←
+(
+1 −ηλ
+|B|
+)
+w2 −η
+|B|
+∑
+i∈B
+x(i)
+2
+(
+x(i)
+1 w1 + x(i)
+2 w2 + b −y(i))
+.
+可⻅，L2范数正则化令权重w1和w2先⾃乘小于1的数，再减去不含惩罚项的梯度。因此，L2范数
+正则化⼜叫权重衰减。权重衰减通过惩罚绝对值较⼤的模型参数为需要学习的模型增加了限制，
+这可能对过拟合有效。实际场景中，我们有时也在惩罚项中添加偏差元素的平⽅和。
+3.12.2 ⾼维线性回归实验
+下⾯，我们以⾼维线性回归为例来引⼊⼀个过拟合问题，并使⽤权重衰减来应对过拟合。设数据
+样本特征的维度为p。对于训练数据集和测试数据集中特征为x1, x2, . . . , xp的任⼀样本，我们使⽤
+如下的线性函数来⽣成该样本的标签：
+y = 0.05 +
+p
+∑
+i=1
+0.01xi + ϵ,
+其中噪声项ϵ服从均值为0、标准差为0.01的正态分布。为了较容易地观察过拟合，我们考虑⾼维
+线性回归问题，如设维度p = 200；同时，我们特意把训练数据集的样本数设低，如20。
+In [1]: %matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import data as gdata, loss as gloss, nn
+n_train, n_test, num_inputs = 20, 100, 200
+true_w, true_b = nd.ones((num_inputs, 1)) * 0.01, 0.05
+features = nd.random.normal(shape=(n_train + n_test, num_inputs))
+labels = nd.dot(features, true_w) + true_b
+labels += nd.random.normal(scale=0.01, shape=labels.shape)
+train_features, test_features = features[:n_train, :], features[n_train:, :]
+train_labels, test_labels = labels[:n_train], labels[n_train:]
+3.12.3 从零开始实现
+下⾯先介绍从零开始实现权重衰减的⽅法。我们通过在⽬标函数后添加L2范数惩罚项来实现权
+重衰减。
+98
+3. 深度学习基础
+
+初始化模型参数
+⾸先，定义随机初始化模型参数的函数。该函数为每个参数都附上梯度。
+In [2]: def init_params():
+w = nd.random.normal(scale=1, shape=(num_inputs, 1))
+b = nd.zeros(shape=(1,))
+w.attach_grad()
+b.attach_grad()
+return [w, b]
+定义L2范数惩罚项
+下⾯定义L2范数惩罚项。这⾥只惩罚模型的权重参数。
+In [3]: def l2_penalty(w):
+return (w**2).sum() / 2
+定义训练和测试
+下⾯定义如何在训练数据集和测试数据集上分别训练和测试模型。与前⾯⼏节中不同的是，这⾥
+在计算最终的损失函数时添加了L2范数惩罚项。
+In [4]: batch_size, num_epochs, lr = 1, 100, 0.003
+net, loss = d2l.linreg, d2l.squared_loss
+train_iter = gdata.DataLoader(gdata.ArrayDataset(
+train_features, train_labels), batch_size, shuffle=True)
+def fit_and_plot(lambd):
+w, b = init_params()
+train_ls, test_ls = [], []
+for _ in range(num_epochs):
+for X, y in train_iter:
+with autograd.record():
+# 添加了L2范数惩罚项
+l = loss(net(X, w, b), y) + lambd * l2_penalty(w)
+l.backward()
+d2l.sgd([w, b], lr, batch_size)
+train_ls.append(loss(net(train_features, w, b),
+train_labels).mean().asscalar())
+test_ls.append(loss(net(test_features, w, b),
+test_labels).mean().asscalar())
+3.12. 权重衰减
+99
+
+d2l.semilogy(range(1, num_epochs + 1), train_ls, 'epochs', 'loss',
+range(1, num_epochs + 1), test_ls, ['train', 'test'])
+print('L2 norm of w:', w.norm().asscalar())
+观察过拟合
+接下来，让我们训练并测试⾼维线性回归模型。当lambd设为0时，我们没有使⽤权重衰减。结
+果训练误差远小于测试集上的误差。这是典型的过拟合现象。
+In [5]: fit_and_plot(lambd=0)
+L2 norm of w: 11.61194
+使⽤权重衰减
+下⾯我们使⽤权重衰减。可以看出，训练误差虽然有所提⾼，但测试集上的误差有所下降。过拟
+合现象得到⼀定程度的缓解。另外，权重参数的L2范数⽐不使⽤权重衰减时的更小，此时的权重
+参数更接近0。
+In [6]: fit_and_plot(lambd=3)
+100
+3. 深度学习基础
+
+L2 norm of w: 0.04175589
+3.12.4 简洁实现
+这⾥我们直接在构造Trainer实例时通过wd参数来指定权重衰减超参数。默认下，Gluon会对权
+重和偏差同时衰减。我们可以分别对权重和偏差构造Trainer实例，从而只对权重衰减。
+In [7]: def fit_and_plot_gluon(wd):
+net = nn.Sequential()
+net.add(nn.Dense(1))
+net.initialize(init.Normal(sigma=1))
+# 对权重参数衰减。权重名称⼀般是以weight结尾
+trainer_w = gluon.Trainer(net.collect_params('.*weight'), 'sgd',
+{'learning_rate': lr, 'wd': wd})
+# 不对偏差参数衰减。偏差名称⼀般是以bias结尾
+trainer_b = gluon.Trainer(net.collect_params('.*bias'), 'sgd',
+{'learning_rate': lr})
+train_ls, test_ls = [], []
+for _ in range(num_epochs):
+for X, y in train_iter:
+with autograd.record():
+l = loss(net(X), y)
+l.backward()
+# 对两个Trainer实例分别调⽤step函数，从⽽分别更新权重和偏差
+trainer_w.step(batch_size)
+trainer_b.step(batch_size)
+train_ls.append(loss(net(train_features),
+3.12. 权重衰减
+101
+
+train_labels).mean().asscalar())
+test_ls.append(loss(net(test_features),
+test_labels).mean().asscalar())
+d2l.semilogy(range(1, num_epochs + 1), train_ls, 'epochs', 'loss',
+range(1, num_epochs + 1), test_ls, ['train', 'test'])
+print('L2 norm of w:', net[0].weight.data().norm().asscalar())
+与从零开始实现权重衰减的实验现象类似，使⽤权重衰减可以在⼀定程度上缓解过拟合问题。
+In [8]: fit_and_plot_gluon(0)
+L2 norm of w: 13.311798
+In [9]: fit_and_plot_gluon(3)
+102
+3. 深度学习基础
+
+L2 norm of w: 0.03225094
+⼩结
+• 正则化通过为模型损失函数添加惩罚项使学出的模型参数值较小，是应对过拟合的常⽤⼿
+段。
+• 权重衰减等价于L2范数正则化，通常会使学到的权重参数的元素较接近0。
+• 权重衰减可以通过Gluon的wd超参数来指定。
+• 可以定义多个Trainer实例对不同的模型参数使⽤不同的迭代⽅法。
+练习
+• 回顾⼀下训练误差和泛化误差的关系。除了权重衰减、增⼤训练量以及使⽤复杂度合适的
+模型，你还能想到哪些办法来应对过拟合？
+• 如果你了解⻉叶斯统计，你觉得权重衰减对应⻉叶斯统计⾥的哪个重要概念？
+• 调节实验中的权重衰减超参数，观察并分析实验结果。
+3.12. 权重衰减
+103
+
+扫码直达讨论区
+3.13 丢弃法
+除了前⼀节介绍的权重衰减以外，深度学习模型常常使⽤丢弃法（dropout）[1] 来应对过拟合问
+题。丢弃法有⼀些不同的变体。本节中提到的丢弃法特指倒置丢弃法（inverted dropout）。
+3.13.1 ⽅法
+回忆⼀下，“多层感知机”⼀节的图3.3描述了⼀个单隐藏层的多层感知机。其中输⼊个数为4，隐
+藏单元个数为5，且隐藏单元hi（i = 1, . . . , 5）的计算表达式为
+hi = ϕ (x1w1i + x2w2i + x3w3i + x4w4i + bi) ,
+这⾥ϕ是激活函数，x1, . . . , x4是输⼊，隐藏单元i的权重参数为w1i, . . . , w4i，偏差参数为bi。当对
+该隐藏层使⽤丢弃法时，该层的隐藏单元将有⼀定概率被丢弃掉。设丢弃概率为p，那么有p的概
+率hi会被清零，有1 −p的概率hi会除以1 −p做拉伸。丢弃概率是丢弃法的超参数。具体来说，设
+随机变量ξi为0和1的概率分别为p和1 −p。使⽤丢弃法时我们计算新的隐藏单元h′
+i
+h′
+i =
+ξi
+1 −phi.
+由于E(ξi) = 1 −p，因此
+E(h′
+i) = E(ξi)
+1 −p hi = hi.
+即丢弃法不改变其输⼊的期望值。让我们对图3.3中的隐藏层使⽤丢弃法，⼀种可能的结果如
+图3.5所⽰，其中h2和h5被清零。这时输出值的计算不再依赖h2和h5，在反向传播时，与这两个隐
+藏单元相关的权重的梯度均为0。由于在训练中隐藏层神经元的丢弃是随机的，即h1, . . . , h5都有
+可能被清零，输出层的计算⽆法过度依赖h1, . . . , h5中的任⼀个，从而在训练模型时起到正则化的
+作⽤，并可以⽤来应对过拟合。在测试模型时，我们为了拿到更加确定性的结果，⼀般不使⽤丢
+弃法。
+104
+3. 深度学习基础
+
+图3.5: 隐藏层使⽤了丢弃法的多层感知机
+3.13.2 从零开始实现
+根据丢弃法的定义，我们可以很容易地实现它。下⾯的dropout函数将以drop_prob的概率丢
+弃NDArray输⼊X中的元素。
+In [1]: import d2lzh as d2l
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import loss as gloss, nn
+def dropout(X, drop_prob):
+assert 0 <= drop_prob <= 1
+keep_prob = 1 - drop_prob
+# 这种情况下把全部元素都丢弃
+if keep_prob == 0:
+return X.zeros_like()
+mask = nd.random.uniform(0, 1, X.shape) < keep_prob
+return mask * X / keep_prob
+我们运⾏⼏个例⼦来测试⼀下dropout函数。其中丢弃概率分别为0、0.5和1。
+In [2]: X = nd.arange(16).reshape((2, 8))
+dropout(X, 0)
+Out[2]:
+[[ 0.
+1.
+2.
+3.
+4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11. 12. 13. 14. 15.]]
+<NDArray 2x8 @cpu(0)>
+In [3]: dropout(X, 0.5)
+3.13. 丢弃法
+105
+
+Out[3]:
+[[ 0.
+2.
+4.
+6.
+0.
+0.
+0. 14.]
+[ 0. 18.
+0.
+0. 24. 26. 28.
+0.]]
+<NDArray 2x8 @cpu(0)>
+In [4]: dropout(X, 1)
+Out[4]:
+[[0. 0. 0. 0. 0. 0. 0. 0.]
+[0. 0. 0. 0. 0. 0. 0. 0.]]
+<NDArray 2x8 @cpu(0)>
+定义模型参数
+实验中，我们依然使⽤“softmax回归的从零开始实现”⼀节中介绍的Fashion-MNIST数据集。我
+们将定义⼀个包含两个隐藏层的多层感知机，其中两个隐藏层的输出个数都是256。
+In [5]: num_inputs, num_outputs, num_hiddens1, num_hiddens2 = 784, 10, 256, 256
+W1 = nd.random.normal(scale=0.01, shape=(num_inputs, num_hiddens1))
+b1 = nd.zeros(num_hiddens1)
+W2 = nd.random.normal(scale=0.01, shape=(num_hiddens1, num_hiddens2))
+b2 = nd.zeros(num_hiddens2)
+W3 = nd.random.normal(scale=0.01, shape=(num_hiddens2, num_outputs))
+b3 = nd.zeros(num_outputs)
+params = [W1, b1, W2, b2, W3, b3]
+for param in params:
+param.attach_grad()
+定义模型
+下⾯定义的模型将全连接层和激活函数ReLU串起来，并对每个激活函数的输出使⽤丢弃法。我
+们可以分别设置各个层的丢弃概率。通常的建议是把靠近输⼊层的丢弃概率设得小⼀点。在这个
+实验中，我们把第⼀个隐藏层的丢弃概率设为0.2，把第⼆个隐藏层的丢弃概率设为0.5。我们可
+以通过“⾃动求梯度”⼀节中介绍的is_training函数来判断运⾏模式为训练还是测试，并只
+需在训练模式下使⽤丢弃法。
+In [6]: drop_prob1, drop_prob2 = 0.2, 0.5
+def net(X):
+X = X.reshape((-1, num_inputs))
+106
+3. 深度学习基础
+
+H1 = (nd.dot(X, W1) + b1).relu()
+if autograd.is_training():
+# 只在训练模型时使⽤丢弃法
+H1 = dropout(H1, drop_prob1)
+# 在第⼀层全连接后添加丢弃层
+H2 = (nd.dot(H1, W2) + b2).relu()
+if autograd.is_training():
+H2 = dropout(H2, drop_prob2)
+# 在第⼆层全连接后添加丢弃层
+return nd.dot(H2, W3) + b3
+训练和测试模型
+这部分与之前多层感知机的训练和测试类似。
+In [7]: num_epochs, lr, batch_size = 5, 0.5, 256
+loss = gloss.SoftmaxCrossEntropyLoss()
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+d2l.train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size,
+params, lr)
+epoch 1, loss 1.2550, train acc 0.519, test acc 0.766
+epoch 2, loss 0.6153, train acc 0.771, test acc 0.825
+epoch 3, loss 0.5646, train acc 0.798, test acc 0.830
+epoch 4, loss 0.4765, train acc 0.826, test acc 0.855
+epoch 5, loss 0.4496, train acc 0.835, test acc 0.862
+3.13.3 简洁实现
+在Gluon中，我们只需要在全连接层后添加Dropout层并指定丢弃概率。在训练模型时，
+Dropout层将以指定的丢弃概率随机丢弃上⼀层的输出元素；在测试模型时，Dropout层并不
+发挥作⽤。
+In [8]: net = nn.Sequential()
+net.add(nn.Dense(256, activation="relu"),
+nn.Dropout(drop_prob1),
+# 在第⼀个全连接层后添加丢弃层
+nn.Dense(256, activation="relu"),
+nn.Dropout(drop_prob2),
+# 在第⼆个全连接层后添加丢弃层
+nn.Dense(10))
+net.initialize(init.Normal(sigma=0.01))
+下⾯训练并测试模型。
+In [9]: trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+d2l.train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size, None,
+None, trainer)
+3.13. 丢弃法
+107
+
+epoch 1, loss 1.1450, train acc 0.553, test acc 0.791
+epoch 2, loss 0.5792, train acc 0.786, test acc 0.832
+epoch 3, loss 0.4875, train acc 0.820, test acc 0.847
+epoch 4, loss 0.4436, train acc 0.839, test acc 0.858
+epoch 5, loss 0.4174, train acc 0.848, test acc 0.867
+⼩结
+• 我们可以通过使⽤丢弃法应对过拟合。
+• 丢弃法只在训练模型时使⽤。
+练习
+• 如果把本节中的两个丢弃概率超参数对调，会有什么结果？
+• 增⼤迭代周期数，⽐较使⽤丢弃法与不使⽤丢弃法的结果。
+• 如果将模型改得更加复杂，如增加隐藏层单元，使⽤丢弃法应对过拟合的效果是否更加明
+显？
+• 以本节中的模型为例，⽐较使⽤丢弃法与权重衰减的效果。如果同时使⽤丢弃法和权重衰
+减，效果会如何？
+参考⽂献
+[1] Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., & Salakhutdinov, R. (2014). Dropout:
+a simple way to prevent neural networks from overfitting. JMLR
+扫码直达讨论区
+108
+3. 深度学习基础
+
+3.14 正向传播、反向传播和计算图
+前⾯⼏节⾥我们使⽤了小批量随机梯度下降的优化算法来训练模型。在实现中，我们只提供了模
+型的正向传播（forward propagation）的计算，即对输⼊计算模型输出，然后通过autograd模块
+来调⽤系统⾃动⽣成的backward函数计算梯度。基于反向传播（back-propagation）算法的⾃动
+求梯度极⼤简化了深度学习模型训练算法的实现。本节我们将使⽤数学和计算图（computational
+graph）两个⽅式来描述正向传播和反向传播。具体来说，我们将以带L2范数正则化的含单隐藏
+层的多层感知机为样例模型解释正向传播和反向传播。
+3.14.1 正向传播
+正向传播是指对神经⽹络沿着从输⼊层到输出层的顺序，依次计算并存储模型的中间变量（包括
+输出）。为简单起⻅，假设输⼊是⼀个特征为x ∈Rd的样本，且不考虑偏差项，那么中间变量
+z = W (1)x,
+其中W (1) ∈Rh×d是隐藏层的权重参数。把中间变量z ∈Rh输⼊按元素运算的激活函数ϕ后，将
+得到向量⻓度为h的隐藏层变量
+h = ϕ(z).
+隐藏层变量h也是⼀个中间变量。假设输出层参数只有权重W (2) ∈Rq×h，可以得到向量⻓度
+为q的输出层变量
+o = W (2)h.
+假设损失函数为ℓ，且样本标签为y，可以计算出单个数据样本的损失项
+L = ℓ(o, y).
+根据L2范数正则化的定义，给定超参数λ，正则化项即
+s = λ
+2
+(
+∥W (1)∥2
+F + ∥W (2)∥2
+F
+)
+,
+其中矩阵的Frobenius范数等价于将矩阵变平为向量后计算L2范数。最终，模型在给定的数据样
+本上带正则化的损失为
+J = L + s.
+我们将J称为有关给定数据样本的⽬标函数，并在以下的讨论中简称⽬标函数。
+3.14. 正向传播、反向传播和计算图
+109
+
+3.14.2 正向传播的计算图
+我们通常绘制计算图来可视化运算符和变量在计算中的依赖关系。图3.6绘制了本节中样例模型
+正向传播的计算图，其中左下⻆是输⼊，右上⻆是输出。可以看到，图中箭头⽅向⼤多是向右和
+向上，其中⽅框代表变量，圆圈代表运算符，箭头表⽰从输⼊到输出之间的依赖关系。
+图3.6: 正向传播的计算图
+3.14.3 反向传播
+反向传播指的是计算神经⽹络参数梯度的⽅法。总的来说，反向传播依据微积分中的链式法则，
+沿着从输出层到输⼊层的顺序，依次计算并存储⽬标函数有关神经⽹络各层的中间变量以及参数
+的梯度。对输⼊或输出X, Y, Z为任意形状张量的函数Y = f(X)和Z = g(Y)，通过链式法则，我们有
+∂Z
+∂X = prod
+(∂Z
+∂Y , ∂Y
+∂X
+)
+,
+其中prod运算符将根据两个输⼊的形状，在必要的操作（如转置和互换输⼊位置）后对两个输⼊
+做乘法。
+回顾⼀下本节中样例模型，它的参数是W (1)和W (2)，因此反向传播的⽬标是计
+算∂J/∂W (1)和∂J/∂W (2)。我们将应⽤链式法则依次计算各中间变量和参数的梯度，其计
+算次序与前向传播中相应中间变量的计算次序恰恰相反。⾸先，分别计算⽬标函数J = L + s有
+关损失项L和正则项s的梯度
+∂J
+∂L = 1,
+∂J
+∂s = 1.
+其次，依据链式法则计算⽬标函数有关输出层变量的梯度∂J/∂o ∈Rq：
+∂J
+∂o = prod
+(∂J
+∂L, ∂L
+∂o
+)
+= ∂L
+∂o .
+110
+3. 深度学习基础
+
+接下来，计算正则项有关两个参数的梯度：
+∂s
+∂W (1) = λW (1),
+∂s
+∂W (2) = λW (2).
+现在，我们可以计算最靠近输出层的模型参数的梯度∂J/∂W (2) ∈Rq×h。依据链式法则，得到
+∂J
+∂W (2) = prod
+(∂J
+∂o ,
+∂o
+∂W (2)
+)
++ prod
+(∂J
+∂s ,
+∂s
+∂W (2)
+)
+= ∂J
+∂o h⊤+ λW (2).
+沿着输出层向隐藏层继续反向传播，隐藏层变量的梯度∂J/∂h ∈Rh可以这样计算：
+∂J
+∂h = prod
+(∂J
+∂o , ∂o
+∂h
+)
+= W (2)⊤∂J
+∂o .
+由于激活函数ϕ是按元素运算的，中间变量z的梯度∂J/∂z ∈Rh的计算需要使⽤按元素乘法符⊙：
+∂J
+∂z = prod
+(∂J
+∂h, ∂h
+∂z
+)
+= ∂J
+∂h ⊙ϕ′ (z) .
+最终，我们可以得到最靠近输⼊层的模型参数的梯度∂J/∂W (1) ∈Rh×d。依据链式法则，得到
+∂J
+∂W (1) = prod
+(∂J
+∂z ,
+∂z
+∂W (1)
+)
++ prod
+(∂J
+∂s ,
+∂s
+∂W (1)
+)
+= ∂J
+∂z x⊤+ λW (1).
+3.14.4 训练深度学习模型
+在训练深度学习模型时，正向传播和反向传播之间相互依赖。下⾯我们仍然以本节中的样例模型
+分别阐述它们之间的依赖关系。
+⼀⽅⾯，正向传播的计算可能依赖于模型参数的当前值，而这些模型参数是在反向传播的梯度
+计算后通过优化算法迭代的。例如，计算正则化项s = (λ/2)
+(
+∥W (1)∥2
+F + ∥W (2)∥2
+F
+)
+依赖模型参
+数W (1)和W (2)的当前值，而这些当前值是优化算法最近⼀次根据反向传播算出梯度后迭代得到
+的。
+另⼀⽅⾯，反向传播的梯度计算可能依赖于各变量的当前值，而这些变量的当前值是通过正向传
+播计算得到的。举例来说，参数梯度∂J/∂W (2) = (∂J/∂o)h⊤+ λW (2)的计算需要依赖隐藏层变
+量的当前值h。这个当前值是通过从输⼊层到输出层的正向传播计算并存储得到的。
+因此，在模型参数初始化完成后，我们交替地进⾏正向传播和反向传播，并根据反向传播计算的
+梯度迭代模型参数。既然我们在反向传播中使⽤了正向传播中计算得到的中间变量来避免重复计
+算，那么这个复⽤也导致正向传播结束后不能⽴即释放中间变量内存。这也是训练要⽐预测占⽤
+更多内存的⼀个重要原因。另外需要指出的是，这些中间变量的个数⼤体上与⽹络层数线性相关，
+每个变量的⼤小跟批量⼤小和输⼊个数也是线性相关的，它们是导致较深的神经⽹络使⽤较⼤批
+量训练时更容易超内存的主要原因。
+3.14. 正向传播、反向传播和计算图
+111
+
+⼩结
+• 正向传播沿着从输⼊层到输出层的顺序，依次计算并存储神经⽹络的中间变量。
+• 反向传播沿着从输出层到输⼊层的顺序，依次计算并存储神经⽹络中间变量和参数的梯度。
+• 在训练深度学习模型时，正向传播和反向传播相互依赖。
+练习
+• 在本节样例模型的隐藏层和输出层中添加偏差参数，修改计算图以及正向传播和反向传播
+的数学表达式。
+扫码直达讨论区
+3.15 数值稳定性和模型初始化
+理解了正向传播与反向传播以后，我们来讨论⼀下深度学习模型的数值稳定性问题以及模型参数
+的初始化⽅法。深度模型有关数值稳定性的典型问题是衰减（vanishing）和爆炸（explosion）。
+3.15.1 衰减和爆炸
+当神经⽹络的层数较多时，模型的数值稳定性容易变差。假设⼀个层数为L的多层感知机的
+第l层H(l)的权重参数为W (l)，输出层H(L)的权重参数为W (L)。为了便于讨论，不考虑偏差参数，
+且设所有隐藏层的激活函数为恒等映射（identity mapping）ϕ(x) = x。给定输⼊X，多层感知
+机的第l层的输出H(l) = XW (1)W (2) . . . W (l)。此时，如果层数l较⼤，H(l)的计算可能会出现衰
+减或爆炸。举个例⼦，假设输⼊和所有层的权重参数都是标量，如权重参数为0.2和5，多层感知
+机的第30层输出为输⼊X分别与0.230 ≈1 × 10−21（衰减）和530 ≈9 × 1020（爆炸）的乘积。类
+似地，当层数较多时，梯度的计算也更容易出现衰减或爆炸。
+112
+3. 深度学习基础
+
+随着内容的不断深⼊，我们会在后⾯的章节进⼀步介绍深度学习的数值稳定性问题以及解决⽅
+法。
+3.15.2 随机初始化模型参数
+在神经⽹络中，通常需要随机初始化模型参数。下⾯我们来解释这样做的原因。
+回顾“多层感知机”⼀节图3.3描述的多层感知机。为了⽅便解释，假设输出层只保留⼀个输出单
+元o1（删去o2和o3以及指向它们的箭头），且隐藏层使⽤相同的激活函数。如果将每个隐藏单元的
+参数都初始化为相等的值，那么在正向传播时每个隐藏单元将根据相同的输⼊计算出相同的值，
+并传递⾄输出层。在反向传播中，每个隐藏单元的参数梯度值相等。因此，这些参数在使⽤基于
+梯度的优化算法迭代后值依然相等。之后的迭代也是如此。在这种情况下，⽆论隐藏单元有多少，
+隐藏层本质上只有1个隐藏单元在发挥作⽤。因此，正如在前⾯的实验中所做的那样，我们通常
+将神经⽹络的模型参数，特别是权重参数，进⾏随机初始化。
+MXNet的默认随机初始化
+随机初始化模型参数的⽅法有很多。在“线性回归的简洁实现”⼀节中，我们使⽤net.
+initialize(init.Normal(sigma=0.01))使模型net的权重参数采⽤正态分布的随机初始
+化⽅式。如果不指定初始化⽅法，如net.initialize()，MXNet将使⽤默认的随机初始化⽅
+法：权重参数每个元素随机采样于-0.07到0.07之间的均匀分布，偏差参数全部清零。
+Xavier随机初始化
+还有⼀种⽐较常⽤的随机初始化⽅法叫作Xavier随机初始化[1]。假设某全连接层的输⼊个数为a，
+输出个数为b，Xavier随机初始化将使该层中权重参数的每个元素都随机采样于均匀分布
+U
+(
+−
+√
+6
+a + b,
+√
+6
+a + b
+)
+.
+它的设计主要考虑到，模型参数初始化后，每层输出的⽅差不该受该层输⼊个数影响，且每层梯
+度的⽅差也不该受该层输出个数影响。
+3.15. 数值稳定性和模型初始化
+113
+
+⼩结
+• 深度模型有关数值稳定性的典型问题是衰减和爆炸。当神经⽹络的层数较多时，模型的数
+值稳定性容易变差。
+• 我们通常需要随机初始化神经⽹络的模型参数，如权重参数。
+练习
+• 有⼈说随机初始化模型参数是为了“打破对称性”。这⾥的“对称”应如何理解？
+• 是否可以将线性回归或softmax回归中所有的权重参数都初始化为相同值？
+参考⽂献
+[1] Glorot, X., & Bengio, Y. (2010, March). Understanding the difficulty of training deep feedfor-
+ward neural networks. In Proceedings of the thirteenth international conference on artificial
+intelligence and statistics (pp. 249-256).
+扫码直达讨论区
+3.16 实战Kaggle⽐赛：房价预测
+作为深度学习基础篇章的总结，我们将对本章内容学以致⽤。下⾯，让我们动⼿实战⼀个Kaggle⽐
+赛：房价预测。本节将提供未经调优的数据的预处理、模型的设计和超参数的选择。我们希望读
+者通过动⼿操作、仔细观察实验现象、认真分析实验结果并不断调整⽅法，得到令⾃⼰满意的结
+果。
+114
+3. 深度学习基础
+
+3.16.1 Kaggle⽐赛
+Kaggle是⼀个著名的供机器学习爱好者交流的平台。图3.7展⽰了Kaggle⽹站的⾸⻚。为了便于提
+交结果，需要注册Kaggle账号。
+图3.7: Kaggle⽹站⾸⻚
+我们可以在房价预测⽐赛的⽹⻚上了解⽐赛信息和参赛者成绩，也可以下载数
+据集并提交⾃⼰的预测结果。该⽐赛的⽹⻚地址是
+https://www.kaggle.com/c/
+house-prices-advanced-regression-techniques 。
+图3.8展⽰了房价预测⽐赛的⽹⻚信息。
+3.16. 实战Kaggle⽐赛：房价预测
+115
+
+图3.8: 房价预测⽐赛的⽹⻚信息。⽐赛数据集可通过点击“Data”标签获取
+3.16.2 获取和读取数据集
+⽐赛数据分为训练数据集和测试数据集。两个数据集都包括每栋房⼦的特征，如街道类型、建
+造年份、房顶类型、地下室状况等特征值。这些特征值有连续的数字、离散的标签甚⾄是缺失
+值“na”。只有训练数据集包括了每栋房⼦的价格，也就是标签。我们可以访问⽐赛⽹⻚，点击
+图3.8中的“Data”标签，并下载这些数据集。
+我们将通过pandas库读⼊并处理数据。在导⼊本节需要的包前请确保已安装pandas库，否则请
+参考下⾯的代码注释。
+In [1]: # 如果没有安装pandas，则反注释下⾯⼀⾏
+# !pip install pandas
+%matplotlib inline
+import d2lzh as d2l
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import data as gdata, loss as gloss, nn
+import numpy as np
+import pandas as pd
+解压后的数据位于../data⽬录，它包括两个csv⽂件。下⾯使⽤pandas读取这两个⽂件。
+In [2]: train_data = pd.read_csv('../data/kaggle_house_pred_train.csv')
+116
+3. 深度学习基础
+
+test_data = pd.read_csv('../data/kaggle_house_pred_test.csv')
+训练数据集包括1460个样本、80个特征和1个标签。
+In [3]: train_data.shape
+Out[3]: (1460, 81)
+测试数据集包括1459个样本和80个特征。我们需要将测试数据集中每个样本的标签预测出来。
+In [4]: test_data.shape
+Out[4]: (1459, 80)
+让我们来查看前4个样本的前4个特征、后2个特征和标签（SalePrice）：
+In [5]: train_data.iloc[0:4, [0, 1, 2, 3, -3, -2, -1]]
+Out[5]:
+Id
+MSSubClass MSZoning
+LotFrontage SaleType SaleCondition
+SalePrice
+0
+1
+60
+RL
+65.0
+WD
+Normal
+208500
+1
+2
+20
+RL
+80.0
+WD
+Normal
+181500
+2
+3
+60
+RL
+68.0
+WD
+Normal
+223500
+3
+4
+70
+RL
+60.0
+WD
+Abnorml
+140000
+可以看到第⼀个特征是Id，它能帮助模型记住每个训练样本，但难以推⼴到测试样本，所以我们
+不使⽤它来训练。我们将所有的训练数据和测试数据的79个特征按样本连结。
+In [6]: all_features = pd.concat((train_data.iloc[:, 1:-1], test_data.iloc[:, 1:]))
+3.16.3 预处理数据
+我们对连续数值的特征做标准化（standardization）：设该特征在整个数据集上的均值为µ，标准
+差为σ。那么，我们可以将该特征的每个值先减去µ再除以σ得到标准化后的每个特征值。对于缺
+失的特征值，我们将其替换成该特征的均值。
+In [7]: numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index
+all_features[numeric_features] = all_features[numeric_features].apply(
+lambda x: (x - x.mean()) / (x.std()))
+# 标准化后，每个特征的均值变为0，所以可以直接⽤0来替换缺失值
+all_features[numeric_features] = all_features[numeric_features].fillna(0)
+接下来将离散数值转成指⽰特征。举个例⼦，假设特征MSZoning⾥⾯有两个
+不同的离散值RL和RM，那么这⼀步转换将去掉MSZoning特征，并新加两个特
+征MSZoning_RL和MSZoning_RM，其值为0或1。如果⼀个样本原来在MSZoning⾥的值
+为RL，那么有MSZoning_RL=1且MSZoning_RM=0。
+3.16. 实战Kaggle⽐赛：房价预测
+117
+
+In [8]: # dummy_na=True将缺失值也当作合法的特征值并为其创建指⽰特征
+all_features = pd.get_dummies(all_features, dummy_na=True)
+all_features.shape
+Out[8]: (2919, 331)
+可以看到这⼀步转换将特征数从79增加到了331。
+最后，通过values属性得到NumPy格式的数据，并转成NDArray⽅便后⾯的训练。
+In [9]: n_train = train_data.shape[0]
+train_features = nd.array(all_features[:n_train].values)
+test_features = nd.array(all_features[n_train:].values)
+train_labels = nd.array(train_data.SalePrice.values).reshape((-1, 1))
+3.16.4 训练模型
+我们使⽤⼀个基本的线性回归模型和平⽅损失函数来训练模型。
+In [10]: loss = gloss.L2Loss()
+def get_net():
+net = nn.Sequential()
+net.add(nn.Dense(1))
+net.initialize()
+return net
+下⾯定义⽐赛⽤来评价模型的对数均⽅根误差。给定预测值ˆy1, . . . , ˆyn和对应的真实标
+签y1, . . . , yn，它的定义为
+v
+u
+u
+t 1
+n
+n
+∑
+i=1
+(log(yi) −log(ˆyi))2.
+对数均⽅根误差的实现如下。
+In [11]: def log_rmse(net, features, labels):
+# 将⼩于1的值设成1，使得取对数时数值更稳定
+clipped_preds = nd.clip(net(features), 1, float('inf'))
+rmse = nd.sqrt(2 * loss(clipped_preds.log(), labels.log()).mean())
+return rmse.asscalar()
+下⾯的训练函数跟本章中前⼏节的不同在于使⽤了Adam优化算法。相对之前使⽤的小批量随机
+梯度下降，它对学习率相对不那么敏感。我们将在之后的“优化算法”⼀章⾥详细介绍它。
+118
+3. 深度学习基础
+
+In [12]: def train(net, train_features, train_labels, test_features, test_labels,
+num_epochs, learning_rate, weight_decay, batch_size):
+train_ls, test_ls = [], []
+train_iter = gdata.DataLoader(gdata.ArrayDataset(
+train_features, train_labels), batch_size, shuffle=True)
+# 这⾥使⽤了Adam优化算法
+trainer = gluon.Trainer(net.collect_params(), 'adam', {
+'learning_rate': learning_rate, 'wd': weight_decay})
+for epoch in range(num_epochs):
+for X, y in train_iter:
+with autograd.record():
+l = loss(net(X), y)
+l.backward()
+trainer.step(batch_size)
+train_ls.append(log_rmse(net, train_features, train_labels))
+if test_labels is not None:
+test_ls.append(log_rmse(net, test_features, test_labels))
+return train_ls, test_ls
+3.16.5 K折交叉验证
+我们在“模型选择、⽋拟合和过拟合”⼀节中介绍了K折交叉验证。它将被⽤来选择模型设计并
+调节超参数。下⾯实现了⼀个函数，它返回第i折交叉验证时所需要的训练和验证数据。
+In [13]: def get_k_fold_data(k, i, X, y):
+assert k > 1
+fold_size = X.shape[0] // k
+X_train, y_train = None, None
+for j in range(k):
+idx = slice(j * fold_size, (j + 1) * fold_size)
+X_part, y_part = X[idx, :], y[idx]
+if j == i:
+X_valid, y_valid = X_part, y_part
+elif X_train is None:
+X_train, y_train = X_part, y_part
+else:
+X_train = nd.concat(X_train, X_part, dim=0)
+y_train = nd.concat(y_train, y_part, dim=0)
+return X_train, y_train, X_valid, y_valid
+在K折交叉验证中我们训练K次并返回训练和验证的平均误差。
+In [14]: def k_fold(k, X_train, y_train, num_epochs,
+3.16. 实战Kaggle⽐赛：房价预测
+119
+
+learning_rate, weight_decay, batch_size):
+train_l_sum, valid_l_sum = 0, 0
+for i in range(k):
+data = get_k_fold_data(k, i, X_train, y_train)
+net = get_net()
+train_ls, valid_ls = train(net, *data, num_epochs, learning_rate,
+weight_decay, batch_size)
+train_l_sum += train_ls[-1]
+valid_l_sum += valid_ls[-1]
+if i == 0:
+d2l.semilogy(range(1, num_epochs + 1), train_ls, 'epochs', 'rmse',
+range(1, num_epochs + 1), valid_ls,
+['train', 'valid'])
+print('fold %d, train rmse %f, valid rmse %f'
+% (i, train_ls[-1], valid_ls[-1]))
+return train_l_sum / k, valid_l_sum / k
+3.16.6 模型选择
+我们使⽤⼀组未经调优的超参数并计算交叉验证误差。可以改动这些超参数来尽可能减小平均测
+试误差。
+In [15]: k, num_epochs, lr, weight_decay, batch_size = 5, 100, 5, 0, 64
+train_l, valid_l = k_fold(k, train_features, train_labels, num_epochs, lr,
+weight_decay, batch_size)
+print('%d-fold validation: avg train rmse %f, avg valid rmse %f'
+% (k, train_l, valid_l))
+120
+3. 深度学习基础
+
+fold 0, train rmse 0.169525, valid rmse 0.156867
+fold 1, train rmse 0.162368, valid rmse 0.189642
+fold 2, train rmse 0.163889, valid rmse 0.168128
+fold 3, train rmse 0.167567, valid rmse 0.154805
+fold 4, train rmse 0.162902, valid rmse 0.182984
+5-fold validation: avg train rmse 0.165250, avg valid rmse 0.170485
+有时候你会发现⼀组参数的训练误差可以达到很低，但是在K折交叉验证上的误差可能反而较
+⾼。这种现象很可能是由过拟合造成的。因此，当训练误差降低时，我们要观察K折交叉验证上
+的误差是否也相应降低。
+3.16.7 预测并在Kaggle提交结果
+下⾯定义预测函数。在预测之前，我们会使⽤完整的训练数据集来重新训练模型，并将预测结果
+存成提交所需要的格式。
+In [16]: def train_and_pred(train_features, test_features, train_labels, test_data,
+num_epochs, lr, weight_decay, batch_size):
+net = get_net()
+train_ls, _ = train(net, train_features, train_labels, None, None,
+num_epochs, lr, weight_decay, batch_size)
+d2l.semilogy(range(1, num_epochs + 1), train_ls, 'epochs', 'rmse')
+print('train rmse %f' % train_ls[-1])
+preds = net(test_features).asnumpy()
+test_data['SalePrice'] = pd.Series(preds.reshape(1, -1)[0])
+submission = pd.concat([test_data['Id'], test_data['SalePrice']], axis=1)
+3.16. 实战Kaggle⽐赛：房价预测
+121
+
+submission.to_csv('submission.csv', index=False)
+设计好模型并调好超参数之后，下⼀步就是对测试数据集上的房屋样本做价格预测。如果我们得
+到与交叉验证时差不多的训练误差，那么这个结果很可能是理想的，可以在Kaggle上提交结果。
+In [17]: train_and_pred(train_features, test_features, train_labels, test_data,
+num_epochs, lr, weight_decay, batch_size)
+train rmse 0.162486
+上述代码执⾏完之后会⽣成⼀个submission.csv⽂件。这个⽂件是符合Kaggle⽐赛要求的提交格
+式的。这时，我们可以在Kaggle上提交我们预测得出的结果，并且查看与测试数据集上真实房价
+（标签）的误差。具体来说有以下⼏个步骤：登录Kaggle⽹站，访问房价预测⽐赛⽹⻚，并点击右侧
+“Submit Predictions”或“Late Submission”按钮；然后，点击⻚⾯下⽅“Upload Submission File”
+图标所在的虚线框选择需要提交的预测结果⽂件；最后，点击⻚⾯最下⽅的“Make Submission”
+按钮就可以查看结果了，如图3.9所⽰。
+122
+3. 深度学习基础
+
+图3.9: Kaggle预测房价⽐赛的预测结果提交⻚⾯
+⼩结
+• 通常需要对真实数据做预处理。
+• 可以使⽤K折交叉验证来选择模型并调节超参数。
+练习
+• 在Kaggle提交本节的预测结果。观察⼀下，这个结果在Kaggle上能拿到什么样的分数？
+• 对照K折交叉验证结果，不断修改模型（例如添加隐藏层）和调参，能提⾼Kaggle上的分数
+吗？
+• 如果不使⽤本节中对连续数值特征的标准化处理，结果会有什么变化？
+• 扫码直达讨论区，在社区交流⽅法和结果。你能发掘出其他更好的技巧吗？
+3.16. 实战Kaggle⽐赛：房价预测
+123
+
+扫码直达讨论区
+124
+3. 深度学习基础

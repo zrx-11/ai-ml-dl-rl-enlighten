@@ -1,0 +1,903 @@
+4
+深度学习计算
+上⼀章介绍了包括多层感知机在内的简单深度学习模型的原理和实现。本章我们将简要概括深度
+学习计算的各个重要组成部分，如模型构造、参数的访问和初始化等，⾃定义层，读取、存储和
+使⽤GPU。通过本章的学习，我们将能够深⼊了解模型实现和计算的各个细节，并为在之后章节
+实现更复杂模型打下坚实的基础。
+4.1 模型构造
+让我们回顾⼀下在“多层感知机的简洁实现”⼀节中含单隐藏层的多层感知机的实现⽅法。我们
+⾸先构造Sequential实例，然后依次添加两个全连接层。其中第⼀层的输出⼤小为256，即隐
+藏层单元个数是256；第⼆层的输出⼤小为10，即输出层单元个数是10。我们在上⼀章的其他节
+中也使⽤了Sequential类构造模型。这⾥我们介绍另外⼀种基于Block类的模型构造⽅法：它
+让模型构造更加灵活。
+125
+
+4.1.1 继承Block类来构造模型
+Block类是nn模块⾥提供的⼀个模型构造类，我们可以继承它来定义我们想要的模型。下⾯继
+承Block类构造本节开头提到的多层感知机。这⾥定义的MLP类重载了Block类的__init__函
+数和forward函数。它们分别⽤于创建模型参数和定义前向计算。前向计算也即正向传播。
+In [1]: from mxnet import nd
+from mxnet.gluon import nn
+class MLP(nn.Block):
+# 声明带有模型参数的层，这⾥声明了两个全连接层
+def __init__(self, **kwargs):
+# 调⽤MLP⽗类Block的构造函数来进⾏必要的初始化。这样在构造实例时还可以指定其他函数
+# 参数，如“模型参数的访问、初始化和共享”⼀节将介绍的模型参数params
+super(MLP, self).__init__(**kwargs)
+self.hidden = nn.Dense(256, activation='relu')
+# 隐藏层
+self.output = nn.Dense(10)
+# 输出层
+# 定义模型的前向计算，即如何根据输⼊x计算返回所需要的模型输出
+def forward(self, x):
+return self.output(self.hidden(x))
+以上的MLP类中⽆须定义反向传播函数。系统将通过⾃动求梯度而⾃动⽣成反向传播所需
+的backward函数。
+我们可以实例化MLP类得到模型变量net。下⾯的代码初始化net并传⼊输⼊数据X做⼀次前向
+计算。其中，net(X)会调⽤MLP继承⾃Block类的__call__函数，这个函数将调⽤MLP类定义
+的forward函数来完成前向计算。
+In [2]: X = nd.random.uniform(shape=(2, 20))
+net = MLP()
+net.initialize()
+net(X)
+Out[2]:
+[[ 0.09543004
+0.04614332 -0.00286654 -0.07790349 -0.05130243
+0.02942037
+0.08696642 -0.0190793
+-0.04122177
+0.05088576]
+[ 0.0769287
+0.03099705
+0.00856576 -0.04467199 -0.06926839
+0.09132434
+0.06786595 -0.06187842 -0.03436673
+0.04234694]]
+<NDArray 2x10 @cpu(0)>
+注意，这⾥并没有将Block类命名为Layer（层）或者Model（模型）之类的名字，这是因为该
+类是⼀个可供⾃由组建的部件。它的⼦类既可以是⼀个层（如Gluon提供的Dense类），⼜可以是
+126
+4. 深度学习计算
+
+⼀个模型（如这⾥定义的MLP类），或者是模型的⼀个部分。我们下⾯通过两个例⼦来展⽰它的灵
+活性。
+4.1.2 Sequential类继承⾃Block类
+我们刚刚提到，Block类是⼀个通⽤的部件。事实上，Sequential类继承⾃Block类。当模型的前
+向计算为简单串联各个层的计算时，可以通过更加简单的⽅式定义模型。这正是Sequential类
+的⽬的：它提供add函数来逐⼀添加串联的Block⼦类实例，而模型的前向计算就是将这些实例
+按添加的顺序逐⼀计算。
+下⾯我们实现⼀个与Sequential类有相同功能的MySequential类。这或许可以帮助读者更
+加清晰地理解Sequential类的⼯作机制。
+In [3]: class MySequential(nn.Block):
+def __init__(self, **kwargs):
+super(MySequential, self).__init__(**kwargs)
+def add(self, block):
+# block是⼀个Block⼦类实例，假设它有⼀个独⼀⽆⼆的名字。我们将它保存在Block类的
+# 成员变量_children⾥，其类型是OrderedDict。当MySequential实例调⽤
+# initialize函数时，系统会⾃动对_children⾥所有成员初始化
+self._children[block.name] = block
+def forward(self, x):
+# OrderedDict保证会按照成员添加时的顺序遍历成员
+for block in self._children.values():
+x = block(x)
+return x
+我们⽤MySequential类来实现前⾯描述的MLP类，并使⽤随机初始化的模型做⼀次前向计算。
+In [4]: net = MySequential()
+net.add(nn.Dense(256, activation='relu'))
+net.add(nn.Dense(10))
+net.initialize()
+net(X)
+Out[4]:
+[[ 0.00362228
+0.00633332
+0.03201144 -0.01369375
+0.10336449 -0.03508018
+-0.00032164 -0.01676023
+0.06978628
+0.01303309]
+[ 0.03871715
+0.02608213
+0.03544959 -0.02521311
+0.11005433 -0.0143066
+-0.03052466 -0.03852827
+0.06321152
+0.0038594 ]]
+<NDArray 2x10 @cpu(0)>
+4.1. 模型构造
+127
+
+可以观察到这⾥MySequential类的使⽤跟“多层感知机的简洁实现”⼀节中Sequential类的
+使⽤没什么区别。
+4.1.3 构造复杂的模型
+虽然Sequential类可以使模型构造更加简单，且不需要定义forward函数，但直接继承Block类
+可以极⼤地拓展模型构造的灵活性。下⾯我们构造⼀个稍微复杂点的⽹络FancyMLP。在这个⽹
+络中，我们通过get_constant函数创建训练中不被迭代的参数，即常数参数。在前向计算中，
+除了使⽤创建的常数参数外，我们还使⽤NDArray的函数和Python的控制流，并多次调⽤相同
+的层。
+In [5]: class FancyMLP(nn.Block):
+def __init__(self, **kwargs):
+super(FancyMLP, self).__init__(**kwargs)
+# 使⽤get_constant创建的随机权重参数不会在训练中被迭代（即常数参数）
+self.rand_weight = self.params.get_constant(
+'rand_weight', nd.random.uniform(shape=(20, 20)))
+self.dense = nn.Dense(20, activation='relu')
+def forward(self, x):
+x = self.dense(x)
+# 使⽤创建的常数参数，以及NDArray的relu函数和dot函数
+x = nd.relu(nd.dot(x, self.rand_weight.data()) + 1)
+# 复⽤全连接层。等价于两个全连接层共享参数
+x = self.dense(x)
+# 控制流，这⾥我们需要调⽤asscalar函数来返回标量进⾏⽐较
+while x.norm().asscalar() > 1:
+x /= 2
+if x.norm().asscalar() < 0.8:
+x *= 10
+return x.sum()
+在这个FancyMLP模型中，我们使⽤了常数权重rand_weight（注意它不是模型参数）、做了矩
+阵乘法操作（nd.dot）并重复使⽤了相同的Dense层。下⾯我们来测试该模型的随机初始化和
+前向计算。
+In [6]: net = FancyMLP()
+net.initialize()
+net(X)
+Out[6]:
+[18.571953]
+128
+4. 深度学习计算
+
+<NDArray 1 @cpu(0)>
+因为FancyMLP和Sequential类都是Block类的⼦类，所以我们可以嵌套调⽤它们。
+In [7]: class NestMLP(nn.Block):
+def __init__(self, **kwargs):
+super(NestMLP, self).__init__(**kwargs)
+self.net = nn.Sequential()
+self.net.add(nn.Dense(64, activation='relu'),
+nn.Dense(32, activation='relu'))
+self.dense = nn.Dense(16, activation='relu')
+def forward(self, x):
+return self.dense(self.net(x))
+net = nn.Sequential()
+net.add(NestMLP(), nn.Dense(20), FancyMLP())
+net.initialize()
+net(X)
+Out[7]:
+[24.86621]
+<NDArray 1 @cpu(0)>
+⼩结
+• 可以通过继承Block类来构造模型。
+• Sequential类继承⾃Block类。
+• 虽然Sequential类可以使模型构造更加简单，但直接继承Block类可以极⼤地拓展模型
+构造的灵活性。
+练习
+• 如果不在MLP类的__init__函数⾥调⽤⽗类的__init__函数，会出现什么样的错误信息？
+• 如果去掉FancyMLP类⾥⾯的asscalar函数，会有什么问题？
+• 如果将NestMLP类中通过Sequential实例定义的self.net改为self.net = [nn.
+Dense(64, activation='relu'), nn.Dense(32, activation='relu')]，会
+4.1. 模型构造
+129
+
+有什么问题？
+扫码直达讨论区
+4.2 模型参数的访问、初始化和共享
+在“线性回归的简洁实现”⼀节中，我们通过init模块来初始化模型的全部参数。我们也介绍了
+访问模型参数的简单⽅法。本节将深⼊讲解如何访问和初始化模型参数，以及如何在多个层之间
+共享同⼀份模型参数。
+我们先定义⼀个与上⼀节中相同的含单隐藏层的多层感知机。我们依然使⽤默认⽅式初始化它的
+参数，并做⼀次前向计算。与之前不同的是，在这⾥我们从MXNet中导⼊了init模块，它包含
+了多种模型初始化⽅法。
+In [1]: from mxnet import init, nd
+from mxnet.gluon import nn
+net = nn.Sequential()
+net.add(nn.Dense(256, activation='relu'))
+net.add(nn.Dense(10))
+net.initialize()
+# 使⽤默认初始化⽅式
+X = nd.random.uniform(shape=(2, 20))
+Y = net(X)
+# 前向计算
+4.2.1 访问模型参数
+对于使⽤Sequential类构造的神经⽹络，我们可以通过⽅括号[]来访问⽹络的任⼀层。回忆⼀
+下上⼀节中提到的Sequential类与Block类的继承关系。对于Sequential实例中含模型参数
+的层，我们可以通过Block类的params属性来访问该层包含的所有参数。下⾯，访问多层感知
+机net中隐藏层的所有参数。索引0表⽰隐藏层为Sequential实例最先添加的层。
+130
+4. 深度学习计算
+
+In [2]: net[0].params, type(net[0].params)
+Out[2]: (dense0_ (
+Parameter dense0_weight (shape=(256, 20), dtype=float32)
+Parameter dense0_bias (shape=(256,), dtype=float32)
+), mxnet.gluon.parameter.ParameterDict)
+可以看到，我们得到了⼀个由参数名称映射到参数实例的字典（类型为ParameterDict类）。其中
+权重参数的名称为dense0_weight，它由net[0]的名称（dense0_）和⾃⼰的变量名（weight）
+组成。而且可以看到，该参数的形状为(256, 20)，且数据类型为32位浮点数（float32）。为了访
+问特定参数，我们既可以通过名字来访问字典⾥的元素，也可以直接使⽤它的变量名。下⾯两种
+⽅法是等价的，但通常后者的代码可读性更好。
+In [3]: net[0].params['dense0_weight'], net[0].weight
+Out[3]: (Parameter dense0_weight (shape=(256, 20), dtype=float32),
+Parameter dense0_weight (shape=(256, 20), dtype=float32))
+Gluon⾥参数类型为Parameter类，它包含参数和梯度的数值，可以分别通过data函数和grad函
+数来访问。因为我们随机初始化了权重，所以权重参数是⼀个由随机数组成的形状为(256,
+20)的NDArray。
+In [4]: net[0].weight.data()
+Out[4]:
+[[ 0.06700657 -0.00369488
+0.0418822
+... -0.05517294 -0.01194733
+-0.00369594]
+[-0.03296221 -0.04391347
+0.03839272 ...
+0.05636378
+0.02545484
+-0.007007
+]
+[-0.0196689
+0.01582889 -0.00881553 ...
+0.01509629 -0.01908049
+-0.02449339]
+...
+[ 0.00010955
+0.0439323
+-0.04911506 ...
+0.06975312
+0.0449558
+-0.03283203]
+[ 0.04106557
+0.05671307 -0.00066976 ...
+0.06387014 -0.01292654
+0.00974177]
+[ 0.00297424 -0.0281784
+-0.06881659 ... -0.04047417
+0.00457048
+0.05696651]]
+<NDArray 256x20 @cpu(0)>
+权重梯度的形状和权重的形状⼀样。因为我们还没有进⾏反向传播计算，所以梯度的值全为0。
+In [5]: net[0].weight.grad()
+Out[5]:
+[[0. 0. 0. ... 0. 0. 0.]
+4.2. 模型参数的访问、初始化和共享
+131
+
+[0. 0. 0. ... 0. 0. 0.]
+[0. 0. 0. ... 0. 0. 0.]
+...
+[0. 0. 0. ... 0. 0. 0.]
+[0. 0. 0. ... 0. 0. 0.]
+[0. 0. 0. ... 0. 0. 0.]]
+<NDArray 256x20 @cpu(0)>
+类似地，我们可以访问其他层的参数，如输出层的偏差值。
+In [6]: net[1].bias.data()
+Out[6]:
+[0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+<NDArray 10 @cpu(0)>
+最后，我们可以使⽤collect_params函数来获取net变量所有嵌套（例如通过add函数嵌套）
+的层所包含的所有参数。它返回的同样是⼀个由参数名称到参数实例的字典。
+In [7]: net.collect_params()
+Out[7]: sequential0_ (
+Parameter dense0_weight (shape=(256, 20), dtype=float32)
+Parameter dense0_bias (shape=(256,), dtype=float32)
+Parameter dense1_weight (shape=(10, 256), dtype=float32)
+Parameter dense1_bias (shape=(10,), dtype=float32)
+)
+这个函数可以通过正则表达式来匹配参数名，从而筛选需要的参数。
+In [8]: net.collect_params('.*weight')
+Out[8]: sequential0_ (
+Parameter dense0_weight (shape=(256, 20), dtype=float32)
+Parameter dense1_weight (shape=(10, 256), dtype=float32)
+)
+4.2.2 初始化模型参数
+我们在“数值稳定性和模型初始化”⼀节中描述了模型的默认初始化⽅法：权重参数元素为[-
+0.07, 0.07]之间均匀分布的随机数，偏差参数则全为0。但我们经常需要使⽤其他⽅法来初始化权
+重。MXNet的init模块⾥提供了多种预设的初始化⽅法。在下⾯的例⼦中，我们将权重参数初
+始化成均值为0、标准差为0.01的正态分布随机数，并依然将偏差参数清零。
+132
+4. 深度学习计算
+
+In [9]: # ⾮⾸次对模型初始化需要指定force_reinit为真
+net.initialize(init=init.Normal(sigma=0.01), force_reinit=True)
+net[0].weight.data()[0]
+Out[9]:
+[ 0.01074176
+0.00066428
+0.00848699 -0.0080038
+-0.00168822
+0.00936328
+0.00357444
+0.00779328 -0.01010307 -0.00391573
+0.01316619 -0.00432926
+0.0071536
+0.00925416 -0.00904951 -0.00074684
+0.0082254
+-0.01878511
+0.00885884
+0.01911872]
+<NDArray 20 @cpu(0)>
+下⾯使⽤常数来初始化权重参数。
+In [10]: net.initialize(init=init.Constant(1), force_reinit=True)
+net[0].weight.data()[0]
+Out[10]:
+[1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
+<NDArray 20 @cpu(0)>
+如果只想对某个特定参数进⾏初始化，我们可以调⽤Parameter类的initialize函数，它
+与Block类提供的initialize函数的使⽤⽅法⼀致。下例中我们对隐藏层的权重使⽤Xavier随
+机初始化⽅法。
+In [11]: net[0].weight.initialize(init=init.Xavier(), force_reinit=True)
+net[0].weight.data()[0]
+Out[11]:
+[ 0.00512482 -0.06579044 -0.10849719 -0.09586414
+0.06394844
+0.06029618
+-0.03065033 -0.01086642
+0.01929168
+0.1003869
+-0.09339568 -0.08703034
+-0.10472868 -0.09879824 -0.00352201 -0.11063069 -0.04257748
+0.06548801
+0.12987629 -0.13846186]
+<NDArray 20 @cpu(0)>
+4.2.3 ⾃定义初始化⽅法
+有时候我们需要的初始化⽅法并没有在init模块中提供。这时，可以实现⼀个Initializer类
+的⼦类，从而能够像使⽤其他初始化⽅法那样使⽤它。通常，我们只需要实现_init_weight这
+个函数，并将其传⼊的NDArray修改成初始化的结果。在下⾯的例⼦⾥，我们令权重有⼀半概率
+初始化为0，有另⼀半概率初始化为[−10, −5]和[5, 10]两个区间⾥均匀分布的随机数。
+In [12]: class MyInit(init.Initializer):
+def _init_weight(self, name, data):
+print('Init', name, data.shape)
+4.2. 模型参数的访问、初始化和共享
+133
+
+data[:] = nd.random.uniform(low=-10, high=10, shape=data.shape)
+data *= data.abs() >= 5
+net.initialize(MyInit(), force_reinit=True)
+net[0].weight.data()[0]
+Init dense0_weight (256, 20)
+Init dense1_weight (10, 256)
+Out[12]:
+[-5.3659673
+7.5773945
+8.986376
+-0.
+8.827555
+0.
+5.9840508 -0.
+0.
+0.
+7.4857597 -0.
+-0.
+6.8910007
+6.9788704 -6.1131554
+0.
+5.4665203
+-9.735263
+9.485172 ]
+<NDArray 20 @cpu(0)>
+此外，我们还可以通过Parameter类的set_data函数来直接改写模型参数。例如，在下例中我
+们将隐藏层参数在现有的基础上加1。
+In [13]: net[0].weight.set_data(net[0].weight.data() + 1)
+net[0].weight.data()[0]
+Out[13]:
+[-4.3659673
+8.5773945
+9.986376
+1.
+9.827555
+1.
+6.9840508
+1.
+1.
+1.
+8.48576
+1.
+1.
+7.8910007
+7.9788704 -5.1131554
+1.
+6.4665203
+-8.735263
+10.485172 ]
+<NDArray 20 @cpu(0)>
+4.2.4 共享模型参数
+在有些情况下，我们希望在多个层之间共享模型参数。“模型构造”⼀节介绍了如何在Block类
+的forward函数⾥多次调⽤同⼀个层来计算。这⾥再介绍另外⼀种⽅法，它在构造层的时候指定
+使⽤特定的参数。如果不同层使⽤同⼀份参数，那么它们在前向计算和反向传播时都会共享相同
+的参数。在下⾯的例⼦⾥，我们让模型的第⼆隐藏层（shared变量）和第三隐藏层共享模型参
+数。
+In [14]: net = nn.Sequential()
+shared = nn.Dense(8, activation='relu')
+net.add(nn.Dense(8, activation='relu'),
+shared,
+nn.Dense(8, activation='relu', params=shared.params),
+nn.Dense(10))
+net.initialize()
+134
+4. 深度学习计算
+
+X = nd.random.uniform(shape=(2, 20))
+net(X)
+net[1].weight.data()[0] == net[2].weight.data()[0]
+Out[14]:
+[1. 1. 1. 1. 1. 1. 1. 1.]
+<NDArray 8 @cpu(0)>
+我们在构造第三隐藏层时通过params来指定它使⽤第⼆隐藏层的参数。因为模型参数⾥包含了
+梯度，所以在反向传播计算时，第⼆隐藏层和第三隐藏层的梯度都会被累加在shared.params.
+grad()⾥。
+⼩结
+• 有多种⽅法来访问、初始化和共享模型参数。
+• 可以⾃定义初始化⽅法。
+练习
+• 查阅有关init模块的MXNet⽂档，了解不同的参数初始化⽅法。
+• 尝试在net.initialize()后、net(X)前访问模型参数，观察模型参数的形状。
+• 构造⼀个含共享参数层的多层感知机并训练。在训练过程中，观察每⼀层的模型参数和梯
+度。
+扫码直达讨论区
+4.2. 模型参数的访问、初始化和共享
+135
+
+4.3 模型参数的延后初始化
+如果做了上⼀节练习，你会发现模型net在调⽤初始化函数initialize之后、在做前向计
+算net(X)之前时，权重参数的形状中出现了0。虽然直觉上initialize完成了所有参数初始
+化过程，然而这在Gluon中却是不⼀定的。我们在本节中详细讨论这个话题。
+4.3.1 延后初始化
+也许读者早就注意到了，在之前使⽤Gluon创建的全连接层都没有指定输⼊个数。例如，在上⼀节
+使⽤的多层感知机net⾥，我们创建的隐藏层仅仅指定了输出⼤小为256。当调⽤initialize函
+数时，由于隐藏层输⼊个数依然未知，系统也⽆法得知该层权重参数的形状。只有在当我们将
+形状是(2, 20)的输⼊X传进⽹络做前向计算net(X)时，系统才推断出该层的权重参数形状为(256,
+20)。因此，这时候我们才能真正开始初始化参数。
+让我们使⽤上⼀节中定义的MyInit类来演⽰这⼀过程。我们创建多层感知机，并使⽤MyInit实
+例来初始化模型参数。
+In [1]: from mxnet import init, nd
+from mxnet.gluon import nn
+class MyInit(init.Initializer):
+def _init_weight(self, name, data):
+print('Init', name, data.shape)
+# 实际的初始化逻辑在此省略了
+net = nn.Sequential()
+net.add(nn.Dense(256, activation='relu'),
+nn.Dense(10))
+net.initialize(init=MyInit())
+注意，虽然MyInit被调⽤时会打印模型参数的相关信息，但上⾯的initialize函数执⾏完并
+未打印任何信息。由此可⻅，调⽤initialize函数时并没有真正初始化参数。下⾯我们定义输
+⼊并执⾏⼀次前向计算。
+In [2]: X = nd.random.uniform(shape=(2, 20))
+Y = net(X)
+Init dense0_weight (256, 20)
+Init dense1_weight (10, 256)
+136
+4. 深度学习计算
+
+这时候，有关模型参数的信息被打印出来。在根据输⼊X做前向计算时，系统能够根据输⼊的形
+状⾃动推断出所有层的权重参数的形状。系统在创建这些参数之后，调⽤MyInit实例对它们进
+⾏初始化，然后才进⾏前向计算。
+当然，这个初始化只会在第⼀次前向计算时被调⽤。之后我们再运⾏前向计算net(X)时则不会
+重新初始化，因此不会再次产⽣MyInit实例的输出。
+In [3]: Y = net(X)
+系统将真正的参数初始化延后到获得⾜够信息时才执⾏的⾏为叫作延后初始化（deferred initial-
+ization）。它可以让模型的创建更加简单：只需要定义每个层的输出⼤小，而不⽤⼈⼯推测它们
+的输⼊个数。这对于之后将介绍的定义多达数⼗甚⾄数百层的⽹络来说尤其⽅便。
+然而，任何事物都有两⾯性。正如本节开头提到的那样，延后初始化也可能会带来⼀定的困惑。
+在第⼀次前向计算之前，我们⽆法直接操作模型参数，例如⽆法使⽤data函数和set_data函数
+来获取和修改参数。因此，我们经常会额外做⼀次前向计算来迫使参数被真正地初始化。
+4.3.2 避免延后初始化
+如果系统在调⽤initialize函数时能够知道所有参数的形状，那么延后初始化就不会发⽣。我
+们在这⾥分别介绍两种这样的情况。
+第⼀种情况是我们要对已初始化的模型重新初始化时。因为参数形状不会发⽣变化，所以系统能
+够⽴即进⾏重新初始化。
+In [4]: net.initialize(init=MyInit(), force_reinit=True)
+Init dense0_weight (256, 20)
+Init dense1_weight (10, 256)
+第⼆种情况是我们在创建层的时候指定了它的输⼊个数，使系统不需要额外的信息来推测参数形
+状。下例中我们通过in_units来指定每个全连接层的输⼊个数，使初始化能够在initialize函
+数被调⽤时⽴即发⽣。
+In [5]: net = nn.Sequential()
+net.add(nn.Dense(256, in_units=20, activation='relu'))
+net.add(nn.Dense(10, in_units=256))
+net.initialize(init=MyInit())
+Init dense2_weight (256, 20)
+Init dense3_weight (10, 256)
+4.3. 模型参数的延后初始化
+137
+
+⼩结
+• 系统将真正的参数初始化延后到获得⾜够信息时才执⾏的⾏为叫作延后初始化。
+• 延后初始化的主要好处是让模型构造更加简单。例如，我们⽆须⼈⼯推测每个层的输⼊个
+数。
+• 也可以避免延后初始化。
+练习
+• 如果在下⼀次前向计算net(X)前改变输⼊X的形状，包括批量⼤小和输⼊个数，会发⽣什
+么？
+扫码直达讨论区
+4.4 ⾃定义层
+深度学习的⼀个魅⼒在于神经⽹络中各式各样的层，例如全连接层和后⾯章节中将要介绍的卷积
+层、池化层与循环层。虽然Gluon提供了⼤量常⽤的层，但有时候我们依然希望⾃定义层。本节
+将介绍如何使⽤NDArray来⾃定义⼀个Gluon的层，从而可以被重复调⽤。
+4.4.1 不含模型参数的⾃定义层
+我们先介绍如何定义⼀个不含模型参数的⾃定义层。事实上，这和“模型构造”⼀节中介绍的使
+⽤Block类构造模型类似。下⾯的CenteredLayer类通过继承Block类⾃定义了⼀个将输⼊减
+掉均值后输出的层，并将层的计算定义在了forward函数⾥。这个层⾥不含模型参数。
+In [1]: from mxnet import gluon, nd
+from mxnet.gluon import nn
+138
+4. 深度学习计算
+
+class CenteredLayer(nn.Block):
+def __init__(self, **kwargs):
+super(CenteredLayer, self).__init__(**kwargs)
+def forward(self, x):
+return x - x.mean()
+我们可以实例化这个层，然后做前向计算。
+In [2]: layer = CenteredLayer()
+layer(nd.array([1, 2, 3, 4, 5]))
+Out[2]:
+[-2. -1.
+0.
+1.
+2.]
+<NDArray 5 @cpu(0)>
+我们也可以⽤它来构造更复杂的模型。
+In [3]: net = nn.Sequential()
+net.add(nn.Dense(128),
+CenteredLayer())
+下⾯打印⾃定义层各个输出的均值。因为均值是浮点数，所以它的值是⼀个很接近0的数。
+In [4]: net.initialize()
+y = net(nd.random.uniform(shape=(4, 8)))
+y.mean().asscalar()
+Out[4]: -7.212293e-10
+4.4.2 含模型参数的⾃定义层
+我们还可以⾃定义含模型参数的⾃定义层。其中的模型参数可以通过训练学出。
+“模型参数的访问、初始化和共享”⼀节分别介绍了Parameter类和ParameterDict类。在⾃定
+义含模型参数的层时，我们可以利⽤Block类⾃带的ParameterDict类型的成员变量params。
+它是⼀个由字符串类型的参数名字映射到Parameter类型的模型参数的字典。我们可以通
+过get函数从ParameterDict创建Parameter实例。
+In [5]: params = gluon.ParameterDict()
+params.get('param2', shape=(2, 3))
+params
+4.4. ⾃定义层
+139
+
+Out[5]: (
+Parameter param2 (shape=(2, 3), dtype=<class 'numpy.float32'>)
+)
+现在我们尝试实现⼀个含权重参数和偏差参数的全连接层。它使⽤ReLU函数作为激活函数。其
+中in_units和units分别代表输⼊个数和输出个数。
+In [6]: class MyDense(nn.Block):
+# units为该层的输出个数，in_units为该层的输⼊个数
+def __init__(self, units, in_units, **kwargs):
+super(MyDense, self).__init__(**kwargs)
+self.weight = self.params.get('weight', shape=(in_units, units))
+self.bias = self.params.get('bias', shape=(units,))
+def forward(self, x):
+linear = nd.dot(x, self.weight.data()) + self.bias.data()
+return nd.relu(linear)
+下⾯，我们实例化MyDense类并访问它的模型参数。
+In [7]: dense = MyDense(units=3, in_units=5)
+dense.params
+Out[7]: mydense0_ (
+Parameter mydense0_weight (shape=(5, 3), dtype=<class 'numpy.float32'>)
+Parameter mydense0_bias (shape=(3,), dtype=<class 'numpy.float32'>)
+)
+我们可以直接使⽤⾃定义层做前向计算。
+In [8]: dense.initialize()
+dense(nd.random.uniform(shape=(2, 5)))
+Out[8]:
+[[0.06917784 0.01627153 0.01029644]
+[0.02602214 0.0453731
+0.
+]]
+<NDArray 2x3 @cpu(0)>
+我们也可以使⽤⾃定义层构造模型。它和Gluon的其他层在使⽤上很类似。
+In [9]: net = nn.Sequential()
+net.add(MyDense(8, in_units=64),
+MyDense(1, in_units=8))
+net.initialize()
+net(nd.random.uniform(shape=(2, 64)))
+Out[9]:
+[[0.03820474]
+140
+4. 深度学习计算
+
+[0.04035058]]
+<NDArray 2x1 @cpu(0)>
+⼩结
+• 可以通过Block类⾃定义神经⽹络中的层，从而可以被重复调⽤。
+练习
+• ⾃定义⼀个层，使⽤它做⼀次前向计算。
+扫码直达讨论区
+4.5 读取和存储
+到⽬前为⽌，我们介绍了如何处理数据以及如何构建、训练和测试深度学习模型。然而在实际中，
+我们有时需要把训练好的模型部署到很多不同的设备。在这种情况下，我们可以把内存中训练好
+的模型参数存储在硬盘上供后续读取使⽤。
+4.5.1 读写NDArray
+我们可以直接使⽤save函数和load函数分别存储和读取NDArray。下⾯的例⼦创建
+了NDArray变量x，并将其存在⽂件名同为x的⽂件⾥。
+In [1]: from mxnet import nd
+from mxnet.gluon import nn
+x = nd.ones(3)
+nd.save('x', x)
+4.5. 读取和存储
+141
+
+然后我们将数据从存储的⽂件读回内存。
+In [2]: x2 = nd.load('x')
+x2
+Out[2]: [
+[1. 1. 1.]
+<NDArray 3 @cpu(0)>]
+我们还可以存储⼀列NDArray并读回内存。
+In [3]: y = nd.zeros(4)
+nd.save('xy', [x, y])
+x2, y2 = nd.load('xy')
+(x2, y2)
+Out[3]: (
+[1. 1. 1.]
+<NDArray 3 @cpu(0)>,
+[0. 0. 0. 0.]
+<NDArray 4 @cpu(0)>)
+我们甚⾄可以存储并读取⼀个从字符串映射到NDArray的字典。
+In [4]: mydict = {'x': x, 'y': y}
+nd.save('mydict', mydict)
+mydict2 = nd.load('mydict')
+mydict2
+Out[4]: {'x':
+[1. 1. 1.]
+<NDArray 3 @cpu(0)>, 'y':
+[0. 0. 0. 0.]
+<NDArray 4 @cpu(0)>}
+4.5.2 读写Gluon模型的参数
+除NDArray以外，我们还可以读写Gluon模型的参数。Gluon的Block类提供
+了save_parameters函数和load_parameters函数来读写模型参数。为了演⽰⽅便，
+我们先创建⼀个多层感知机，并将其初始化。回忆“模型参数的延后初始化”⼀节，由于延后初
+始化，我们需要先运⾏⼀次前向计算才能实际初始化模型参数。
+In [5]: class MLP(nn.Block):
+def __init__(self, **kwargs):
+super(MLP, self).__init__(**kwargs)
+142
+4. 深度学习计算
+
+self.hidden = nn.Dense(256, activation='relu')
+self.output = nn.Dense(10)
+def forward(self, x):
+return self.output(self.hidden(x))
+net = MLP()
+net.initialize()
+X = nd.random.uniform(shape=(2, 20))
+Y = net(X)
+下⾯把该模型的参数存成⽂件，⽂件名为mlp.params。
+In [6]: filename = 'mlp.params'
+net.save_parameters(filename)
+接下来，我们再实例化⼀次定义好的多层感知机。与随机初始化模型参数不同，我们在这⾥直接
+读取保存在⽂件⾥的参数。
+In [7]: net2 = MLP()
+net2.load_parameters(filename)
+因为这两个实例都有同样的模型参数，那么对同⼀个输⼊X的计算结果将会是⼀样的。我们来验
+证⼀下。
+In [8]: Y2 = net2(X)
+Y2 == Y
+Out[8]:
+[[1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
+[1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]]
+<NDArray 2x10 @cpu(0)>
+⼩结
+• 通过save函数和load函数可以很⽅便地读写NDArray。
+• 通过load_parameters函数和save_parameters函数可以很⽅便地读写Gluon模型的
+参数。
+练习
+• 即使⽆须把训练好的模型部署到不同的设备，存储模型参数在实际中还有哪些好处？
+4.5. 读取和存储
+143
+
+扫码直达讨论区
+4.6 GPU计算
+到⽬前为⽌，我们⼀直在使⽤CPU计算。对复杂的神经⽹络和⼤规模的数据来说，使⽤CPU来计
+算可能不够⾼效。在本节中，我们将介绍如何使⽤单块NVIDIA GPU来计算。⾸先，需要确保已
+经安装好了⾄少⼀块NVIDIA GPU。然后，下载CUDA并按照提⽰设置好相应的路径（可参考附录
+中“使⽤AWS运⾏代码”⼀节）。这些准备⼯作都完成后，下⾯就可以通过nvidia-smi命令来查
+看显卡信息了。
+In [1]: !nvidia-smi
+# 对Linux/macOS⽤⼾有效
+Mon May 13 00:57:57 2019
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 410.48
+Driver Version: 410.48
+|
+|-------------------------------+----------------------+----------------------+
+| GPU
+Name
+Persistence-M| Bus-Id
+Disp.A | Volatile Uncorr. ECC |
+| Fan
+Temp
+Perf
+Pwr:Usage/Cap|
+Memory-Usage | GPU-Util
+Compute M. |
+|===============================+======================+======================|
+|
+0
+Tesla V100-SXM2…
+On
+| 00000000:00:1B.0 Off |
+0 |
+| N/A
+61C
+P0
+44W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
+|
+1
+Tesla V100-SXM2…
+On
+| 00000000:00:1C.0 Off |
+0 |
+| N/A
+44C
+P0
+39W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
+|
+2
+Tesla V100-SXM2…
+On
+| 00000000:00:1D.0 Off |
+0 |
+| N/A
+39C
+P0
+42W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
+|
+3
+Tesla V100-SXM2…
+On
+| 00000000:00:1E.0 Off |
+0 |
+| N/A
+37C
+P0
+40W / 300W |
+0MiB / 16130MiB |
+0%
+Default |
++-------------------------------+----------------------+----------------------+
++-----------------------------------------------------------------------------+
+| Processes:
+GPU Memory |
+|
+GPU
+PID
+Type
+Process name
+Usage
+|
+144
+4. 深度学习计算
+
+|=============================================================================|
+|
+No running processes found
+|
++-----------------------------------------------------------------------------+
+接下来，我们需要确认安装了MXNet的GPU版本。安装⽅法⻅“获取和运⾏本书的代码”⼀节。
+运⾏本节中的程序需要⾄少2块GPU。
+4.6.1 计算设备
+MXNet可以指定⽤来存储和计算的设备，如使⽤内存的CPU或者使⽤显存的GPU。默认情况下，
+MXNet会将数据创建在内存，然后利⽤CPU来计算。在MXNet中，mx.cpu()（或者在括号⾥填任
+意整数）表⽰所有的物理CPU和内存。这意味着，MXNet的计算会尽量使⽤所有的CPU核。但mx.
+gpu()只代表⼀块GPU和相应的显存。如果有多块GPU，我们⽤mx.gpu(i)来表⽰第i块GPU及
+相应的显存（i从0开始）且mx.gpu(0)和mx.gpu()等价。
+In [2]: import mxnet as mx
+from mxnet import nd
+from mxnet.gluon import nn
+mx.cpu(), mx.gpu(), mx.gpu(1)
+Out[2]: (cpu(0), gpu(0), gpu(1))
+4.6.2 NDArray的GPU计算
+在默认情况下，NDArray存在内存上。因此，之前我们每次打印NDArray的时候都会看
+到@cpu(0)这个标识。
+In [3]: x = nd.array([1, 2, 3])
+x
+Out[3]:
+[1. 2. 3.]
+<NDArray 3 @cpu(0)>
+我们可以通过NDArray的context属性来查看该NDArray所在的设备。
+In [4]: x.context
+Out[4]: cpu(0)
+4.6. GPU计算
+145
+
+GPU上的存储
+我们有多种⽅法将NDArray存储在显存上。例如，我们可以在创建NDArray的时候通过ctx参数
+指定存储设备。下⾯我们将NDArray变量a创建在gpu(0)上。注意，在打印a时，设备信息变成
+了@gpu(0)。创建在显存上的NDArray只消耗同⼀块显卡的显存。我们可以通过nvidia-smi命
+令查看显存的使⽤情况。通常，我们需要确保不创建超过显存上限的数据。
+In [5]: a = nd.array([1, 2, 3], ctx=mx.gpu())
+a
+Out[5]:
+[1. 2. 3.]
+<NDArray 3 @gpu(0)>
+假设⾄少有2块GPU，下⾯代码将会在gpu(1)上创建随机数组。
+In [6]: B = nd.random.uniform(shape=(2, 3), ctx=mx.gpu(1))
+B
+Out[6]:
+[[0.59119
+0.313164
+0.76352036]
+[0.9731786
+0.35454726 0.11677533]]
+<NDArray 2x3 @gpu(1)>
+除了在创建时指定，我们也可以通过copyto函数和as_in_context函数在设备之间传输数据。
+下⾯我们将内存上的NDArray变量x复制到gpu(0)上。
+In [7]: y = x.copyto(mx.gpu())
+y
+Out[7]:
+[1. 2. 3.]
+<NDArray 3 @gpu(0)>
+In [8]: z = x.as_in_context(mx.gpu())
+z
+Out[8]:
+[1. 2. 3.]
+<NDArray 3 @gpu(0)>
+需要区分的是，如果源变量和⽬标变量的context⼀致，as_in_context函数使⽬标变量和源
+变量共享源变量的内存或显存。
+In [9]: y.as_in_context(mx.gpu()) is y
+Out[9]: True
+146
+4. 深度学习计算
+
+而copyto函数总是为⽬标变量开新的内存或显存。
+In [10]: y.copyto(mx.gpu()) is y
+Out[10]: False
+GPU上的计算
+MXNet的计算会在数据的context属性所指定的设备上执⾏。为了使⽤GPU计算，我们只需要事
+先将数据存储在显存上。计算结果会⾃动保存在同⼀块显卡的显存上。
+In [11]: (z + 2).exp() * y
+Out[11]:
+[ 20.085537 109.1963
+445.2395
+]
+<NDArray 3 @gpu(0)>
+注意，MXNet要求计算的所有输⼊数据都在内存或同⼀块显卡的显存上。这样设计的原因是CPU和
+不同的GPU之间的数据交互通常⽐较耗时。因此，MXNet希望⽤⼾确切地指明计算的输⼊数据都
+在内存或同⼀块显卡的显存上。例如，如果将内存上的NDArray变量x和显存上的NDArray变
+量y做运算，会出现错误信息。当我们打印NDArray或将NDArray转换成NumPy格式时，如果数
+据不在内存⾥，MXNet会将它先复制到内存，从而造成额外的传输开销。
+4.6.3 Gluon的GPU计算
+同NDArray类似，Gluon的模型可以在初始化时通过ctx参数指定设备。下⾯的代码将模型参数
+初始化在显存上。
+In [12]: net = nn.Sequential()
+net.add(nn.Dense(1))
+net.initialize(ctx=mx.gpu())
+当输⼊是显存上的NDArray时，Gluon会在同⼀块显卡的显存上计算结果。
+In [13]: net(y)
+Out[13]:
+[[0.0068339 ]
+[0.01366779]
+[0.02050169]]
+<NDArray 3x1 @gpu(0)>
+下⾯我们确认⼀下模型参数存储在同⼀块显卡的显存上。
+4.6. GPU计算
+147
+
+In [14]: net[0].weight.data()
+Out[14]:
+[[0.0068339]]
+<NDArray 1x1 @gpu(0)>
+⼩结
+• MXNet可以指定⽤来存储和计算的设备，如使⽤内存的CPU或者使⽤显存的GPU。在默认
+情况下，MXNet会将数据创建在内存，然后利⽤CPU来计算。
+• MXNet要求计算的所有输⼊数据都在内存或同⼀块显卡的显存上。
+练习
+• 试试⼤⼀点⼉的计算任务，如⼤矩阵的乘法，看看使⽤CPU和GPU的速度区别。如果是计算
+量很小的任务呢？
+• GPU上应如何读写模型参数？
+参考⽂献
+[1] CUDA下载地址。https://developer.nvidia.com/cuda-downloads
+扫码直达讨论区
+148
+4. 深度学习计算

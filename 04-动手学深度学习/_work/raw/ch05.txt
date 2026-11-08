@@ -1,0 +1,1863 @@
+5
+卷积神经⽹络
+本章将介绍卷积神经⽹络。它是近年来深度学习能在计算机视觉领域取得突破性成果的基⽯。它
+也逐渐在被其他诸如⾃然语⾔处理、推荐系统和语⾳识别等领域⼴泛使⽤。我们将先描述卷积神
+经⽹络中卷积层和池化层的⼯作原理，并解释填充、步幅、输⼊通道和输出通道的含义。在掌握
+了这些基础知识以后，我们将探究数个具有代表性的深度卷积神经⽹络的设计思路。这些模型包
+括最早提出的AlexNet，以及后来的使⽤重复元素的⽹络（VGG）、⽹络中的⽹络（NiN）、含并⾏
+连结的⽹络（GoogLeNet）、残差⽹络（ResNet）和稠密连接⽹络（DenseNet）。它们中有不少在
+过去⼏年的ImageNet⽐赛（⼀个著名的计算机视觉竞赛）中⼤放异彩。虽然深度模型看上去只是
+具有很多层的神经⽹络，然而获得有效的深度模型并不容易。有幸的是，本章阐述的批量归⼀化
+和残差⽹络为训练和设计深度模型提供了两类重要思路。
+5.1 ⼆维卷积层
+卷积神经⽹络（convolutional neural network）是含有卷积层（convolutional layer）的神经⽹
+络。本章中介绍的卷积神经⽹络均使⽤最常⻅的⼆维卷积层。它有⾼和宽两个空间维度，常⽤来
+处理图像数据。本节中，我们将介绍简单形式的⼆维卷积层的⼯作原理。
+149
+
+5.1.1 ⼆维互相关运算
+虽然卷积层得名于卷积（convolution）运算，但我们通常在卷积层中使⽤更加直观的互相关（cross-
+correlation）运算。在⼆维卷积层中，⼀个⼆维输⼊数组和⼀个⼆维核（kernel）数组通过互相
+关运算输出⼀个⼆维数组。我们⽤⼀个具体例⼦来解释⼆维互相关运算的含义。如图5.1所⽰，输
+⼊是⼀个⾼和宽均为3的⼆维数组。我们将该数组的形状记为3 × 3或（3，3）。核数组的⾼和宽分
+别为2。该数组在卷积计算中⼜称卷积核或过滤器（filter）。卷积核窗口（⼜称卷积窗口）的形状
+取决于卷积核的⾼和宽，即2 × 2。图5.1中的阴影部分为第⼀个输出元素及其计算所使⽤的输⼊
+和核数组元素：0 × 0 + 1 × 1 + 3 × 2 + 4 × 3 = 19。
+图5.1: ⼆维互相关运算
+在⼆维互相关运算中，卷积窗口从输⼊数组的最左上⽅开始，按从左往右、从上往下的顺序，依
+次在输⼊数组上滑动。当卷积窗口滑动到某⼀位置时，窗口中的输⼊⼦数组与核数组按元素相乘
+并求和，得到输出数组中相应位置的元素。图5.1中的输出数组⾼和宽分别为2，其中的4个元素由
+⼆维互相关运算得出：
+0 × 0 + 1 × 1 + 3 × 2 + 4 × 3 = 19,
+1 × 0 + 2 × 1 + 4 × 2 + 5 × 3 = 25,
+3 × 0 + 4 × 1 + 6 × 2 + 7 × 3 = 37,
+4 × 0 + 5 × 1 + 7 × 2 + 8 × 3 = 43.
+下⾯我们将上述过程实现在corr2d函数⾥。它接受输⼊数组X与核数组K，并输出数组Y。
+In [1]: from mxnet import autograd, nd
+from mxnet.gluon import nn
+def corr2d(X, K):
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+h, w = K.shape
+Y = nd.zeros((X.shape[0] - h + 1, X.shape[1] - w + 1))
+for i in range(Y.shape[0]):
+150
+5. 卷积神经⽹络
+
+for j in range(Y.shape[1]):
+Y[i, j] = (X[i: i + h, j: j + w] * K).sum()
+return Y
+我们可以构造图5.1中的输⼊数组X、核数组K来验证⼆维互相关运算的输出。
+In [2]: X = nd.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+K = nd.array([[0, 1], [2, 3]])
+corr2d(X, K)
+Out[2]:
+[[19. 25.]
+[37. 43.]]
+<NDArray 2x2 @cpu(0)>
+5.1.2 ⼆维卷积层
+⼆维卷积层将输⼊和卷积核做互相关运算，并加上⼀个标量偏差来得到输出。卷积层的模型参数
+包括了卷积核和标量偏差。在训练模型的时候，通常我们先对卷积核随机初始化，然后不断迭代
+卷积核和偏差。
+下⾯基于corr2d函数来实现⼀个⾃定义的⼆维卷积层。在构造函数__init__⾥我们声
+明weight和bias这两个模型参数。前向计算函数forward则是直接调⽤corr2d函数再加上偏
+差。
+In [3]: class Conv2D(nn.Block):
+def __init__(self, kernel_size, **kwargs):
+super(Conv2D, self).__init__(**kwargs)
+self.weight = self.params.get('weight', shape=kernel_size)
+self.bias = self.params.get('bias', shape=(1,))
+def forward(self, x):
+return corr2d(x, self.weight.data()) + self.bias.data()
+卷积窗口形状为p × q的卷积层称为p × q卷积层。同样，p × q卷积或p × q卷积核说明卷积核的⾼
+和宽分别为p和q。
+5.1.3 图像中物体边缘检测
+下⾯我们来看⼀个卷积层的简单应⽤：检测图像中物体的边缘，即找到像素变化的位置。⾸先我
+们构造⼀张6 × 8的图像（即⾼和宽分别为6像素和8像素的图像）。它中间4列为⿊（0），其余为⽩
+5.1. ⼆维卷积层
+151
+
+（1）。
+In [4]: X = nd.ones((6, 8))
+X[:, 2:6] = 0
+X
+Out[4]:
+[[1. 1. 0. 0. 0. 0. 1. 1.]
+[1. 1. 0. 0. 0. 0. 1. 1.]
+[1. 1. 0. 0. 0. 0. 1. 1.]
+[1. 1. 0. 0. 0. 0. 1. 1.]
+[1. 1. 0. 0. 0. 0. 1. 1.]
+[1. 1. 0. 0. 0. 0. 1. 1.]]
+<NDArray 6x8 @cpu(0)>
+然后我们构造⼀个⾼和宽分别为1和2的卷积核K。当它与输⼊做互相关运算时，如果横向相邻元
+素相同，输出为0；否则输出为⾮0。
+In [5]: K = nd.array([[1, -1]])
+下⾯将输⼊X和我们设计的卷积核K做互相关运算。可以看出，我们将从⽩到⿊的边缘和从⿊到⽩
+的边缘分别检测成了1和-1。其余部分的输出全是0。
+In [6]: Y = corr2d(X, K)
+Y
+Out[6]:
+[[ 0.
+1.
+0.
+0.
+0. -1.
+0.]
+[ 0.
+1.
+0.
+0.
+0. -1.
+0.]
+[ 0.
+1.
+0.
+0.
+0. -1.
+0.]
+[ 0.
+1.
+0.
+0.
+0. -1.
+0.]
+[ 0.
+1.
+0.
+0.
+0. -1.
+0.]
+[ 0.
+1.
+0.
+0.
+0. -1.
+0.]]
+<NDArray 6x7 @cpu(0)>
+由此，我们可以看出，卷积层可通过重复使⽤卷积核有效地表征局部空间。
+5.1.4 通过数据学习核数组
+最后我们来看⼀个例⼦，它使⽤物体边缘检测中的输⼊数据X和输出数据Y来学习我们构造的核
+数组K。我们⾸先构造⼀个卷积层，将其卷积核初始化成随机数组。接下来在每⼀次迭代中，我
+们使⽤平⽅误差来⽐较Y和卷积层的输出，然后计算梯度来更新权重。简单起⻅，这⾥的卷积层
+忽略了偏差。
+152
+5. 卷积神经⽹络
+
+虽然我们之前构造了Conv2D类，但由于corr2d使⽤了对单个元素赋值（[i, j]=）的操作因而
+⽆法⾃动求梯度。下⾯我们使⽤Gluon提供的Conv2D类来实现这个例⼦。
+In [7]: # 构造⼀个输出通道数为1（将在“多输⼊通道和多输出通道”⼀节介绍通道），核数组形状是(1, 2)的⼆
+# 维卷积层
+conv2d = nn.Conv2D(1, kernel_size=(1, 2))
+conv2d.initialize()
+# ⼆维卷积层使⽤4维输⼊输出，格式为(样本, 通道, ⾼, 宽)，这⾥批量⼤⼩（批量中的样本数）和通
+# 道数均为1
+X = X.reshape((1, 1, 6, 8))
+Y = Y.reshape((1, 1, 6, 7))
+for i in range(10):
+with autograd.record():
+Y_hat = conv2d(X)
+l = (Y_hat - Y) ** 2
+l.backward()
+# 简单起⻅，这⾥忽略了偏差
+conv2d.weight.data()[:] -= 3e-2 * conv2d.weight.grad()
+if (i + 1) % 2 == 0:
+print('batch %d, loss %.3f' % (i + 1, l.sum().asscalar()))
+batch 2, loss 4.949
+batch 4, loss 0.831
+batch 6, loss 0.140
+batch 8, loss 0.024
+batch 10, loss 0.004
+可以看到，10次迭代后误差已经降到了⼀个⽐较小的值。现在来看⼀下学习到的核数组。
+In [8]: conv2d.weight.data().reshape((1, 2))
+Out[8]:
+[[ 0.9895
+-0.9873705]]
+<NDArray 1x2 @cpu(0)>
+可以看到，学到的核数组与我们之前定义的核数组K较接近。
+5.1.5 互相关运算和卷积运算
+实际上，卷积运算与互相关运算类似。为了得到卷积运算的输出，我们只需将核数组左右翻转并
+上下翻转，再与输⼊数组做互相关运算。可⻅，卷积运算和互相关运算虽然类似，但如果它们使
+⽤相同的核数组，对于同⼀个输⼊，输出往往并不相同。
+5.1. ⼆维卷积层
+153
+
+那么，你也许会好奇卷积层为何能使⽤互相关运算替代卷积运算。其实，在深度学习中核数组都
+是学出来的：卷积层⽆论使⽤互相关运算或卷积运算都不影响模型预测时的输出。为了解释这⼀
+点，假设卷积层使⽤互相关运算学出图5.1中的核数组。设其他条件不变，使⽤卷积运算学出的核
+数组即图5.1中的核数组按上下、左右翻转。也就是说，图5.1中的输⼊与学出的已翻转的核数组
+再做卷积运算时，依然得到图5.1中的输出。为了与⼤多数深度学习⽂献⼀致，如⽆特别说明，本
+书中提到的卷积运算均指互相关运算。
+5.1.6 特征图和感受野
+⼆维卷积层输出的⼆维数组可以看作是输⼊在空间维度（宽和⾼）上某⼀级的表征，也叫特征图
+（feature map）。影响元素x的前向计算的所有可能输⼊区域（可能⼤于输⼊的实际尺⼨）叫做x的
+感受野（receptive field）。以图5.1为例，输⼊中阴影部分的四个元素是输出中阴影部分元素的感
+受野。我们将图5.1中形状为2 × 2的输出记为Y ，并考虑⼀个更深的卷积神经⽹络：将Y 与另⼀个
+形状为2 × 2的核数组做互相关运算，输出单个元素z。那么，z在Y 上的感受野包括Y 的全部四个
+元素，在输⼊上的感受野包括其中全部9个元素。可⻅，我们可以通过更深的卷积神经⽹络使特
+征图中单个元素的感受野变得更加⼴阔，从而捕捉输⼊上更⼤尺⼨的特征。
+我们常使⽤“元素”⼀词来描述数组或矩阵中的成员。在神经⽹络的术语中，这些元素也可称为
+“单元”。当含义明确时，本书不对这两个术语做严格区分。
+⼩结
+• ⼆维卷积层的核⼼计算是⼆维互相关运算。在最简单的形式下，它对⼆维输⼊数据和卷积
+核做互相关运算然后加上偏差。
+• 我们可以设计卷积核来检测图像中的边缘。
+• 我们可以通过数据来学习卷积核。
+练习
+• 构造⼀个输⼊图像X，令它有⽔平⽅向的边缘。如何设计卷积核K来检测图像中⽔平边缘？
+如果是对⻆⽅向的边缘呢？
+• 试着对我们⾃⼰构造的Conv2D类进⾏⾃动求梯度，会有什么样的错误信息？在该类
+的forward函数⾥，将corr2d函数替换成nd.Convolution类使得⾃动求梯度变得可⾏。
+154
+5. 卷积神经⽹络
+
+• 如何通过变化输⼊和核数组将互相关运算表⽰成⼀个矩阵乘法？
+• 如何构造⼀个全连接层来进⾏物体边缘检测？
+扫码直达讨论区
+5.2 填充和步幅
+在上⼀节的例⼦⾥，我们使⽤⾼和宽为3的输⼊与⾼和宽为2的卷积核得到⾼和宽为2的输出。⼀
+般来说，假设输⼊形状是nh × nw，卷积核窗口形状是kh × kw，那么输出形状将会是
+(nh −kh + 1) × (nw −kw + 1).
+所以卷积层的输出形状由输⼊形状和卷积核窗口形状决定。本节我们将介绍卷积层的两个超参
+数，即填充和步幅。它们可以对给定形状的输⼊和卷积核改变输出形状。
+5.2.1 填充
+填充（padding）是指在输⼊⾼和宽的两侧填充元素（通常是0元素）。图5.2⾥我们在原输⼊⾼和宽的
+两侧分别添加了值为0的元素，使得输⼊⾼和宽从3变成了5，并导致输出⾼和宽由2增加到4。图5.2中
+的阴影部分为第⼀个输出元素及其计算所使⽤的输⼊和核数组元素：0×0+0×1+0×2+0×3 = 0。
+5.2. 填充和步幅
+155
+
+图5.2: 在输⼊的⾼和宽两侧分别填充了0元素的⼆维互相关计算
+⼀般来说，如果在⾼的两侧⼀共填充ph⾏，在宽的两侧⼀共填充pw列，那么输出形状将会是
+(nh −kh + ph + 1) × (nw −kw + pw + 1),
+也就是说，输出的⾼和宽会分别增加ph和pw。
+在很多情况下，我们会设置ph = kh−1和pw = kw−1来使输⼊和输出具有相同的⾼和宽。这样会⽅
+便在构造⽹络时推测每个层的输出形状。假设这⾥kh是奇数，我们会在⾼的两侧分别填充ph/2⾏。
+如果kh是偶数，⼀种可能是在输⼊的顶端⼀侧填充⌈ph/2⌉⾏，而在底端⼀侧填充⌊ph/2⌋⾏。在宽
+的两侧填充同理。
+卷积神经⽹络经常使⽤奇数⾼宽的卷积核，如1、3、5和7，所以两端上的填充个数相等。对任意
+的⼆维数组X，设它的第i⾏第j列的元素为X[i,j]。当两端上的填充个数相等，并使输⼊和输出
+具有相同的⾼和宽时，我们就知道输出Y[i,j]是由输⼊以X[i,j]为中⼼的窗口同卷积核进⾏
+互相关计算得到的。
+下⾯的例⼦⾥我们创建⼀个⾼和宽为3的⼆维卷积层，然后设输⼊⾼和宽两侧的填充数分别为1。
+给定⼀个⾼和宽为8的输⼊，我们发现输出的⾼和宽也是8。
+In [1]: from mxnet import nd
+from mxnet.gluon import nn
+# 定义⼀个函数来计算卷积层。它初始化卷积层权重，并对输⼊和输出做相应的升维和降维
+def comp_conv2d(conv2d, X):
+conv2d.initialize()
+# (1, 1)代表批量⼤⼩和通道数（“多输⼊通道和多输出通道”⼀节将介绍）均为1
+X = X.reshape((1, 1) + X.shape)
+Y = conv2d(X)
+return Y.reshape(Y.shape[2:])
+# 排除不关⼼的前两维：批量和通道
+156
+5. 卷积神经⽹络
+
+# 注意这⾥是两侧分别填充1⾏或列，所以在两侧⼀共填充2⾏或列
+conv2d = nn.Conv2D(1, kernel_size=3, padding=1)
+X = nd.random.uniform(shape=(8, 8))
+comp_conv2d(conv2d, X).shape
+Out[1]: (8, 8)
+当卷积核的⾼和宽不同时，我们也可以通过设置⾼和宽上不同的填充数使输出和输⼊具有相同的
+⾼和宽。
+In [2]: # 使⽤⾼为5、宽为3的卷积核。在⾼和宽两侧的填充数分别为2和1
+conv2d = nn.Conv2D(1, kernel_size=(5, 3), padding=(2, 1))
+comp_conv2d(conv2d, X).shape
+Out[2]: (8, 8)
+5.2.2 步幅
+在上⼀节⾥我们介绍了⼆维互相关运算。卷积窗口从输⼊数组的最左上⽅开始，按从左往右、从
+上往下的顺序，依次在输⼊数组上滑动。我们将每次滑动的⾏数和列数称为步幅（stride）。
+⽬前我们看到的例⼦⾥，在⾼和宽两个⽅向上步幅均为1。我们也可以使⽤更⼤步幅。图5.3展⽰了
+在⾼上步幅为3、在宽上步幅为2的⼆维互相关运算。可以看到，输出第⼀列第⼆个元素时，卷积窗
+口向下滑动了3⾏，而在输出第⼀⾏第⼆个元素时卷积窗口向右滑动了2列。当卷积窗口在输⼊上
+再向右滑动2列时，由于输⼊元素⽆法填满窗口，⽆结果输出。图5.3中的阴影部分为输出元素及其
+计算所使⽤的输⼊和核数组元素：0×0+0×1+1×2+2×3 = 8、0×0+6×1+0×2+0×3 = 6。
+图5.3: ⾼和宽上步幅分别为3和2的⼆维互相关运算
+5.2. 填充和步幅
+157
+
+⼀般来说，当⾼上步幅为sh，宽上步幅为sw时，输出形状为
+⌊(nh −kh + ph + sh)/sh⌋× ⌊(nw −kw + pw + sw)/sw⌋.
+如果设置ph = kh−1和pw = kw−1，那么输出形状将简化为⌊(nh+sh−1)/sh⌋×⌊(nw+sw−1)/sw⌋。
+更进⼀步，如果输⼊的⾼和宽能分别被⾼和宽上的步幅整除，那么输出形状将是(nh/sh)×(nw/sw)。
+下⾯我们令⾼和宽上的步幅均为2，从而使输⼊的⾼和宽减半。
+In [3]: conv2d = nn.Conv2D(1, kernel_size=3, padding=1, strides=2)
+comp_conv2d(conv2d, X).shape
+Out[3]: (4, 4)
+接下来是⼀个稍微复杂点⼉的例⼦。
+In [4]: conv2d = nn.Conv2D(1, kernel_size=(3, 5), padding=(0, 1), strides=(3, 4))
+comp_conv2d(conv2d, X).shape
+Out[4]: (2, 2)
+为了表述简洁，当输⼊的⾼和宽两侧的填充数分别为ph和pw时，我们称填充为(ph, pw)。特别地，
+当ph = pw = p时，填充为p。当在⾼和宽上的步幅分别为sh和sw时，我们称步幅为(sh, sw)。特别
+地，当sh = sw = s时，步幅为s。在默认情况下，填充为0，步幅为1。
+⼩结
+• 填充可以增加输出的⾼和宽。这常⽤来使输出与输⼊具有相同的⾼和宽。
+• 步幅可以减小输出的⾼和宽，例如输出的⾼和宽仅为输⼊的⾼和宽的1/n（n为⼤于1的整
+数）。
+练习
+• 对本节最后⼀个例⼦通过形状计算公式来计算输出形状，看看是否和实验结果⼀致。
+• 在本节实验中，试⼀试其他的填充和步幅组合。
+158
+5. 卷积神经⽹络
+
+扫码直达讨论区
+5.3 多输⼊通道和多输出通道
+前⾯两节⾥我们⽤到的输⼊和输出都是⼆维数组，但真实数据的维度经常更⾼。例如，彩⾊图像
+在⾼和宽2个维度外还有RGB（红、绿、蓝）3个颜⾊通道。假设彩⾊图像的⾼和宽分别是h和w（像
+素），那么它可以表⽰为⼀个3 × h × w的多维数组。我们将⼤小为3的这⼀维称为通道（channel）
+维。本节我们将介绍含多个输⼊通道或多个输出通道的卷积核。
+5.3.1 多输⼊通道
+当输⼊数据含多个通道时，我们需要构造⼀个输⼊通道数与输⼊数据的通道数相同的卷积核，从
+而能够与含多通道的输⼊数据做互相关运算。假设输⼊数据的通道数为ci，那么卷积核的输⼊
+通道数同样为ci。设卷积核窗口形状为kh × kw。当ci = 1时，我们知道卷积核只包含⼀个形状
+为kh × kw的⼆维数组。当ci > 1时，我们将会为每个输⼊通道各分配⼀个形状为kh × kw的核数
+组。把这ci个数组在输⼊通道维上连结，即得到⼀个形状为ci × kh × kw的卷积核。由于输⼊和卷
+积核各有ci个通道，我们可以在各个通道上对输⼊的⼆维数组和卷积核的⼆维核数组做互相关运
+算，再将这ci个互相关运算的⼆维输出按通道相加，得到⼀个⼆维数组。这就是含多个通道的输
+⼊数据与多输⼊通道的卷积核做⼆维互相关运算的输出。
+图5.4展⽰了含2个输⼊通道的⼆维互相关计算的例⼦。在每个通道上，⼆维输⼊数组与⼆维核数
+组做互相关运算，再按通道相加即得到输出。图5.4中阴影部分为第⼀个输出元素及其计算所使
+⽤的输⼊和核数组元素：(1 × 1 + 2 × 2 + 4 × 3 + 5 × 4) + (0 × 0 + 1 × 1 + 3 × 2 + 4 × 3) = 56。
+5.3. 多输⼊通道和多输出通道
+159
+
+图5.4: 含2个输⼊通道的互相关计算
+接下来我们实现含多个输⼊通道的互相关运算。我们只需要对每个通道做互相关运算，然后通
+过add_n函数来进⾏累加。
+In [1]: import d2lzh as d2l
+from mxnet import nd
+def corr2d_multi_in(X, K):
+# ⾸先沿着X和K的第0维（通道维）遍历。然后使⽤*将结果列表变成add_n函数的位置参数
+# （positional argument）来进⾏相加
+return nd.add_n(*[d2l.corr2d(x, k) for x, k in zip(X, K)])
+我们可以构造图5.4中的输⼊数组X、核数组K来验证互相关运算的输出。
+In [2]: X = nd.array([[[0, 1, 2], [3, 4, 5], [6, 7, 8]],
+[[1, 2, 3], [4, 5, 6], [7, 8, 9]]])
+K = nd.array([[[0, 1], [2, 3]], [[1, 2], [3, 4]]])
+corr2d_multi_in(X, K)
+Out[2]:
+[[ 56.
+72.]
+[104. 120.]]
+<NDArray 2x2 @cpu(0)>
+5.3.2 多输出通道
+当输⼊通道有多个时，因为我们对各个通道的结果做了累加，所以不论输⼊通道数是多少，输出
+通道数总是为1。设卷积核输⼊通道数和输出通道数分别为ci和co，⾼和宽分别为kh和kw。如果希
+160
+5. 卷积神经⽹络
+
+望得到含多个通道的输出，我们可以为每个输出通道分别创建形状为ci × kh × kw的核数组。将
+它们在输出通道维上连结，卷积核的形状即co × ci × kh × kw。在做互相关运算时，每个输出通
+道上的结果由卷积核在该输出通道上的核数组与整个输⼊数组计算而来。
+下⾯我们实现⼀个互相关运算函数来计算多个通道的输出。
+In [3]: def corr2d_multi_in_out(X, K):
+# 对K的第0维遍历，每次同输⼊X做互相关计算。所有结果使⽤stack函数合并在⼀起
+return nd.stack(*[corr2d_multi_in(X, k) for k in K])
+我们将核数组K同K+1（K中每个元素加⼀）和K+2连结在⼀起来构造⼀个输出通道数为3的卷积
+核。
+In [4]: K = nd.stack(K, K + 1, K + 2)
+K.shape
+Out[4]: (3, 2, 2, 2)
+下⾯我们对输⼊数组X与核数组K做互相关运算。此时的输出含有3个通道。其中第⼀个通道的结
+果与之前输⼊数组X与多输⼊通道、单输出通道核的计算结果⼀致。
+In [5]: corr2d_multi_in_out(X, K)
+Out[5]:
+[[[ 56.
+72.]
+[104. 120.]]
+[[ 76. 100.]
+[148. 172.]]
+[[ 96. 128.]
+[192. 224.]]]
+<NDArray 3x2x2 @cpu(0)>
+5.3.3 1 × 1卷积层
+最后我们讨论卷积窗口形状为1 × 1（kh = kw = 1）的多通道卷积层。我们通常称之为1 × 1卷
+积层，并将其中的卷积运算称为1 × 1卷积。因为使⽤了最小窗口，1 × 1卷积失去了卷积层可以
+识别⾼和宽维度上相邻元素构成的模式的功能。实际上，1 × 1卷积的主要计算发⽣在通道维上。
+图5.5展⽰了使⽤输⼊通道数为3、输出通道数为2的1 × 1卷积核的互相关计算。值得注意的是，输
+⼊和输出具有相同的⾼和宽。输出中的每个元素来⾃输⼊中在⾼和宽上相同位置的元素在不同通
+道之间的按权重累加。假设我们将通道维当作特征维，将⾼和宽维度上的元素当成数据样本，那
+么1 × 1卷积层的作⽤与全连接层等价。
+5.3. 多输⼊通道和多输出通道
+161
+
+图5.5: 使⽤输⼊通道数为3、输出通道数为2的1 × 1卷积核的互相关计算。输⼊和输出具有相同
+的⾼和宽
+下⾯我们使⽤全连接层中的矩阵乘法来实现1 × 1卷积。这⾥需要在矩阵乘法运算前后对数据形
+状做⼀些调整。
+In [6]: def corr2d_multi_in_out_1x1(X, K):
+c_i, h, w = X.shape
+c_o = K.shape[0]
+X = X.reshape((c_i, h * w))
+K = K.reshape((c_o, c_i))
+Y = nd.dot(K, X)
+# 全连接层的矩阵乘法
+return Y.reshape((c_o, h, w))
+经验证，做1 × 1卷积时，以上函数与之前实现的互相关运算函数corr2d_multi_in_out等价。
+In [7]: X = nd.random.uniform(shape=(3, 3, 3))
+K = nd.random.uniform(shape=(2, 3, 1, 1))
+Y1 = corr2d_multi_in_out_1x1(X, K)
+Y2 = corr2d_multi_in_out(X, K)
+(Y1 - Y2).norm().asscalar() < 1e-6
+Out[7]: True
+在之后的模型⾥我们将会看到1 × 1卷积层被当作保持⾼和宽维度形状不变的全连接层使⽤。于
+是，我们可以通过调整⽹络层之间的通道数来控制模型复杂度。
+⼩结
+• 使⽤多通道可以拓展卷积层的模型参数。
+162
+5. 卷积神经⽹络
+
+• 假设将通道维当作特征维，将⾼和宽维度上的元素当成数据样本，那么1 × 1卷积层的作⽤
+与全连接层等价。
+• 1 × 1卷积层通常⽤来调整⽹络层之间的通道数，并控制模型复杂度。
+练习
+• 假设输⼊形状为ci×h×w，且使⽤形状为co×ci×kh×kw、填充为(ph, pw)、步幅为(sh, sw)的
+卷积核。那么这个卷积层的前向计算分别需要多少次乘法和加法？
+• 翻倍输⼊通道数ci和输出通道数co会增加多少倍计算？翻倍填充呢？
+• 如果卷积核的⾼和宽kh = kw = 1，能减少多少计算？
+• 本节最后⼀个例⼦中的变量Y1和Y2完全⼀致吗？原因是什么？
+• 当卷积窗口不为1 × 1时，如何⽤矩阵乘法实现卷积计算？
+扫码直达讨论区
+5.4 池化层
+回忆⼀下，在“⼆维卷积层”⼀节⾥介绍的图像物体边缘检测应⽤中，我们构造卷积核从而精确
+地找到了像素变化的位置。设任意⼆维数组X的i⾏j列的元素为X[i, j]。如果我们构造的卷积
+核输出Y[i, j]=1，那么说明输⼊中X[i, j]和X[i, j+1]数值不⼀样。这可能意味着物体边
+缘通过这两个元素之间。但实际图像⾥，我们感兴趣的物体不会总出现在固定位置：即使我们连
+续拍摄同⼀个物体也极有可能出现像素位置上的偏移。这会导致同⼀个边缘对应的输出可能出现
+在卷积输出Y中的不同位置，进而对后⾯的模式识别造成不便。
+在本节中我们介绍池化（pooling）层，它的提出是为了缓解卷积层对位置的过度敏感性。
+5.4. 池化层
+163
+
+5.4.1 ⼆维最⼤池化层和平均池化层
+同卷积层⼀样，池化层每次对输⼊数据的⼀个固定形状窗口（⼜称池化窗口）中的元素计算输出。
+不同于卷积层⾥计算输⼊和核的互相关性，池化层直接计算池化窗口内元素的最⼤值或者平均
+值。该运算也分别叫做最⼤池化或平均池化。在⼆维最⼤池化中，池化窗口从输⼊数组的最左上
+⽅开始，按从左往右、从上往下的顺序，依次在输⼊数组上滑动。当池化窗口滑动到某⼀位置时，
+窗口中的输⼊⼦数组的最⼤值即输出数组中相应位置的元素。
+图5.6: 池化窗口形状为2 × 2的最⼤池化
+图5.6展⽰了池化窗口形状为2 × 2的最⼤池化，阴影部分为第⼀个输出元素及其计算所使⽤的输
+⼊元素。输出数组的⾼和宽分别为2，其中的4个元素由取最⼤值运算max得出：
+max(0, 1, 3, 4) = 4,
+max(1, 2, 4, 5) = 5,
+max(3, 4, 6, 7) = 7,
+max(4, 5, 7, 8) = 8.
+⼆维平均池化的⼯作原理与⼆维最⼤池化类似，但将最⼤运算符替换成平均运算符。池化窗口形
+状为p × q的池化层称为p × q池化层，其中的池化运算叫作p × q池化。
+让我们再次回到本节开始提到的物体边缘检测的例⼦。现在我们将卷积层的输出作为2 × 2最⼤
+池化的输⼊。设该卷积层输⼊是X、池化层输出为Y。⽆论是X[i, j]和X[i, j+1]值不同，还
+是X[i, j+1]和X[i, j+2]不同，池化层输出均有Y[i, j]=1。也就是说，使⽤2 × 2最⼤池化
+层时，只要卷积层识别的模式在⾼和宽上移动不超过⼀个元素，我们依然可以将它检测出来。
+下⾯把池化层的前向计算实现在pool2d函数⾥。它跟“⼆维卷积层”⼀节⾥corr2d函数⾮常类
+似，唯⼀的区别在计算输出Y上。
+In [1]: from mxnet import nd
+from mxnet.gluon import nn
+164
+5. 卷积神经⽹络
+
+def pool2d(X, pool_size, mode='max'):
+p_h, p_w = pool_size
+Y = nd.zeros((X.shape[0] - p_h + 1, X.shape[1] - p_w + 1))
+for i in range(Y.shape[0]):
+for j in range(Y.shape[1]):
+if mode == 'max':
+Y[i, j] = X[i: i + p_h, j: j + p_w].max()
+elif mode == 'avg':
+Y[i, j] = X[i: i + p_h, j: j + p_w].mean()
+return Y
+我们可以构造图5.6中的输⼊数组X来验证⼆维最⼤池化层的输出。
+In [2]: X = nd.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+pool2d(X, (2, 2))
+Out[2]:
+[[4. 5.]
+[7. 8.]]
+<NDArray 2x2 @cpu(0)>
+同时我们实验⼀下平均池化层。
+In [3]: pool2d(X, (2, 2), 'avg')
+Out[3]:
+[[2. 3.]
+[5. 6.]]
+<NDArray 2x2 @cpu(0)>
+5.4.2 填充和步幅
+同卷积层⼀样，池化层也可以在输⼊的⾼和宽两侧的填充并调整窗口的移动步幅来改变输出形
+状。池化层填充和步幅与卷积层填充和步幅的⼯作机制⼀样。我们将通过nn模块⾥的⼆维最⼤池
+化层MaxPool2D来演⽰池化层填充和步幅的⼯作机制。我们先构造⼀个形状为(1, 1, 4, 4)的输⼊
+数据，前两个维度分别是批量和通道。
+In [4]: X = nd.arange(16).reshape((1, 1, 4, 4))
+X
+Out[4]:
+[[[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+[ 8.
+9. 10. 11.]
+5.4. 池化层
+165
+
+[12. 13. 14. 15.]]]]
+<NDArray 1x1x4x4 @cpu(0)>
+默认情况下，MaxPool2D实例⾥步幅和池化窗口形状相同。下⾯使⽤形状为(3, 3)的池化窗口，默
+认获得形状为(3, 3)的步幅。
+In [5]: pool2d = nn.MaxPool2D(3)
+pool2d(X)
+# 因为池化层没有模型参数，所以不需要调⽤参数初始化函数
+Out[5]:
+[[[[10.]]]]
+<NDArray 1x1x1x1 @cpu(0)>
+我们可以⼿动指定步幅和填充。
+In [6]: pool2d = nn.MaxPool2D(3, padding=1, strides=2)
+pool2d(X)
+Out[6]:
+[[[[ 5.
+7.]
+[13. 15.]]]]
+<NDArray 1x1x2x2 @cpu(0)>
+当然，我们也可以指定⾮正⽅形的池化窗口，并分别指定⾼和宽上的填充和步幅。
+In [7]: pool2d = nn.MaxPool2D((2, 3), padding=(1, 2), strides=(2, 3))
+pool2d(X)
+Out[7]:
+[[[[ 0.
+3.]
+[ 8. 11.]
+[12. 15.]]]]
+<NDArray 1x1x3x2 @cpu(0)>
+5.4.3 多通道
+在处理多通道输⼊数据时，池化层对每个输⼊通道分别池化，而不是像卷积层那样将各通道的输
+⼊按通道相加。这意味着池化层的输出通道数与输⼊通道数相等。下⾯将数组X和X+1在通道维
+上连结来构造通道数为2的输⼊。
+In [8]: X = nd.concat(X, X + 1, dim=1)
+X
+Out[8]:
+[[[[ 0.
+1.
+2.
+3.]
+[ 4.
+5.
+6.
+7.]
+166
+5. 卷积神经⽹络
+
+[ 8.
+9. 10. 11.]
+[12. 13. 14. 15.]]
+[[ 1.
+2.
+3.
+4.]
+[ 5.
+6.
+7.
+8.]
+[ 9. 10. 11. 12.]
+[13. 14. 15. 16.]]]]
+<NDArray 1x2x4x4 @cpu(0)>
+池化后，我们发现输出通道数仍然是2。
+In [9]: pool2d = nn.MaxPool2D(3, padding=1, strides=2)
+pool2d(X)
+Out[9]:
+[[[[ 5.
+7.]
+[13. 15.]]
+[[ 6.
+8.]
+[14. 16.]]]]
+<NDArray 1x2x2x2 @cpu(0)>
+⼩结
+• 最⼤池化和平均池化分别取池化窗口中输⼊元素的最⼤值和平均值作为输出。
+• 池化层的⼀个主要作⽤是缓解卷积层对位置的过度敏感性。
+• 可以指定池化层的填充和步幅。
+• 池化层的输出通道数跟输⼊通道数相同。
+练习
+• 分析池化层的计算复杂度。假设输⼊形状为c × h × w，我们使⽤形状为ph × pw的池化窗口，
+而且使⽤(ph, pw)填充和(sh, sw)步幅。这个池化层的前向计算复杂度有多⼤？
+• 想⼀想，最⼤池化层和平均池化层在作⽤上可能有哪些区别？
+• 你觉得最小池化层这个想法有没有意义？
+5.4. 池化层
+167
+
+扫码直达讨论区
+5.5 卷积神经⽹络（LeNet）
+在“多层感知机的从零开始实现”⼀节⾥我们构造了⼀个含单隐藏层的多层感知机模型来
+对Fashion-MNIST数据集中的图像进⾏分类。每张图像⾼和宽均是28像素。我们将图像中的像
+素逐⾏展开，得到⻓度为784的向量，并输⼊进全连接层中。然而，这种分类⽅法有⼀定的局限
+性。
+1. 图像在同⼀列邻近的像素在这个向量中可能相距较远。它们构成的模式可能难以被模型识
+别。
+2. 对于⼤尺⼨的输⼊图像，使⽤全连接层容易导致模型过⼤。假设输⼊是⾼和宽均为1, 000像
+素的彩⾊照⽚（含3个通道）。即使全连接层输出个数仍是256，该层权重参数的形状也
+是3, 000, 000 × 256：它占⽤了⼤约3 GB的内存或显存。这会带来过于复杂的模型和过⾼
+的存储开销。
+卷积层尝试解决这两个问题。⼀⽅⾯，卷积层保留输⼊形状，使图像的像素在⾼和宽两个⽅向上
+的相关性均可能被有效识别；另⼀⽅⾯，卷积层通过滑动窗口将同⼀卷积核与不同位置的输⼊重
+复计算，从而避免参数尺⼨过⼤。
+卷积神经⽹络就是含卷积层的⽹络。本节⾥我们将介绍⼀个早期⽤来识别⼿写数字图像的卷积神
+经⽹络：LeNet [1]。这个名字来源于LeNet论⽂的第⼀作者Yann LeCun。LeNet展⽰了通过梯度
+下降训练卷积神经⽹络可以达到⼿写数字识别在当时最先进的结果。这个奠基性的⼯作第⼀次将
+卷积神经⽹络推上舞台，为世⼈所知。
+5.5.1 LeNet模型
+LeNet分为卷积层块和全连接层块两个部分。下⾯我们分别介绍这两个模块。
+168
+5. 卷积神经⽹络
+
+卷积层块⾥的基本单位是卷积层后接最⼤池化层：卷积层⽤来识别图像⾥的空间模式，如线条和
+物体局部，之后的最⼤池化层则⽤来降低卷积层对位置的敏感性。卷积层块由两个这样的基本单
+位重复堆叠构成。在卷积层块中，每个卷积层都使⽤5 × 5的窗口，并在输出上使⽤sigmoid激活
+函数。第⼀个卷积层输出通道数为6，第⼆个卷积层输出通道数则增加到16。这是因为第⼆个卷
+积层⽐第⼀个卷积层的输⼊的⾼和宽要小，所以增加输出通道使两个卷积层的参数尺⼨类似。卷
+积层块的两个最⼤池化层的窗口形状均为2 × 2，且步幅为2。由于池化窗口与步幅形状相同，池
+化窗口在输⼊上每次滑动所覆盖的区域互不重叠。
+卷积层块的输出形状为(批量⼤小, 通道, ⾼, 宽)。当卷积层块的输出传⼊全连接层块时，全连接
+层块会将小批量中每个样本变平（flatten）。也就是说，全连接层的输⼊形状将变成⼆维，其中第
+⼀维是小批量中的样本，第⼆维是每个样本变平后的向量表⽰，且向量⻓度为通道、⾼和宽的乘
+积。全连接层块含3个全连接层。它们的输出个数分别是120、84和10，其中10为输出的类别个数。
+下⾯我们通过Sequential类来实现LeNet模型。
+In [1]: import d2lzh as d2l
+import mxnet as mx
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import loss as gloss, nn
+import time
+net = nn.Sequential()
+net.add(nn.Conv2D(channels=6, kernel_size=5, activation='sigmoid'),
+nn.MaxPool2D(pool_size=2, strides=2),
+nn.Conv2D(channels=16, kernel_size=5, activation='sigmoid'),
+nn.MaxPool2D(pool_size=2, strides=2),
+# Dense会默认将(批量⼤⼩, 通道, ⾼, 宽)形状的输⼊转换成
+# (批量⼤⼩, 通道* ⾼* 宽)形状的输⼊
+nn.Dense(120, activation='sigmoid'),
+nn.Dense(84, activation='sigmoid'),
+nn.Dense(10))
+接下来我们构造⼀个⾼和宽均为28的单通道数据样本，并逐层进⾏前向计算来查看每个层的输出
+形状。
+In [2]: X = nd.random.uniform(shape=(1, 1, 28, 28))
+net.initialize()
+for layer in net:
+X = layer(X)
+print(layer.name, 'output shape:\t', X.shape)
+conv0 output shape:
+(1, 6, 24, 24)
+pool0 output shape:
+(1, 6, 12, 12)
+5.5. 卷积神经⽹络（LeNet）
+169
+
+conv1 output shape:
+(1, 16, 8, 8)
+pool1 output shape:
+(1, 16, 4, 4)
+dense0 output shape:
+(1, 120)
+dense1 output shape:
+(1, 84)
+dense2 output shape:
+(1, 10)
+可以看到，在卷积层块中输⼊的⾼和宽在逐层减小。卷积层由于使⽤⾼和宽均为5的卷积核，从
+而将⾼和宽分别减小4，而池化层则将⾼和宽减半，但通道数则从1增加到16。全连接层则逐层减
+少输出个数，直到变成图像的类别数10。
+5.5.2 获取数据和训练模型
+下⾯我们来实验LeNet模型。实验中，我们仍然使⽤Fashion-MNIST作为训练数据集。
+In [3]: batch_size = 256
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size=batch_size)
+因为卷积神经⽹络计算⽐多层感知机要复杂，建议使⽤GPU来加速计算。我们尝试在gpu(0)上
+创建NDArray，如果成功则使⽤gpu(0)，否则仍然使⽤CPU。
+In [4]: def try_gpu():
+# 本函数已保存在d2lzh包中⽅便以后使⽤
+try:
+ctx = mx.gpu()
+_ = nd.zeros((1,), ctx=ctx)
+except mx.base.MXNetError:
+ctx = mx.cpu()
+return ctx
+ctx = try_gpu()
+ctx
+Out[4]: gpu(0)
+相应地，我们对“softmax回归的从零开始实现”⼀节中描述的evaluate_accuracy函数略作
+修改。由于数据刚开始存在CPU使⽤的内存上，当ctx变量代表GPU及相应的显存时，我们通过
+“GPU计算”⼀节中介绍的as_in_context函数将数据复制到显存上，例如gpu(0)。
+In [5]: # 本函数已保存在d2lzh包中⽅便以后使⽤。该函数将被逐步改进：它的完整实现将在“图像增⼴”⼀节中
+# 描述
+def evaluate_accuracy(data_iter, net, ctx):
+acc_sum, n = nd.array([0], ctx=ctx), 0
+for X, y in data_iter:
+# 如果ctx代表GPU及相应的显存，将数据复制到显存上
+X, y = X.as_in_context(ctx), y.as_in_context(ctx).astype('float32')
+170
+5. 卷积神经⽹络
+
+acc_sum += (net(X).argmax(axis=1) == y).sum()
+n += y.size
+return acc_sum.asscalar() / n
+我们同样对“softmax回归的从零开始实现”⼀节中定义的train_ch3函数略作修改，确保计算
+使⽤的数据和模型同在内存或显存上。
+In [6]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs):
+print('training on', ctx)
+loss = gloss.SoftmaxCrossEntropyLoss()
+for epoch in range(num_epochs):
+train_l_sum, train_acc_sum, n, start = 0.0, 0.0, 0, time.time()
+for X, y in train_iter:
+X, y = X.as_in_context(ctx), y.as_in_context(ctx)
+with autograd.record():
+y_hat = net(X)
+l = loss(y_hat, y).sum()
+l.backward()
+trainer.step(batch_size)
+y = y.astype('float32')
+train_l_sum += l.asscalar()
+train_acc_sum += (y_hat.argmax(axis=1) == y).sum().asscalar()
+n += y.size
+test_acc = evaluate_accuracy(test_iter, net, ctx)
+print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f, '
+'time %.1f sec'
+% (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc,
+time.time() - start))
+我们重新将模型参数初始化到设备变量ctx之上，并使⽤Xavier随机初始化。损失函数和训练算
+法则依然使⽤交叉熵损失函数和小批量随机梯度下降。
+In [7]: lr, num_epochs = 0.9, 5
+net.initialize(force_reinit=True, ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx, num_epochs)
+training on gpu(0)
+epoch 1, loss 2.3211, train acc 0.101, test acc 0.100, time 1.9 sec
+epoch 2, loss 1.9998, train acc 0.228, test acc 0.543, time 1.6 sec
+epoch 3, loss 0.9836, train acc 0.609, test acc 0.701, time 1.6 sec
+epoch 4, loss 0.7595, train acc 0.705, test acc 0.730, time 1.6 sec
+epoch 5, loss 0.6734, train acc 0.734, test acc 0.743, time 1.7 sec
+5.5. 卷积神经⽹络（LeNet）
+171
+
+⼩结
+• 卷积神经⽹络就是含卷积层的⽹络。
+• LeNet交替使⽤卷积层和最⼤池化层后接全连接层来进⾏图像分类。
+练习
+• 尝试基于LeNet构造更复杂的⽹络来提⾼分类准确率。例如，调整卷积窗口⼤小、输出通道
+数、激活函数和全连接层输出个数。在优化⽅⾯，可以尝试使⽤不同的学习率、初始化⽅
+法以及增加迭代周期。
+参考⽂献
+[1] LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). Gradient-based learning applied to
+document recognition. Proceedings of the IEEE, 86(11), 2278-2324.
+扫码直达讨论区
+5.6 深度卷积神经⽹络（AlexNet）
+在LeNet提出后的将近20年⾥，神经⽹络⼀度被其他机器学习⽅法超越，如⽀持向量机。虽
+然LeNet可以在早期的小数据集上取得好的成绩，但是在更⼤的真实数据集上的表现并不尽如
+⼈意。⼀⽅⾯，神经⽹络计算复杂。虽然20世纪90年代也有过⼀些针对神经⽹络的加速硬件，但
+并没有像之后GPU那样⼤量普及。因此，训练⼀个多通道、多层和有⼤量参数的卷积神经⽹络在
+当年很难完成。另⼀⽅⾯，当年研究者还没有⼤量深⼊研究参数初始化和⾮凸优化算法等诸多领
+域，导致复杂的神经⽹络的训练通常较困难。
+172
+5. 卷积神经⽹络
+
+我们在上⼀节看到，神经⽹络可以直接基于图像的原始像素进⾏分类。这种称为端到端（end-to-
+end）的⽅法节省了很多中间步骤。然而，在很⻓⼀段时间⾥更流⾏的是研究者通过勤劳与智慧
+所设计并⽣成的⼿⼯特征。这类图像分类研究的主要流程是：
+1. 获取图像数据集；
+2. 使⽤已有的特征提取函数⽣成图像的特征；
+3. 使⽤机器学习模型对图像的特征分类。
+当时认为的机器学习部分仅限最后这⼀步。如果那时候跟机器学习研究者交谈，他们会认为机器
+学习既重要⼜优美。优雅的定理证明了许多分类器的性质。机器学习领域⽣机勃勃、严谨而且极
+其有⽤。然而，如果跟计算机视觉研究者交谈，则是另外⼀幅景象。他们会告诉你图像识别⾥“不
+可告⼈”的现实是：计算机视觉流程中真正重要的是数据和特征。也就是说，使⽤较⼲净的数据
+集和较有效的特征甚⾄⽐机器学习模型的选择对图像分类结果的影响更⼤。
+5.6.1 学习特征表⽰
+既然特征如此重要，它该如何表⽰呢？
+我们已经提到，在相当⻓的时间⾥，特征都是基于各式各样⼿⼯设计的函数从数据中提取的。事
+实上，不少研究者通过提出新的特征提取函数不断改进图像分类结果。这⼀度为计算机视觉的发
+展做出了重要贡献。
+然而，另⼀些研究者则持异议。他们认为特征本⾝也应该由学习得来。他们还相信，为了表征⾜
+够复杂的输⼊，特征本⾝应该分级表⽰。持这⼀想法的研究者相信，多层神经⽹络可能可以学得
+数据的多级表征，并逐级表⽰越来越抽象的概念或模式。以图像分类为例，并回忆“⼆维卷积层”
+⼀节中物体边缘检测的例⼦。在多层神经⽹络中，图像的第⼀级的表⽰可以是在特定的位置和⻆
+度是否出现边缘；而第⼆级的表⽰说不定能够将这些边缘组合出有趣的模式，如花纹；在第三级
+的表⽰中，也许上⼀级的花纹能进⼀步汇合成对应物体特定部位的模式。这样逐级表⽰下去，最
+终，模型能够较容易根据最后⼀级的表⽰完成分类任务。需要强调的是，输⼊的逐级表⽰由多层
+模型中的参数决定，而这些参数都是学出来的。
+尽管⼀直有⼀群执着的研究者不断钻研，试图学习视觉数据的逐级表征，然而很⻓⼀段时间⾥这
+些野⼼都未能实现。这其中有诸多因素值得我们⼀⼀分析。
+5.6. 深度卷积神经⽹络（AlexNet）
+173
+
+缺失要素⼀：数据
+包含许多特征的深度模型需要⼤量的有标签的数据才能表现得⽐其他经典⽅法更好。限于早期计
+算机有限的存储和90年代有限的研究预算，⼤部分研究只基于小的公开数据集。例如，不少研究
+论⽂基于加州⼤学欧⽂分校（UCI）提供的若⼲个公开数据集，其中许多数据集只有⼏百⾄⼏千张
+图像。这⼀状况在2010年前后兴起的⼤数据浪潮中得到改善。特别是，2009年诞⽣的ImageNet数
+据集包含了1,000⼤类物体，每类有多达数千张不同的图像。这⼀规模是当时其他公开数据集⽆
+法与之相提并论的。ImageNet数据集同时推动计算机视觉和机器学习研究进⼊新的阶段，使此
+前的传统⽅法不再有优势。
+缺失要素⼆：硬件
+深度学习对计算资源要求很⾼。早期的硬件计算能⼒有限，这使训练较复杂的神经⽹络变得很困
+难。然而，通⽤GPU的到来改变了这⼀格局。很久以来，GPU都是为图像处理和计算机游戏设计
+的，尤其是针对⼤吞吐量的矩阵和向量乘法从而服务于基本的图形变换。值得庆幸的是，这其中
+的数学表达与深度⽹络中的卷积层的表达类似。通⽤GPU这个概念在2001年开始兴起，涌现出诸
+如OpenCL和CUDA之类的编程框架。这使得GPU也在2010年前后开始被机器学习社区使⽤。
+5.6.2 AlexNet
+2012年，AlexNet横空出世。这个模型的名字来源于论⽂第⼀作者的姓名Alex Krizhevsky [1]。
+AlexNet使⽤了8层卷积神经⽹络，并以很⼤的优势赢得了ImageNet 2012图像识别挑战赛。它
+⾸次证明了学习到的特征可以超越⼿⼯设计的特征，从而⼀举打破计算机视觉研究的前状。
+AlexNet与LeNet的设计理念⾮常相似，但也有显著的区别。
+第⼀，与相对较小的LeNet相⽐，AlexNet包含8层变换，其中有5层卷积和2层全连接隐藏层，以
+及1个全连接输出层。下⾯我们来详细描述这些层的设计。
+AlexNet第⼀层中的卷积窗口形状是11 × 11。因为ImageNet中绝⼤多数图像的⾼和宽均
+⽐MNIST图像的⾼和宽⼤10倍以上，ImageNet图像的物体占⽤更多的像素，所以需要更⼤的卷
+积窗口来捕获物体。第⼆层中的卷积窗口形状减小到5 × 5，之后全采⽤3 × 3。此外，第⼀、第⼆
+和第五个卷积层之后都使⽤了窗口形状为3 × 3、步幅为2的最⼤池化层。而且，AlexNet使⽤的卷
+积通道数也⼤于LeNet中的卷积通道数数⼗倍。
+紧接着最后⼀个卷积层的是两个输出个数为4096的全连接层。这两个巨⼤的全连接层带来将近1
+GB的模型参数。由于早期显存的限制，最早的AlexNet使⽤双数据流的设计使⼀个GPU只需要处
+174
+5. 卷积神经⽹络
+
+理⼀半模型。幸运的是，显存在过去⼏年得到了⻓⾜的发展，因此通常我们不再需要这样的特别
+设计了。
+第⼆，AlexNet将sigmoid激活函数改成了更加简单的ReLU激活函数。⼀⽅⾯，ReLU激活函数的
+计算更简单，例如它并没有sigmoid激活函数中的求幂运算。另⼀⽅⾯，ReLU激活函数在不同的
+参数初始化⽅法下使模型更容易训练。这是由于当sigmoid激活函数输出极接近0或1时，这些区
+域的梯度⼏乎为0，从而造成反向传播⽆法继续更新部分模型参数；而ReLU激活函数在正区间的
+梯度恒为1。因此，若模型参数初始化不当，sigmoid函数可能在正区间得到⼏乎为0的梯度，从
+而令模型⽆法得到有效训练。
+第三，AlexNet通过丢弃法（参⻅“丢弃法”⼀节）来控制全连接层的模型复杂度。而LeNet并没
+有使⽤丢弃法。
+第四，AlexNet引⼊了⼤量的图像增⼴，如翻转、裁剪和颜⾊变化，从而进⼀步扩⼤数据集来缓
+解过拟合。我们将在后⾯的“图像增⼴”⼀节详细介绍这种⽅法。
+下⾯我们实现稍微简化过的AlexNet。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import data as gdata, nn
+import os
+import sys
+net = nn.Sequential()
+# 使⽤较⼤的11 x 11窗⼝来捕获物体。同时使⽤步幅4来较⼤幅度减⼩输出⾼和宽。这⾥使⽤的输出通
+# 道数⽐LeNet中的也要⼤很多
+net.add(nn.Conv2D(96, kernel_size=11, strides=4, activation='relu'),
+nn.MaxPool2D(pool_size=3, strides=2),
+# 减⼩卷积窗⼝，使⽤填充为2来使得输⼊与输出的⾼和宽⼀致，且增⼤输出通道数
+nn.Conv2D(256, kernel_size=5, padding=2, activation='relu'),
+nn.MaxPool2D(pool_size=3, strides=2),
+# 连续3个卷积层，且使⽤更⼩的卷积窗⼝。除了最后的卷积层外，进⼀步增⼤了输出通道数。
+# 前两个卷积层后不使⽤池化层来减⼩输⼊的⾼和宽
+nn.Conv2D(384, kernel_size=3, padding=1, activation='relu'),
+nn.Conv2D(384, kernel_size=3, padding=1, activation='relu'),
+nn.Conv2D(256, kernel_size=3, padding=1, activation='relu'),
+nn.MaxPool2D(pool_size=3, strides=2),
+# 这⾥全连接层的输出个数⽐LeNet中的⼤数倍。使⽤丢弃层来缓解过拟合
+nn.Dense(4096, activation="relu"), nn.Dropout(0.5),
+nn.Dense(4096, activation="relu"), nn.Dropout(0.5),
+# 输出层。由于这⾥使⽤Fashion-MNIST，所以⽤类别数为10，⽽⾮论⽂中的1000
+nn.Dense(10))
+5.6. 深度卷积神经⽹络（AlexNet）
+175
+
+我们构造⼀个⾼和宽均为224的单通道数据样本来观察每⼀层的输出形状。
+In [2]: X = nd.random.uniform(shape=(1, 1, 224, 224))
+net.initialize()
+for layer in net:
+X = layer(X)
+print(layer.name, 'output shape:\t', X.shape)
+conv0 output shape:
+(1, 96, 54, 54)
+pool0 output shape:
+(1, 96, 26, 26)
+conv1 output shape:
+(1, 256, 26, 26)
+pool1 output shape:
+(1, 256, 12, 12)
+conv2 output shape:
+(1, 384, 12, 12)
+conv3 output shape:
+(1, 384, 12, 12)
+conv4 output shape:
+(1, 256, 12, 12)
+pool2 output shape:
+(1, 256, 5, 5)
+dense0 output shape:
+(1, 4096)
+dropout0 output shape:
+(1, 4096)
+dense1 output shape:
+(1, 4096)
+dropout1 output shape:
+(1, 4096)
+dense2 output shape:
+(1, 10)
+5.6.3 读取数据
+虽然论⽂中AlexNet使⽤ImageNet数据集，但因为ImageNet数据集训练时间较⻓，我们仍⽤
+前⾯的Fashion-MNIST数据集来演⽰AlexNet。读取数据的时候我们额外做了⼀步将图像⾼和
+宽扩⼤到AlexNet使⽤的图像⾼和宽224。这个可以通过Resize实例来实现。也就是说，我们
+在ToTensor实例前使⽤Resize实例，然后使⽤Compose实例来将这两个变换串联以⽅便调⽤。
+In [3]: # 本函数已保存在d2lzh包中⽅便以后使⽤
+def load_data_fashion_mnist(batch_size, resize=None, root=os.path.join(
+'~', '.mxnet', 'datasets', 'fashion-mnist')):
+root = os.path.expanduser(root)
+# 展开⽤⼾路径'~'
+transformer = []
+if resize:
+transformer += [gdata.vision.transforms.Resize(resize)]
+transformer += [gdata.vision.transforms.ToTensor()]
+transformer = gdata.vision.transforms.Compose(transformer)
+mnist_train = gdata.vision.FashionMNIST(root=root, train=True)
+mnist_test = gdata.vision.FashionMNIST(root=root, train=False)
+num_workers = 0 if sys.platform.startswith('win32') else 4
+train_iter = gdata.DataLoader(
+mnist_train.transform_first(transformer), batch_size, shuffle=True,
+176
+5. 卷积神经⽹络
+
+num_workers=num_workers)
+test_iter = gdata.DataLoader(
+mnist_test.transform_first(transformer), batch_size, shuffle=False,
+num_workers=num_workers)
+return train_iter, test_iter
+batch_size = 128
+# 如出现“out of memory”的报错信息，可减⼩batch_size或resize
+train_iter, test_iter = load_data_fashion_mnist(batch_size, resize=224)
+5.6.4 训练
+这时候我们可以开始训练AlexNet了。相对于上⼀节的LeNet，这⾥的主要改动是使⽤了更小的学
+习率。
+In [4]: lr, num_epochs, ctx = 0.01, 5, d2l.try_gpu()
+net.initialize(force_reinit=True, ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx, num_epochs)
+training on gpu(0)
+epoch 1, loss 1.3058, train acc 0.510, test acc 0.746, time 17.9 sec
+epoch 2, loss 0.6482, train acc 0.758, test acc 0.819, time 16.7 sec
+epoch 3, loss 0.5301, train acc 0.804, test acc 0.833, time 16.7 sec
+epoch 4, loss 0.4648, train acc 0.828, test acc 0.844, time 16.6 sec
+epoch 5, loss 0.4221, train acc 0.846, test acc 0.854, time 16.6 sec
+⼩结
+• AlexNet跟LeNet结构类似，但使⽤了更多的卷积层和更⼤的参数空间来拟合⼤规模数据
+集ImageNet。它是浅层神经⽹络和深度神经⽹络的分界线。
+• 虽然看上去AlexNet的实现⽐LeNet的实现也就多了⼏⾏代码而已，但这个观念上的转变和
+真正优秀实验结果的产⽣令学术界付出了很多年。
+练习
+• 尝试增加迭代周期。跟LeNet的结果相⽐，AlexNet的结果有什么区别？为什么？
+5.6. 深度卷积神经⽹络（AlexNet）
+177
+
+• AlexNet对Fashion-MNIST数据集来说可能过于复杂。试着简化模型来使训练更快，同时保
+证准确率不明显下降。
+• 修改批量⼤小，观察准确率和内存或显存的变化。
+参考⽂献
+[1] Krizhevsky, A., Sutskever, I., & Hinton, G. E. (2012). Imagenet classification with deep con-
+volutional neural networks. In Advances in neural information processing systems (pp. 1097-
+1105).
+扫码直达讨论区
+5.7 使⽤重复元素的⽹络（VGG）
+AlexNet在LeNet的基础上增加了3个卷积层。但AlexNet作者对它们的卷积窗口、输出通道数和构
+造顺序均做了⼤量的调整。虽然AlexNet指明了深度卷积神经⽹络可以取得出⾊的结果，但并没
+有提供简单的规则以指导后来的研究者如何设计新的⽹络。我们将在本章的后续⼏节⾥介绍⼏种
+不同的深度⽹络设计思路。
+本节介绍VGG，它的名字来源于论⽂作者所在的实验室Visual Geometry Group [1]。VGG提出了
+可以通过重复使⽤简单的基础块来构建深度模型的思路。
+5.7.1 VGG块
+VGG块的组成规律是：连续使⽤数个相同的填充为1、窗口形状为3 × 3的卷积层后接上⼀个步幅
+为2、窗口形状为2 × 2的最⼤池化层。卷积层保持输⼊的⾼和宽不变，而池化层则对其减半。我
+们使⽤vgg_block函数来实现这个基础的VGG块，它可以指定卷积层的数量num_convs和输出
+通道数num_channels。
+178
+5. 卷积神经⽹络
+
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import nn
+def vgg_block(num_convs, num_channels):
+blk = nn.Sequential()
+for _ in range(num_convs):
+blk.add(nn.Conv2D(num_channels, kernel_size=3,
+padding=1, activation='relu'))
+blk.add(nn.MaxPool2D(pool_size=2, strides=2))
+return blk
+5.7.2 VGG⽹络
+与AlexNet和LeNet⼀样，VGG⽹络由卷积层模块后接全连接层模块构成。卷积层模块串联数
+个vgg_block，其超参数由变量conv_arch定义。该变量指定了每个VGG块⾥卷积层个数和
+输出通道数。全连接模块则跟AlexNet中的⼀样。
+现在我们构造⼀个VGG⽹络。它有5个卷积块，前2块使⽤单卷积层，而后3块使⽤双卷积层。第
+⼀块的输出通道是64，之后每次对输出通道数翻倍，直到变为512。因为这个⽹络使⽤了8个卷积
+层和3个全连接层，所以经常被称为VGG-11。
+In [2]: conv_arch = ((1, 64), (1, 128), (2, 256), (2, 512), (2, 512))
+下⾯我们实现VGG-11。
+In [3]: def vgg(conv_arch):
+net = nn.Sequential()
+# 卷积层部分
+for (num_convs, num_channels) in conv_arch:
+net.add(vgg_block(num_convs, num_channels))
+# 全连接层部分
+net.add(nn.Dense(4096, activation='relu'), nn.Dropout(0.5),
+nn.Dense(4096, activation='relu'), nn.Dropout(0.5),
+nn.Dense(10))
+return net
+net = vgg(conv_arch)
+下⾯构造⼀个⾼和宽均为224的单通道数据样本来观察每⼀层的输出形状。
+In [4]: net.initialize()
+X = nd.random.uniform(shape=(1, 1, 224, 224))
+5.7. 使⽤重复元素的⽹络（VGG）
+179
+
+for blk in net:
+X = blk(X)
+print(blk.name, 'output shape:\t', X.shape)
+sequential1 output shape:
+(1, 64, 112, 112)
+sequential2 output shape:
+(1, 128, 56, 56)
+sequential3 output shape:
+(1, 256, 28, 28)
+sequential4 output shape:
+(1, 512, 14, 14)
+sequential5 output shape:
+(1, 512, 7, 7)
+dense0 output shape:
+(1, 4096)
+dropout0 output shape:
+(1, 4096)
+dense1 output shape:
+(1, 4096)
+dropout1 output shape:
+(1, 4096)
+dense2 output shape:
+(1, 10)
+可以看到，每次我们将输⼊的⾼和宽减半，直到最终⾼和宽变成7后传⼊全连接层。与此同时，输
+出通道数每次翻倍，直到变成512。因为每个卷积层的窗口⼤小⼀样，所以每层的模型参数尺⼨
+和计算复杂度与输⼊⾼、输⼊宽、输⼊通道数和输出通道数的乘积成正⽐。VGG这种⾼和宽减半
+以及通道翻倍的设计使得多数卷积层都有相同的模型参数尺⼨和计算复杂度。
+5.7.3 获取数据和训练模型
+因为VGG-11计算上⽐AlexNet更加复杂，出于测试的⽬的我们构造⼀个通道数更小，或者说更窄
+的⽹络在Fashion-MNIST数据集上进⾏训练。
+In [5]: ratio = 4
+small_conv_arch = [(pair[0], pair[1] // ratio) for pair in conv_arch]
+net = vgg(small_conv_arch)
+除了使⽤了稍⼤些的学习率，模型训练过程与上⼀节的AlexNet中的类似。
+In [6]: lr, num_epochs, batch_size, ctx = 0.05, 5, 128, d2l.try_gpu()
+net.initialize(ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size, resize=224)
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+training on gpu(0)
+epoch 1, loss 0.9464, train acc 0.658, test acc 0.857, time 37.8 sec
+epoch 2, loss 0.4087, train acc 0.850, test acc 0.888, time 36.2 sec
+epoch 3, loss 0.3344, train acc 0.878, test acc 0.900, time 36.2 sec
+epoch 4, loss 0.2917, train acc 0.893, test acc 0.903, time 36.2 sec
+epoch 5, loss 0.2609, train acc 0.904, test acc 0.909, time 36.2 sec
+180
+5. 卷积神经⽹络
+
+⼩结
+• VGG-11通过5个可以重复使⽤的卷积块来构造⽹络。根据每块⾥卷积层个数和输出通道数
+的不同可以定义出不同的VGG模型。
+练习
+• 与AlexNet相⽐，VGG通常计算慢很多，也需要更多的内存或显存。试分析原因。
+• 尝试将Fashion-MNIST中图像的⾼和宽由224改为96。这在实验中有哪些影响？
+• 参考VGG论⽂⾥的表1来构造VGG其他常⽤模型，如VGG-16和VGG-19 [1]。
+参考⽂献
+[1] Simonyan, K., & Zisserman, A. (2014). Very deep convolutional networks for large-scale
+image recognition. arXiv preprint arXiv:1409.1556.
+扫码直达讨论区
+5.8 ⽹络中的⽹络（NiN）
+前⼏节介绍的LeNet、AlexNet和VGG在设计上的共同之处是：先以由卷积层构成的模块充分抽取
+空间特征，再以由全连接层构成的模块来输出分类结果。其中，AlexNet和VGG对LeNet的改进主
+要在于如何对这两个模块加宽（增加通道数）和加深。本节我们介绍⽹络中的⽹络（NiN）[1]。它
+提出了另外⼀个思路，即串联多个由卷积层和“全连接”层构成的小⽹络来构建⼀个深层⽹络。
+5.8. ⽹络中的⽹络（NiN）
+181
+
+5.8.1 NiN块
+我们知道，卷积层的输⼊和输出通常是四维数组（样本，通道，⾼，宽），而全连接层的输⼊和输出则
+通常是⼆维数组（样本，特征）。如果想在全连接层后再接上卷积层，则需要将全连接层的输出变换
+为四维。回忆在“多输⼊通道和多输出通道”⼀节⾥介绍的1×1卷积层。它可以看成全连接层，其
+中空间维度（⾼和宽）上的每个元素相当于样本，通道相当于特征。因此，NiN使⽤1×1卷积层来替
+代全连接层，从而使空间信息能够⾃然传递到后⾯的层中去。图5.7对⽐了NiN同AlexNet和VGG等
+⽹络在结构上的主要区别。
+图5.7: 左图是AlexNet和VGG的⽹络结构局部，右图是NiN的⽹络结构局部
+NiN块是NiN中的基础块。它由⼀个卷积层加两个充当全连接层的1 × 1卷积层串联而成。其中第
+⼀个卷积层的超参数可以⾃⾏设置，而第⼆和第三个卷积层的超参数⼀般是固定的。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import nn
+def nin_block(num_channels, kernel_size, strides, padding):
+blk = nn.Sequential()
+blk.add(nn.Conv2D(num_channels, kernel_size,
+strides, padding, activation='relu'),
+nn.Conv2D(num_channels, kernel_size=1, activation='relu'),
+nn.Conv2D(num_channels, kernel_size=1, activation='relu'))
+return blk
+182
+5. 卷积神经⽹络
+
+5.8.2 NiN模型
+NiN是在AlexNet问世不久后提出的。它们的卷积层设定有类似之处。NiN使⽤卷积窗口形状分别
+为11 × 11、5 × 5和3 × 3的卷积层，相应的输出通道数也与AlexNet中的⼀致。每个NiN块后接⼀
+个步幅为2、窗口形状为3 × 3的最⼤池化层。
+除使⽤NiN块以外，NiN还有⼀个设计与AlexNet显著不同：NiN去掉了AlexNet最后的3个全连接
+层，取而代之地，NiN使⽤了输出通道数等于标签类别数的NiN块，然后使⽤全局平均池化层对
+每个通道中所有元素求平均并直接⽤于分类。这⾥的全局平均池化层即窗口形状等于输⼊空间维
+形状的平均池化层。NiN的这个设计的好处是可以显著减小模型参数尺⼨，从而缓解过拟合。然
+而，该设计有时会造成获得有效模型的训练时间的增加。
+In [2]: net = nn.Sequential()
+net.add(nin_block(96, kernel_size=11, strides=4, padding=0),
+nn.MaxPool2D(pool_size=3, strides=2),
+nin_block(256, kernel_size=5, strides=1, padding=2),
+nn.MaxPool2D(pool_size=3, strides=2),
+nin_block(384, kernel_size=3, strides=1, padding=1),
+nn.MaxPool2D(pool_size=3, strides=2), nn.Dropout(0.5),
+# 标签类别数是10
+nin_block(10, kernel_size=3, strides=1, padding=1),
+# 全局平均池化层将窗⼝形状⾃动设置成输⼊的⾼和宽
+nn.GlobalAvgPool2D(),
+# 将四维的输出转成⼆维的输出，其形状为(批量⼤⼩, 10)
+nn.Flatten())
+我们构建⼀个数据样本来查看每⼀层的输出形状。
+In [3]: X = nd.random.uniform(shape=(1, 1, 224, 224))
+net.initialize()
+for layer in net:
+X = layer(X)
+print(layer.name, 'output shape:\t', X.shape)
+sequential1 output shape:
+(1, 96, 54, 54)
+pool0 output shape:
+(1, 96, 26, 26)
+sequential2 output shape:
+(1, 256, 26, 26)
+pool1 output shape:
+(1, 256, 12, 12)
+sequential3 output shape:
+(1, 384, 12, 12)
+pool2 output shape:
+(1, 384, 5, 5)
+dropout0 output shape:
+(1, 384, 5, 5)
+sequential4 output shape:
+(1, 10, 5, 5)
+pool3 output shape:
+(1, 10, 1, 1)
+5.8. ⽹络中的⽹络（NiN）
+183
+
+flatten0 output shape:
+(1, 10)
+5.8.3 获取数据和训练模型
+我们依然使⽤Fashion-MNIST数据集来训练模型。NiN的训练与AlexNet和VGG的类似，但这⾥使
+⽤的学习率更⼤。
+In [4]: lr, num_epochs, batch_size, ctx = 0.1, 5, 128, d2l.try_gpu()
+net.initialize(force_reinit=True, ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size, resize=224)
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+training on gpu(0)
+epoch 1, loss 2.1978, train acc 0.205, test acc 0.384, time 24.1 sec
+epoch 2, loss 1.0972, train acc 0.577, test acc 0.742, time 22.9 sec
+epoch 3, loss 0.7272, train acc 0.728, test acc 0.772, time 22.8 sec
+epoch 4, loss 0.5860, train acc 0.782, test acc 0.784, time 23.0 sec
+epoch 5, loss 0.5104, train acc 0.812, test acc 0.855, time 23.0 sec
+⼩结
+• NiN重复使⽤由卷积层和代替全连接层的1 × 1卷积层构成的NiN块来构建深层⽹络。
+• NiN去除了容易造成过拟合的全连接输出层，而是将其替换成输出通道数等于标签类别数
+的NiN块和全局平均池化层。
+• NiN的以上设计思想影响了后⾯⼀系列卷积神经⽹络的设计。
+练习
+• 调节超参数，提⾼分类准确率。
+• 为什么NiN块⾥要有两个1 × 1卷积层？去除其中的⼀个，观察并分析实验现象。
+参考⽂献
+[1] Lin, M., Chen, Q., & Yan, S. (2013). Network in network. arXiv preprint arXiv:1312.4400.
+184
+5. 卷积神经⽹络
+
+扫码直达讨论区
+5.9 含并⾏连结的⽹络（GoogLeNet）
+在2014年的ImageNet图像识别挑战赛中，⼀个名叫GoogLeNet的⽹络结构⼤放异彩[1]。它虽然
+在名字上向LeNet致敬，但在⽹络结构上已经很难看到LeNet的影⼦。GoogLeNet吸收了NiN中⽹
+络串联⽹络的思想，并在此基础上做了很⼤改进。在随后的⼏年⾥，研究⼈员对GoogLeNet进⾏
+了数次改进，本节将介绍这个模型系列的第⼀个版本。
+5.9.1 Inception 块
+GoogLeNet中的基础卷积块叫作Inception块，得名于同名电影《盗梦空间》（Inception）。与上
+⼀节介绍的NiN块相⽐，这个基础块在结构上更加复杂，如图5.8所⽰。
+图5.8: Inception块的结构
+由图5.8可以看出，Inception块⾥有4条并⾏的线路。前3条线路使⽤窗口⼤小分别是1 × 1、3 ×
+3和5 × 5的卷积层来抽取不同空间尺⼨下的信息，其中中间2个线路会对输⼊先做1 × 1卷积来减
+少输⼊通道数，以降低模型复杂度。第四条线路则使⽤3 × 3最⼤池化层，后接1 × 1卷积层来改变
+5.9. 含并⾏连结的⽹络（GoogLeNet）
+185
+
+通道数。4条线路都使⽤了合适的填充来使输⼊与输出的⾼和宽⼀致。最后我们将每条线路的输
+出在通道维上连结，并输⼊接下来的层中去。
+Inception块中可以⾃定义的超参数是每个层的输出通道数，我们以此来控制模型复杂度。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import nn
+class Inception(nn.Block):
+# c1 - c4为每条线路⾥的层的输出通道数
+def __init__(self, c1, c2, c3, c4, **kwargs):
+super(Inception, self).__init__(**kwargs)
+# 线路1，单1 x 1卷积层
+self.p1_1 = nn.Conv2D(c1, kernel_size=1, activation='relu')
+# 线路2，1 x 1卷积层后接3 x 3卷积层
+self.p2_1 = nn.Conv2D(c2[0], kernel_size=1, activation='relu')
+self.p2_2 = nn.Conv2D(c2[1], kernel_size=3, padding=1,
+activation='relu')
+# 线路3，1 x 1卷积层后接5 x 5卷积层
+self.p3_1 = nn.Conv2D(c3[0], kernel_size=1, activation='relu')
+self.p3_2 = nn.Conv2D(c3[1], kernel_size=5, padding=2,
+activation='relu')
+# 线路4，3 x 3最⼤池化层后接1 x 1卷积层
+self.p4_1 = nn.MaxPool2D(pool_size=3, strides=1, padding=1)
+self.p4_2 = nn.Conv2D(c4, kernel_size=1, activation='relu')
+def forward(self, x):
+p1 = self.p1_1(x)
+p2 = self.p2_2(self.p2_1(x))
+p3 = self.p3_2(self.p3_1(x))
+p4 = self.p4_2(self.p4_1(x))
+return nd.concat(p1, p2, p3, p4, dim=1)
+# 在通道维上连结输出
+5.9.2 GoogLeNet模型
+GoogLeNet跟VGG⼀样，在主体卷积部分中使⽤5个模块（block），每个模块之间使⽤步幅为2的3×
+3最⼤池化层来减小输出⾼宽。第⼀模块使⽤⼀个64通道的7 × 7卷积层。
+In [2]: b1 = nn.Sequential()
+b1.add(nn.Conv2D(64, kernel_size=7, strides=2, padding=3, activation='relu'),
+nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+186
+5. 卷积神经⽹络
+
+第⼆模块使⽤2个卷积层：⾸先是64通道的1 × 1卷积层，然后是将通道增⼤3倍的3 × 3卷积层。它
+对应Inception块中的第⼆条线路。
+In [3]: b2 = nn.Sequential()
+b2.add(nn.Conv2D(64, kernel_size=1, activation='relu'),
+nn.Conv2D(192, kernel_size=3, padding=1, activation='relu'),
+nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+第三模块串联2个完整的Inception块。第⼀个Inception块的输出通道数为64+128+32+32 = 256，
+其中4条线路的输出通道数⽐例为64 : 128 : 32 : 32 = 2 : 4 : 1 : 1。其中第⼆、第三条线路先分别将
+输⼊通道数减小⾄96/192 = 1/2和16/192 = 1/12后，再接上第⼆层卷积层。第⼆个Inception块
+输出通道数增⾄128 + 192 + 96 + 64 = 480，每条线路的输出通道数之⽐为128 : 192 : 96 : 64 =
+4 : 6 : 3 : 2。其中第⼆、第三条线路先分别将输⼊通道数减小⾄128/256 = 1/2和32/256 = 1/8。
+In [4]: b3 = nn.Sequential()
+b3.add(Inception(64, (96, 128), (16, 32), 32),
+Inception(128, (128, 192), (32, 96), 64),
+nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+第四模块更加复杂。它串联了5个Inception块，其输出通道数分别是192 + 208 + 48 + 64 = 512、
+160+224+64+64 = 512、128+256+64+64 = 512、112+288+64+64 = 528和256+320+128+128 =
+832。这些线路的通道数分配和第三模块中的类似，⾸先含3 × 3卷积层的第⼆条线路输出最多通
+道，其次是仅含1 × 1卷积层的第⼀条线路，之后是含5 × 5卷积层的第三条线路和含3 × 3最⼤池化
+层的第四条线路。其中第⼆、第三条线路都会先按⽐例减小通道数。这些⽐例在各个Inception块
+中都略有不同。
+In [5]: b4 = nn.Sequential()
+b4.add(Inception(192, (96, 208), (16, 48), 64),
+Inception(160, (112, 224), (24, 64), 64),
+Inception(128, (128, 256), (24, 64), 64),
+Inception(112, (144, 288), (32, 64), 64),
+Inception(256, (160, 320), (32, 128), 128),
+nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+第五模块有输出通道数为256 + 320 + 128 + 128 = 832和384 + 384 + 128 + 128 = 1024的两
+个Inception块。其中每条线路的通道数的分配思路和第三、第四模块中的⼀致，只是在具体数值
+上有所不同。需要注意的是，第五模块的后⾯紧跟输出层，该模块同NiN⼀样使⽤全局平均池化
+层来将每个通道的⾼和宽变成1。最后我们将输出变成⼆维数组后接上⼀个输出个数为标签类别
+数的全连接层。
+In [6]: b5 = nn.Sequential()
+b5.add(Inception(256, (160, 320), (32, 128), 128),
+5.9. 含并⾏连结的⽹络（GoogLeNet）
+187
+
+Inception(384, (192, 384), (48, 128), 128),
+nn.GlobalAvgPool2D())
+net = nn.Sequential()
+net.add(b1, b2, b3, b4, b5, nn.Dense(10))
+GoogLeNet模型的计算复杂，而且不如VGG那样便于修改通道数。本节⾥我们将输⼊的⾼和宽
+从224降到96来简化计算。下⾯演⽰各个模块之间的输出的形状变化。
+In [7]: X = nd.random.uniform(shape=(1, 1, 96, 96))
+net.initialize()
+for layer in net:
+X = layer(X)
+print(layer.name, 'output shape:\t', X.shape)
+sequential0 output shape:
+(1, 64, 24, 24)
+sequential1 output shape:
+(1, 192, 12, 12)
+sequential2 output shape:
+(1, 480, 6, 6)
+sequential3 output shape:
+(1, 832, 3, 3)
+sequential4 output shape:
+(1, 1024, 1, 1)
+dense0 output shape:
+(1, 10)
+5.9.3 获取数据和训练模型
+我们使⽤⾼和宽均为96像素的图像来训练GoogLeNet模型。训练使⽤的图像依然来⾃Fashion-
+MNIST数据集。
+In [8]: lr, num_epochs, batch_size, ctx = 0.1, 5, 128, d2l.try_gpu()
+net.initialize(force_reinit=True, ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size, resize=96)
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+training on gpu(0)
+epoch 1, loss 1.8431, train acc 0.292, test acc 0.572, time 26.6 sec
+epoch 2, loss 0.7332, train acc 0.718, test acc 0.802, time 23.5 sec
+epoch 3, loss 0.4695, train acc 0.826, test acc 0.844, time 23.4 sec
+epoch 4, loss 0.3858, train acc 0.854, test acc 0.873, time 23.5 sec
+epoch 5, loss 0.3423, train acc 0.872, test acc 0.863, time 23.6 sec
+188
+5. 卷积神经⽹络
+
+⼩结
+• Inception块相当于⼀个有4条线路的⼦⽹络。它通过不同窗口形状的卷积层和最⼤池化层
+来并⾏抽取信息，并使⽤1 × 1卷积层减少通道数从而降低模型复杂度。
+• GoogLeNet将多个设计精细的Inception块和其他层串联起来。其中Inception块的通道数分
+配之⽐是在ImageNet数据集上通过⼤量的实验得来的。
+• GoogLeNet和它的后继者们⼀度是ImageNet上最⾼效的模型之⼀：在类似的测试精度下，
+它们的计算复杂度往往更低。
+练习
+• GoogLeNet有数个后续版本。尝试实现并运⾏它们，然后观察实验结果。这些后续版本包
+括加⼊批量归⼀化层（下⼀节将介绍）[2]、对Inception块做调整[3] 和加⼊残差连接（“残
+差⽹络（ResNet）”⼀节将介绍）[4]。
+• 对⽐AlexNet、VGG和NiN、GoogLeNet的模型参数尺⼨。为什么后两个⽹络可以显著减小
+模型参数尺⼨？
+参考⽂献
+[1] Szegedy, C., Liu, W., Jia, Y., Sermanet, P., Reed, S., & Anguelov, D. & Rabinovich, A.(2015).
+Going deeper with convolutions. In Proceedings of the IEEE conference on computer vision
+and pattern recognition (pp. 1-9).
+[2] Ioffe, S., & Szegedy, C. (2015). Batch normalization: Accelerating deep network training by
+reducing internal covariate shift. arXiv preprint arXiv:1502.03167.
+[3] Szegedy, C., Vanhoucke, V., Ioffe, S., Shlens, J., & Wojna, Z. (2016). Rethinking the inception
+architecture for computer vision. In Proceedings of the IEEE Conference on Computer Vision
+and Pattern Recognition (pp. 2818-2826).
+[4] Szegedy, C., Ioffe, S., Vanhoucke, V., & Alemi, A. A. (2017, February).
+Inception-v4,
+inception-resnet and the impact of residual connections on learning. In Proceedings of the
+AAAI Conference on Artificial Intelligence (Vol. 4, p. 12).
+5.9. 含并⾏连结的⽹络（GoogLeNet）
+189
+
+扫码直达讨论区
+5.10 批量归⼀化
+本节我们介绍批量归⼀化（batch normalization）层，它能让较深的神经⽹络的训练变得更加容
+易[1]。在“实战Kaggle⽐赛：预测房价”⼀节⾥，我们对输⼊数据做了标准化处理：处理后的任
+意⼀个特征在数据集中所有样本上的均值为0、标准差为1。标准化处理输⼊数据使各个特征的分
+布相近：这往往更容易训练出有效的模型。
+通常来说，数据标准化预处理对于浅层模型就⾜够有效了。随着模型训练的进⾏，当每层中参数
+更新时，靠近输出层的输出较难出现剧烈变化。但对深层神经⽹络来说，即使输⼊数据已做标准
+化，训练中模型参数的更新依然很容易造成靠近输出层输出的剧烈变化。这种计算数值的不稳定
+性通常令我们难以训练出有效的深度模型。
+批量归⼀化的提出正是为了应对深度模型训练的挑战。在模型训练时，批量归⼀化利⽤小批量上
+的均值和标准差，不断调整神经⽹络中间输出，从而使整个神经⽹络在各层的中间输出的数值更
+稳定。批量归⼀化和下⼀节将要介绍的残差⽹络为训练和设计深度模型提供了两类重要思路。
+5.10.1 批量归⼀化层
+对全连接层和卷积层做批量归⼀化的⽅法稍有不同。下⾯我们将分别介绍这两种情况下的批量归
+⼀化。
+对全连接层做批量归⼀化
+我们先考虑如何对全连接层做批量归⼀化。通常，我们将批量归⼀化层置于全连接层中的仿射变
+换和激活函数之间。设全连接层的输⼊为u，权重参数和偏差参数分别为W 和b，激活函数为ϕ。
+设批量归⼀化的运算符为BN。那么，使⽤批量归⼀化的全连接层的输出为
+ϕ(BN(x)),
+190
+5. 卷积神经⽹络
+
+其中批量归⼀化输⼊x由仿射变换
+x = W u + b
+得到。考虑⼀个由m个样本组成的小批量，仿射变换的输出为⼀个新的小批量B
+=
+{x(1), . . . , x(m)}。它们正是批量归⼀化层的输⼊。对于小批量B中任意样本x(i) ∈Rd, 1 ≤i ≤m，
+批量归⼀化层的输出同样是d维向量
+y(i) = BN(x(i)),
+并由以下⼏步求得。⾸先，对小批量B求均值和⽅差：
+µB ←1
+m
+m
+∑
+i=1
+x(i),
+σ2
+B ←1
+m
+m
+∑
+i=1
+(x(i) −µB)2,
+其中的平⽅计算是按元素求平⽅。接下来，使⽤按元素开⽅和按元素除法对x(i)标准化：
+ˆx(i) ←x(i) −µB
+√
+σ2
+B + ϵ
+,
+这⾥ϵ > 0是⼀个很小的常数，保证分⺟⼤于0。在上⾯标准化的基础上，批量归⼀化层引⼊了两
+个可以学习的模型参数，拉伸（scale）参数γ 和偏移（shift）参数β。这两个参数和x(i)形状相
+同，皆为d维向量。它们与ˆx(i)分别做按元素乘法（符号⊙）和加法计算：
+y(i) ←γ ⊙ˆx(i) + β.
+⾄此，我们得到了x(i)的批量归⼀化的输出y(i)。值得注意的是，可学习的拉伸和偏移参数保留了
+不对x(i)做批量归⼀化的可能：此时只需学出γ =
+√
+σ2
+B + ϵ和β = µB。我们可以对此这样理解：
+如果批量归⼀化⽆益，理论上，学出的模型可以不使⽤批量归⼀化。
+对卷积层做批量归⼀化
+对卷积层来说，批量归⼀化发⽣在卷积计算之后、应⽤激活函数之前。如果卷积计算输出多个通
+道，我们需要对这些通道的输出分别做批量归⼀化，且每个通道都拥有独⽴的拉伸和偏移参数，
+并均为标量。设小批量中有m个样本。在单个通道上，假设卷积计算输出的⾼和宽分别为p和q。我
+们需要对该通道中m × p × q个元素同时做批量归⼀化。对这些元素做标准化计算时，我们使⽤相
+同的均值和⽅差，即该通道中m × p × q个元素的均值和⽅差。
+5.10. 批量归⼀化
+191
+
+预测时的批量归⼀化
+使⽤批量归⼀化训练时，我们可以将批量⼤小设得⼤⼀点，从而使批量内样本的均值和⽅差的计
+算都较为准确。将训练好的模型⽤于预测时，我们希望模型对于任意输⼊都有确定的输出。因此，
+单个样本的输出不应取决于批量归⼀化所需要的随机小批量中的均值和⽅差。⼀种常⽤的⽅法是
+通过移动平均估算整个训练数据集的样本均值和⽅差，并在预测时使⽤它们得到确定的输出。可
+⻅，和丢弃层⼀样，批量归⼀化层在训练模式和预测模式下的计算结果也是不⼀样的。
+5.10.2 从零开始实现
+下⾯我们通过NDArray来实现批量归⼀化层。
+In [1]: import d2lzh as d2l
+from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import nn
+def batch_norm(X, gamma, beta, moving_mean, moving_var, eps, momentum):
+# 通过autograd来判断当前模式是训练模式还是预测模式
+if not autograd.is_training():
+# 如果是在预测模式下，直接使⽤传⼊的移动平均所得的均值和⽅差
+X_hat = (X - moving_mean) / nd.sqrt(moving_var + eps)
+else:
+assert len(X.shape) in (2, 4)
+if len(X.shape) == 2:
+# 使⽤全连接层的情况，计算特征维上的均值和⽅差
+mean = X.mean(axis=0)
+var = ((X - mean) ** 2).mean(axis=0)
+else:
+# 使⽤⼆维卷积层的情况，计算通道维上（axis=1）的均值和⽅差。这⾥我们需要保持
+# X的形状以便后⾯可以做⼴播运算
+mean = X.mean(axis=(0, 2, 3), keepdims=True)
+var = ((X - mean) ** 2).mean(axis=(0, 2, 3), keepdims=True)
+# 训练模式下⽤当前的均值和⽅差做标准化
+X_hat = (X - mean) / nd.sqrt(var + eps)
+# 更新移动平均的均值和⽅差
+moving_mean = momentum * moving_mean + (1.0 - momentum) * mean
+moving_var = momentum * moving_var + (1.0 - momentum) * var
+Y = gamma * X_hat + beta
+# 拉伸和偏移
+return Y, moving_mean, moving_var
+接下来，我们⾃定义⼀个BatchNorm层。它保存参与求梯度和迭代的拉伸参数gamma和偏移参
+192
+5. 卷积神经⽹络
+
+数beta，同时也维护移动平均得到的均值和⽅差，以便能够在模型预测时被使⽤。BatchNorm实
+例所需指定的num_features参数对于全连接层来说应为输出个数，对于卷积层来说则为输出
+通道数。该实例所需指定的num_dims参数对于全连接层和卷积层来说分别为2和4。
+In [2]: class BatchNorm(nn.Block):
+def __init__(self, num_features, num_dims, **kwargs):
+super(BatchNorm, self).__init__(**kwargs)
+if num_dims == 2:
+shape = (1, num_features)
+else:
+shape = (1, num_features, 1, 1)
+# 参与求梯度和迭代的拉伸和偏移参数，分别初始化成0和1
+self.gamma = self.params.get('gamma', shape=shape, init=init.One())
+self.beta = self.params.get('beta', shape=shape, init=init.Zero())
+# 不参与求梯度和迭代的变量，全在内存上初始化成0
+self.moving_mean = nd.zeros(shape)
+self.moving_var = nd.zeros(shape)
+def forward(self, X):
+# 如果X不在内存上，将moving_mean和moving_var复制到X所在显存上
+if self.moving_mean.context != X.context:
+self.moving_mean = self.moving_mean.copyto(X.context)
+self.moving_var = self.moving_var.copyto(X.context)
+# 保存更新过的moving_mean和moving_var
+Y, self.moving_mean, self.moving_var = batch_norm(
+X, self.gamma.data(), self.beta.data(), self.moving_mean,
+self.moving_var, eps=1e-5, momentum=0.9)
+return Y
+使⽤批量归⼀化层的LeNet
+下⾯我们修改“卷积神经⽹络（LeNet）”这⼀节介绍的LeNet模型，从而应⽤批量归⼀化层。我
+们在所有的卷积层或全连接层之后、激活层之前加⼊批量归⼀化层。
+In [3]: net = nn.Sequential()
+net.add(nn.Conv2D(6, kernel_size=5),
+BatchNorm(6, num_dims=4),
+nn.Activation('sigmoid'),
+nn.MaxPool2D(pool_size=2, strides=2),
+nn.Conv2D(16, kernel_size=5),
+BatchNorm(16, num_dims=4),
+nn.Activation('sigmoid'),
+5.10. 批量归⼀化
+193
+
+nn.MaxPool2D(pool_size=2, strides=2),
+nn.Dense(120),
+BatchNorm(120, num_dims=2),
+nn.Activation('sigmoid'),
+nn.Dense(84),
+BatchNorm(84, num_dims=2),
+nn.Activation('sigmoid'),
+nn.Dense(10))
+下⾯我们训练修改后的模型。
+In [4]: lr, num_epochs, batch_size, ctx = 1.0, 5, 256, d2l.try_gpu()
+net.initialize(ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+training on gpu(0)
+epoch 1, loss 0.7013, train acc 0.747, test acc 0.844, time 3.5 sec
+epoch 2, loss 0.4142, train acc 0.852, test acc 0.849, time 3.3 sec
+epoch 3, loss 0.3663, train acc 0.866, test acc 0.856, time 3.3 sec
+epoch 4, loss 0.3351, train acc 0.877, test acc 0.861, time 3.3 sec
+epoch 5, loss 0.3173, train acc 0.883, test acc 0.848, time 3.4 sec
+最后我们查看第⼀个批量归⼀化层学习到的拉伸参数gamma和偏移参数beta。
+In [5]: net[1].gamma.data().reshape((-1,)), net[1].beta.data().reshape((-1,))
+Out[5]: (
+[1.1721184 0.5062113 1.6460098 1.5952507 1.2582711 1.5577166]
+<NDArray 6 @gpu(0)>,
+[ 1.3219742
+0.35896754
+0.31265196
+0.07646703 -1.0899599
+-1.6547436 ]
+<NDArray 6 @gpu(0)>)
+5.10.3 简洁实现
+与我们刚刚⾃⼰定义的BatchNorm类相⽐，Gluon中nn模块定义的BatchNorm类使⽤起来更
+加简单。它不需要指定⾃⼰定义的BatchNorm类中所需的num_features和num_dims参数值。
+在Gluon中，这些参数值都将通过延后初始化而⾃动获取。下⾯我们⽤Gluon实现使⽤批量归⼀
+化的LeNet。
+In [6]: net = nn.Sequential()
+net.add(nn.Conv2D(6, kernel_size=5),
+194
+5. 卷积神经⽹络
+
+nn.BatchNorm(),
+nn.Activation('sigmoid'),
+nn.MaxPool2D(pool_size=2, strides=2),
+nn.Conv2D(16, kernel_size=5),
+nn.BatchNorm(),
+nn.Activation('sigmoid'),
+nn.MaxPool2D(pool_size=2, strides=2),
+nn.Dense(120),
+nn.BatchNorm(),
+nn.Activation('sigmoid'),
+nn.Dense(84),
+nn.BatchNorm(),
+nn.Activation('sigmoid'),
+nn.Dense(10))
+使⽤同样的超参数进⾏训练。
+In [7]: net.initialize(ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+training on gpu(0)
+epoch 1, loss 0.6438, train acc 0.771, test acc 0.845, time 2.0 sec
+epoch 2, loss 0.3993, train acc 0.856, test acc 0.857, time 1.9 sec
+epoch 3, loss 0.3510, train acc 0.873, test acc 0.860, time 1.9 sec
+epoch 4, loss 0.3325, train acc 0.879, test acc 0.865, time 1.9 sec
+epoch 5, loss 0.3031, train acc 0.890, test acc 0.886, time 2.0 sec
+⼩结
+• 在模型训练时，批量归⼀化利⽤小批量上的均值和标准差，不断调整神经⽹络的中间输出，
+从而使整个神经⽹络在各层的中间输出的数值更稳定。
+• 对全连接层和卷积层做批量归⼀化的⽅法稍有不同。
+• 批量归⼀化层和丢弃层⼀样，在训练模式和预测模式的计算结果是不⼀样的。
+• Gluon提供的BatchNorm类使⽤起来简单、⽅便。
+5.10. 批量归⼀化
+195
+
+练习
+• 能否将批量归⼀化前的全连接层或卷积层中的偏差参数去掉？为什么？（提⽰：回忆批量归
+⼀化中标准化的定义。）
+• 尝试调⼤学习率。同“卷积神经⽹络（LeNet）”⼀节中未使⽤批量归⼀化的LeNet相⽐，现
+在是不是可以使⽤更⼤的学习率？
+• 尝试将批量归⼀化层插⼊LeNet的其他地⽅，观察并分析结果的变化。
+• 尝试⼀下不学习拉伸参数gamma和偏移参数beta（构造的时候加⼊参
+数grad_req='null'来避免计算梯度），观察并分析结果。
+• 查看BatchNorm类的⽂档来了解更多使⽤⽅法，例如，如何在训练时使⽤基于全局平均的
+均值和⽅差。
+参考⽂献
+[1] Ioffe, S., & Szegedy, C. (2015). Batch normalization: Accelerating deep network training by
+reducing internal covariate shift. arXiv preprint arXiv:1502.03167.
+扫码直达讨论区
+5.11 残差⽹络（ResNet）
+让我们先思考⼀个问题：对神经⽹络模型添加新的层，充分训练后的模型是否只可能更有效地降
+低训练误差？理论上，原模型解的空间只是新模型解的空间的⼦空间。也就是说，如果我们能将
+新添加的层训练成恒等映射f(x) = x，新模型和原模型将同样有效。由于新模型可能得出更优的
+解来拟合训练数据集，因此添加层似乎更容易降低训练误差。然而在实践中，添加过多的层后训
+练误差往往不降反升。即使利⽤批量归⼀化带来的数值稳定性使训练深层模型更加容易，该问题
+196
+5. 卷积神经⽹络
+
+仍然存在。针对这⼀问题，何恺明等⼈提出了残差⽹络（ResNet）[1]。它在2015年的ImageNet图
+像识别挑战赛夺魁，并深刻影响了后来的深度神经⽹络的设计。
+5.11.1 残差块
+让我们聚焦于神经⽹络局部。如图5.9所⽰，设输⼊为x。假设我们希望学出的理想映射为f(x)，
+从而作为图5.9上⽅激活函数的输⼊。左图虚线框中的部分需要直接拟合出该映射f(x)，而右图
+虚线框中的部分则需要拟合出有关恒等映射的残差映射f(x) −x。残差映射在实际中往往更容易
+优化。以本节开头提到的恒等映射作为我们希望学出的理想映射f(x)。我们只需将图5.9中右图
+虚线框内上⽅的加权运算（如仿射）的权重和偏差参数学成0，那么f(x)即为恒等映射。实际中，
+当理想映射f(x)极接近于恒等映射时，残差映射也易于捕捉恒等映射的细微波动。图5.9右图也
+是ResNet的基础块，即残差块（residual block）。在残差块中，输⼊可通过跨层的数据线路更快
+地向前传播。
+图5.9: 设输⼊为x。假设图中最上⽅激活函数输⼊的理想映射为f(x)。左图虚线框中的部分需要
+直接拟合出该映射f(x)，而右图虚线框中的部分需要拟合出有关恒等映射的残差映射f(x) −x
+ResNet沿⽤了VGG全3 × 3卷积层的设计。残差块⾥⾸先有2个有相同输出通道数的3 × 3卷积层。
+每个卷积层后接⼀个批量归⼀化层和ReLU激活函数。然后我们将输⼊跳过这两个卷积运算后直
+5.11. 残差⽹络（ResNet）
+197
+
+接加在最后的ReLU激活函数前。这样的设计要求两个卷积层的输出与输⼊形状⼀样，从而可以
+相加。如果想改变通道数，就需要引⼊⼀个额外的1 × 1卷积层来将输⼊变换成需要的形状后再做
+相加运算。
+残差块的实现如下。它可以设定输出通道数、是否使⽤额外的1 × 1卷积层来修改通道数以及卷积
+层的步幅。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import nn
+class Residual(nn.Block):
+# 本类已保存在d2lzh包中⽅便以后使⽤
+def __init__(self, num_channels, use_1x1conv=False, strides=1, **kwargs):
+super(Residual, self).__init__(**kwargs)
+self.conv1 = nn.Conv2D(num_channels, kernel_size=3, padding=1,
+strides=strides)
+self.conv2 = nn.Conv2D(num_channels, kernel_size=3, padding=1)
+if use_1x1conv:
+self.conv3 = nn.Conv2D(num_channels, kernel_size=1,
+strides=strides)
+else:
+self.conv3 = None
+self.bn1 = nn.BatchNorm()
+self.bn2 = nn.BatchNorm()
+def forward(self, X):
+Y = nd.relu(self.bn1(self.conv1(X)))
+Y = self.bn2(self.conv2(Y))
+if self.conv3:
+X = self.conv3(X)
+return nd.relu(Y + X)
+下⾯我们来查看输⼊和输出形状⼀致的情况。
+In [2]: blk = Residual(3)
+blk.initialize()
+X = nd.random.uniform(shape=(4, 3, 6, 6))
+blk(X).shape
+Out[2]: (4, 3, 6, 6)
+我们也可以在增加输出通道数的同时减半输出的⾼和宽。
+In [3]: blk = Residual(6, use_1x1conv=True, strides=2)
+blk.initialize()
+198
+5. 卷积神经⽹络
+
+blk(X).shape
+Out[3]: (4, 6, 3, 3)
+5.11.2 ResNet模型
+ResNet的前两层跟之前介绍的GoogLeNet中的⼀样：在输出通道数为64、步幅为2的7 × 7卷积层
+后接步幅为2的3 × 3的最⼤池化层。不同之处在于ResNet每个卷积层后增加的批量归⼀化层。
+In [4]: net = nn.Sequential()
+net.add(nn.Conv2D(64, kernel_size=7, strides=2, padding=3),
+nn.BatchNorm(), nn.Activation('relu'),
+nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+GoogLeNet在后⾯接了4个由Inception块组成的模块。ResNet则使⽤4个由残差块组成的模块，每
+个模块使⽤若⼲个同样输出通道数的残差块。第⼀个模块的通道数同输⼊通道数⼀致。由于之前
+已经使⽤了步幅为2的最⼤池化层，所以⽆须减小⾼和宽。之后的每个模块在第⼀个残差块⾥将
+上⼀个模块的通道数翻倍，并将⾼和宽减半。
+下⾯我们来实现这个模块。注意，这⾥对第⼀个模块做了特别处理。
+In [5]: def resnet_block(num_channels, num_residuals, first_block=False):
+blk = nn.Sequential()
+for i in range(num_residuals):
+if i == 0 and not first_block:
+blk.add(Residual(num_channels, use_1x1conv=True, strides=2))
+else:
+blk.add(Residual(num_channels))
+return blk
+接着我们为ResNet加⼊所有残差块。这⾥每个模块使⽤两个残差块。
+In [6]: net.add(resnet_block(64, 2, first_block=True),
+resnet_block(128, 2),
+resnet_block(256, 2),
+resnet_block(512, 2))
+最后，与GoogLeNet⼀样，加⼊全局平均池化层后接上全连接层输出。
+In [7]: net.add(nn.GlobalAvgPool2D(), nn.Dense(10))
+这⾥每个模块⾥有4个卷积层（不计算1 × 1卷积层），加上最开始的卷积层和最后的全连接层，共
+计18层。这个模型通常也被称为ResNet-18。通过配置不同的通道数和模块⾥的残差块数可以得到
+5.11. 残差⽹络（ResNet）
+199
+
+不同的ResNet模型，例如更深的含152层的ResNet-152。虽然ResNet的主体架构跟GoogLeNet的
+类似，但ResNet结构更简单，修改也更⽅便。这些因素都导致了ResNet迅速被⼴泛使⽤。
+在训练ResNet之前，我们来观察⼀下输⼊形状在ResNet不同模块之间的变化。
+In [8]: X = nd.random.uniform(shape=(1, 1, 224, 224))
+net.initialize()
+for layer in net:
+X = layer(X)
+print(layer.name, 'output shape:\t', X.shape)
+conv5 output shape:
+(1, 64, 112, 112)
+batchnorm4 output shape:
+(1, 64, 112, 112)
+relu0 output shape:
+(1, 64, 112, 112)
+pool0 output shape:
+(1, 64, 56, 56)
+sequential1 output shape:
+(1, 64, 56, 56)
+sequential2 output shape:
+(1, 128, 28, 28)
+sequential3 output shape:
+(1, 256, 14, 14)
+sequential4 output shape:
+(1, 512, 7, 7)
+pool1 output shape:
+(1, 512, 1, 1)
+dense0 output shape:
+(1, 10)
+5.11.3 获取数据和训练模型
+下⾯我们在Fashion-MNIST数据集上训练ResNet。
+In [9]: lr, num_epochs, batch_size, ctx = 0.05, 5, 256, d2l.try_gpu()
+net.initialize(force_reinit=True, ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size, resize=96)
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+training on gpu(0)
+epoch 1, loss 0.4892, train acc 0.828, test acc 0.892, time 15.4 sec
+epoch 2, loss 0.2530, train acc 0.907, test acc 0.906, time 14.1 sec
+epoch 3, loss 0.1921, train acc 0.929, test acc 0.914, time 14.0 sec
+epoch 4, loss 0.1472, train acc 0.946, test acc 0.911, time 14.1 sec
+epoch 5, loss 0.1095, train acc 0.960, test acc 0.919, time 14.2 sec
+⼩结
+• 残差块通过跨层的数据通道从而能够训练出有效的深度神经⽹络。
+200
+5. 卷积神经⽹络
+
+• ResNet深刻影响了后来的深度神经⽹络的设计。
+练习
+• 参考ResNet论⽂的表1来实现不同版本的ResNet [1]。
+• 对于⽐较深的⽹络，ResNet论⽂中介绍了⼀个“瓶颈”架构来降低模型复杂度。尝试实现
+它[1]。
+• 在ResNet的后续版本⾥，作者将残差块⾥的“卷积、批量归⼀化和激活”结构改成了“批
+量归⼀化、激活和卷积”，实现这个改进（[2]，图1）。
+参考⽂献
+[1] He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual learning for image recognition. In
+Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 770-778).
+[2] He, K., Zhang, X., Ren, S., & Sun, J. (2016, October). Identity mappings in deep residual
+networks. In European Conference on Computer Vision (pp. 630-645). Springer, Cham.
+扫码直达讨论区
+5.12 稠密连接⽹络（DenseNet）
+ResNet中的跨层连接设计引申出了数个后续⼯作。本节我们介绍其中的⼀个：稠密连接⽹络
+（DenseNet）[1]。它与ResNet的主要区别如图5.10所⽰。
+5.12. 稠密连接⽹络（DenseNet）
+201
+
+图5.10: ResNet（左）与DenseNet（右）在跨层连接上的主要区别：使⽤相加和使⽤连结
+图5.10中将部分前后相邻的运算抽象为模块A和模块B。与ResNet的主要区别在于，DenseNet⾥
+模块B的输出不是像ResNet那样和模块A的输出相加，而是在通道维上连结。这样模块A的输出
+可以直接传⼊模块B后⾯的层。在这个设计⾥，模块A直接跟模块B后⾯的所有层连接在了⼀起。
+这也是它被称为“稠密连接”的原因。
+DenseNet的主要构建模块是稠密块（dense block）和过渡层（transition layer）。前者定义了输
+⼊和输出是如何连结的，后者则⽤来控制通道数，使之不过⼤。
+5.12.1 稠密块
+DenseNet使⽤了ResNet改良版的“批量归⼀化、激活和卷积”结构（参⻅上⼀节的练习），我们
+⾸先在conv_block函数⾥实现这个结构。
+In [1]: import d2lzh as d2l
+from mxnet import gluon, init, nd
+from mxnet.gluon import nn
+def conv_block(num_channels):
+blk = nn.Sequential()
+blk.add(nn.BatchNorm(), nn.Activation('relu'),
+nn.Conv2D(num_channels, kernel_size=3, padding=1))
+return blk
+稠密块由多个conv_block组成，每块使⽤相同的输出通道数。但在前向计算时，我们将每块的
+输⼊和输出在通道维上连结。
+In [2]: class DenseBlock(nn.Block):
+def __init__(self, num_convs, num_channels, **kwargs):
+super(DenseBlock, self).__init__(**kwargs)
+self.net = nn.Sequential()
+202
+5. 卷积神经⽹络
+
+for _ in range(num_convs):
+self.net.add(conv_block(num_channels))
+def forward(self, X):
+for blk in self.net:
+Y = blk(X)
+X = nd.concat(X, Y, dim=1)
+# 在通道维上将输⼊和输出连结
+return X
+在下⾯的例⼦中，我们定义⼀个有2个输出通道数为10的卷积块。使⽤通道数为3的输⼊时，我们
+会得到通道数为3 + 2 × 10 = 23的输出。卷积块的通道数控制了输出通道数相对于输⼊通道数的
+增⻓，因此也被称为增⻓率（growth rate）。
+In [3]: blk = DenseBlock(2, 10)
+blk.initialize()
+X = nd.random.uniform(shape=(4, 3, 8, 8))
+Y = blk(X)
+Y.shape
+Out[3]: (4, 23, 8, 8)
+5.12.2 过渡层
+由于每个稠密块都会带来通道数的增加，使⽤过多则会带来过于复杂的模型。过渡层⽤来控制模
+型复杂度。它通过1 × 1卷积层来减小通道数，并使⽤步幅为2的平均池化层减半⾼和宽，从而进
+⼀步降低模型复杂度。
+In [4]: def transition_block(num_channels):
+blk = nn.Sequential()
+blk.add(nn.BatchNorm(), nn.Activation('relu'),
+nn.Conv2D(num_channels, kernel_size=1),
+nn.AvgPool2D(pool_size=2, strides=2))
+return blk
+对上⼀个例⼦中稠密块的输出使⽤通道数为10的过渡层。此时输出的通道数减为10，⾼和宽均减
+半。
+In [5]: blk = transition_block(10)
+blk.initialize()
+blk(Y).shape
+Out[5]: (4, 10, 4, 4)
+5.12. 稠密连接⽹络（DenseNet）
+203
+
+5.12.3 DenseNet模型
+我们来构造DenseNet模型。DenseNet⾸先使⽤同ResNet⼀样的单卷积层和最⼤池化层。
+In [6]: net = nn.Sequential()
+net.add(nn.Conv2D(64, kernel_size=7, strides=2, padding=3),
+nn.BatchNorm(), nn.Activation('relu'),
+nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+类似于ResNet接下来使⽤的4个残差块，DenseNet使⽤的是4个稠密块。同ResNet⼀样，我们可
+以设置每个稠密块使⽤多少个卷积层。这⾥我们设成4，从而与上⼀节的ResNet-18保持⼀致。稠
+密块⾥的卷积层通道数（即增⻓率）设为32，所以每个稠密块将增加128个通道。
+ResNet⾥通过步幅为2的残差块在每个模块之间减小⾼和宽。这⾥我们则使⽤过渡层来减半⾼和
+宽，并减半通道数。
+In [7]: num_channels, growth_rate = 64, 32
+# num_channels为当前的通道数
+num_convs_in_dense_blocks = [4, 4, 4, 4]
+for i, num_convs in enumerate(num_convs_in_dense_blocks):
+net.add(DenseBlock(num_convs, growth_rate))
+# 上⼀个稠密块的输出通道数
+num_channels += num_convs * growth_rate
+# 在稠密块之间加⼊通道数减半的过渡层
+if i != len(num_convs_in_dense_blocks) - 1:
+num_channels //= 2
+net.add(transition_block(num_channels))
+同ResNet⼀样，最后接上全局池化层和全连接层来输出。
+In [8]: net.add(nn.BatchNorm(), nn.Activation('relu'), nn.GlobalAvgPool2D(),
+nn.Dense(10))
+5.12.4 获取数据并训练模型
+由于这⾥使⽤了⽐较深的⽹络，本节⾥我们将输⼊⾼和宽从224降到96来简化计算。
+In [9]: lr, num_epochs, batch_size, ctx = 0.1, 5, 256, d2l.try_gpu()
+net.initialize(ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size, resize=96)
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+num_epochs)
+204
+5. 卷积神经⽹络
+
+training on gpu(0)
+epoch 1, loss 0.5423, train acc 0.810, test acc 0.836, time 14.8 sec
+epoch 2, loss 0.3123, train acc 0.886, test acc 0.885, time 13.2 sec
+epoch 3, loss 0.2610, train acc 0.904, test acc 0.906, time 13.1 sec
+epoch 4, loss 0.2328, train acc 0.915, test acc 0.906, time 13.1 sec
+epoch 5, loss 0.2106, train acc 0.923, test acc 0.918, time 13.1 sec
+⼩结
+• 在跨层连接上，不同于ResNet中将输⼊与输出相加，DenseNet在通道维上连结输⼊与输出。
+• DenseNet的主要构建模块是稠密块和过渡层。
+练习
+• DenseNet论⽂中提到的⼀个优点是模型参数⽐ResNet的更小，这是为什么？
+• DenseNet被⼈诟病的⼀个问题是内存或显存消耗过多。真的会这样吗？可以把输⼊形状换
+成224 × 224，来看看实际的消耗。
+• 实现DenseNet论⽂中的表1提出的不同版本的DenseNet [1]。
+参考⽂献
+[1] Huang, G., Liu, Z., Weinberger, K. Q., & van der Maaten, L. (2017). Densely connected con-
+volutional networks. In Proceedings of the IEEE conference on computer vision and pattern
+recognition (Vol. 1, No. 2).
+扫码直达讨论区
+5.12. 稠密连接⽹络（DenseNet）
+205
+
+206
+5. 卷积神经⽹络
